@@ -1,1 +1,44 @@
-<p>loot-splitter works!</p>
+<div class="loot-splitter-container">
+  <h2>Loot Splitter</h2>
+  <div class="currency-inputs">
+    <div class="input-group">
+      <label for="platinum">Platinum</label>
+      <input type="number" id="platinum" [(ngModel)]="platinum" min="0" max="50000">
+    </div>
+    <div class="input-group">
+      <label for="gold">Gold</label>
+      <input type="number" id="gold" [(ngModel)]="gold" min="0" max="50000">
+    </div>
+    <div class="input-group">
+      <label for="silver">Silver</label>
+      <input type="number" id="silver" [(ngModel)]="silver" min="0" max="50000">
+    </div>
+    <div class="input-group">
+      <label for="copper">Copper</label>
+      <input type="number" id="copper" [(ngModel)]="copper" min="0" max="50000">
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label for="players">Players</label>
+      <input type="number" id="players" [(ngModel)]="players" min="2" max="20">
+    </div>
+    <button (click)="splitLoot()">Go</button>
+  </div>
+
+  <div class="results" *ngIf="distributions.length > 0">
+    <h3>Distribution</h3>
+    <div class="player-row" *ngFor="let player of distributions; let i = index">
+      <span class="player-label">Player {{ i + 1 }}:</span>
+      <div class="coins">
+        <span *ngIf="player.platinum > 0" class="coin platinum">{{ player.platinum }} pp</span>
+        <span *ngIf="player.gold > 0" class="coin gold">{{ player.gold }} gp</span>
+        <span *ngIf="player.silver > 0" class="coin silver">{{ player.silver }} sp</span>
+        <span *ngIf="player.copper > 0" class="coin copper">{{ player.copper }} cp</span>
+        <span *ngIf="player.platinum === 0 && player.gold === 0 && player.silver === 0 && player.copper === 0">No loot</span>
+      </div>
+      <span class="player-total">Total: {{ player.value }} cp</span>
+    </div>
+  </div>
+</div>
