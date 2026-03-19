@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { EnvService } from './core/env/env.service';
 
 @Component({
   selector: 'app-root',
@@ -12,6 +13,8 @@ export class App {
   protected readonly title = signal('dnd-app');
 
   private readonly router = inject(Router);
+
+  protected readonly envService = inject(EnvService);
 
   protected readonly menuItems = this.router.config
     .filter((route) => route.path && route.path !== '**' && !route.redirectTo)
