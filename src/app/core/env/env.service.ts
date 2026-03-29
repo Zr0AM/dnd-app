@@ -17,6 +17,7 @@ export class EnvService {
   public readonly env$: Observable<EnvConfig>;
 
   constructor() {
+
     // Attempt to fetch runtime configuration from Cloudflare Pages Function.
     // This allows environment variables to be injected at runtime without rebuilding the app.
     // If it fails (e.g., running locally via `ng serve` without Wrangler),
