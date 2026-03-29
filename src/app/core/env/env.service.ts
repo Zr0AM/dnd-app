@@ -24,7 +24,8 @@ export class EnvService {
     // and all subsequent subscribers get the cached result.
     this.env$ = environment.production
       ? this.http.get<EnvConfig>('/api/config').pipe(shareReplay(1))
-      : of(environment.envConfig as EnvConfig).pipe(shareReplay(1));
+      // TypeScript requires 'unknown' cast first if the type being cast from doesn't overlap (e.g., if envConfig is typed as null)
+      : of((environment.envConfig || {}) as unknown as EnvConfig).pipe(shareReplay(1));
 
     console.log("ENV environment service loaded: ", environment.envConfig);
   }
