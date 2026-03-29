@@ -7,4 +7,3 @@ API_KEY = "<dnd-db-rest-secret>"
 
 [[services]]
 binding = "<dnd-db-rest-conn>"
-service = "<dnd-app-production>"
