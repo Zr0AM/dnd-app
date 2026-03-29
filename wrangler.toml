@@ -2,9 +2,9 @@ name = "dnd-app"
 compatibility_date = "2024-05-12"
 pages_build_output_dir = "dist/dnd-app/browser"
 
-[vars]
-API_KEY = "<dnd-db-rest-secret>"
+[secrets]
+API_KEY = "<dnd-db-rest-conn>"
 
 [[services]]
-binding = "<dnd-db-rest-conn>"
+binding = "DND-DB-REST-CONN"
 service = "dnd-db-rest"

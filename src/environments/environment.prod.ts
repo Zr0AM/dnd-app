@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  envConfig: null // In production, we fetch from the API
+  envConfig: {} as any // In production, we expect to fetch from the API
 };
