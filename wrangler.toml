@@ -3,7 +3,7 @@ compatibility_date = "2024-05-12"
 pages_build_output_dir = "dist/dnd-app/browser"
 
 [secrets]
-API_KEY = "<dnd-db-rest-conn>"
+required = ["dnd-db-rest-secret"]
 
 [[services]]
 binding = "DND-DB-REST-CONN"
