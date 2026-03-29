@@ -7,4 +7,4 @@ API_KEY = "<dnd-db-rest-secret>"
 
 [[services]]
 binding = "<dnd-db-rest-conn>"
-service = "<dnd-db-rest-production>"
+service = "<dnd-db-rest>"
