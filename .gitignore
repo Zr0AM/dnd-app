@@ -42,3 +42,9 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
+# Environments
+src/environments/env-config.local.ts
+.dev.vars
+
+# Wrangler local state
+.wrangler/

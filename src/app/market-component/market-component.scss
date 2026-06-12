@@ -1,0 +1,23 @@
+.market-status {
+  margin: 0.5rem 0;
+
+  &--error {
+    color: #b00020;
+  }
+}
+
+.market-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+
+  &__cost {
+    text-align: right;
+  }
+}

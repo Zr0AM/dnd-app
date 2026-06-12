@@ -3,5 +3,5 @@ compatibility_date = "2024-05-12"
 pages_build_output_dir = "dist/dnd-app/browser"
 
 [[services]]
-binding = "DND-DB-REST-CONN"
+binding = "DND_DB_REST_CONN"
 service = "dnd-db-rest"

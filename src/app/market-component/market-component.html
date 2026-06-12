@@ -1,1 +1,35 @@
-This is the market component!
+<h2>Market</h2>
+
+@if (status() === 'loading') {
+  <p class="market-status">Loading items…</p>
+} @else if (status() === 'error') {
+  <p class="market-status market-status--error">Could not load items. Please try again later.</p>
+} @else {
+  <p class="market-status">{{ items().length }} items available</p>
+  <table class="market-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Rarity</th>
+        <th>Cost (gp)</th>
+        <th>Attunement</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of items(); track item.itemID) {
+        <tr>
+          <td>
+            <a [href]="item.itemUrl" target="_blank" rel="noopener">{{ item.itemName }}</a>
+          </td>
+          <td>{{ item.itemType }}</td>
+          <td>{{ item.itemRarity }}</td>
+          <td class="market-table__cost">{{ item.itemCost | number }}</td>
+          <td>{{ item.itemAttunement }}</td>
+          <td>{{ item.itemSource }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
