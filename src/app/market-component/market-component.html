@@ -3,33 +3,190 @@
 @if (status() === 'loading') {
   <p class="market-status">Loading items…</p>
 } @else if (status() === 'error') {
-  <p class="market-status market-status--error">Could not load items. Please try again later.</p>
+  <div class="market-status market-status--error">
+    <p>Could not load items. Please try again later.</p>
+    <button type="button" (click)="load()">Try again</button>
+  </div>
 } @else {
-  <p class="market-status">{{ items().length }} items available</p>
-  <table class="market-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Rarity</th>
-        <th>Cost (gp)</th>
-        <th>Attunement</th>
-        <th>Source</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (item of items(); track item.itemID) {
+  <div class="market-filters">
+    <input
+      #searchInput
+      type="search"
+      class="market-filters__search"
+      placeholder="Search by name…"
+      aria-label="Search items by name"
+      [value]="search()"
+      (input)="setSearch(searchInput.value)"
+    />
+
+    <label>
+      Rarity
+      <select #raritySelect [value]="rarity()" (change)="setRarity(raritySelect.value)">
+        <option value="">All</option>
+        @for (option of rarityOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      Type
+      <select #typeSelect [value]="type()" (change)="setType(typeSelect.value)">
+        <option value="">All</option>
+        @for (option of typeOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      Attunement
+      <select
+        #attunementSelect
+        [value]="attunement()"
+        (change)="setAttunement(attunementSelect.value)"
+      >
+        <option value="">All</option>
+        @for (option of attunementOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    @if (hasActiveFilters()) {
+      <button type="button" class="market-filters__clear" (click)="clearFilters()">
+        Clear filters
+      </button>
+    }
+  </div>
+
+  <p class="market-status">
+    Showing {{ rangeStart() }}–{{ rangeEnd() }} of {{ sorted().length }} items
+  </p>
+
+  @if (sorted().length === 0) {
+    <p class="market-empty">No items match your filters.</p>
+  } @else {
+    <table class="market-table">
+      <thead>
         <tr>
-          <td>
-            <a [href]="item.itemUrl" target="_blank" rel="noopener">{{ item.itemName }}</a>
-          </td>
-          <td>{{ item.itemType }}</td>
-          <td>{{ item.itemRarity }}</td>
-          <td class="market-table__cost">{{ item.itemCost | number }}</td>
-          <td>{{ item.itemAttunement }}</td>
-          <td>{{ item.itemSource }}</td>
+          <th scope="col" class="market-table__expand-col">
+            <span class="visually-hidden">Details</span>
+          </th>
+          <th scope="col" [attr.aria-sort]="ariaSort('itemName')">
+            <button type="button" (click)="sortBy('itemName')">
+              Name <span class="market-table__sort">{{ sortIndicator('itemName') }}</span>
+            </button>
+          </th>
+          <th scope="col" [attr.aria-sort]="ariaSort('itemType')">
+            <button type="button" (click)="sortBy('itemType')">
+              Type <span class="market-table__sort">{{ sortIndicator('itemType') }}</span>
+            </button>
+          </th>
+          <th scope="col" [attr.aria-sort]="ariaSort('itemRarity')">
+            <button type="button" (click)="sortBy('itemRarity')">
+              Rarity <span class="market-table__sort">{{ sortIndicator('itemRarity') }}</span>
+            </button>
+          </th>
+          <th scope="col" class="market-table__cost" [attr.aria-sort]="ariaSort('itemCost')">
+            <button type="button" (click)="sortBy('itemCost')">
+              Cost (gp) <span class="market-table__sort">{{ sortIndicator('itemCost') }}</span>
+            </button>
+          </th>
+          <th scope="col">Attunement</th>
+          <th scope="col" [attr.aria-sort]="ariaSort('itemSource')">
+            <button type="button" (click)="sortBy('itemSource')">
+              Source <span class="market-table__sort">{{ sortIndicator('itemSource') }}</span>
+            </button>
+          </th>
         </tr>
-      }
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        @for (item of pagedItems(); track item.itemID) {
+          <tr>
+            <td class="market-table__expand-col">
+              <button
+                type="button"
+                class="market-table__expand"
+                [attr.aria-expanded]="expandedId() === item.itemID"
+                [attr.aria-label]="'Toggle details for ' + item.itemName"
+                (click)="toggleExpand(item.itemID)"
+              >
+                {{ expandedId() === item.itemID ? '▾' : '▸' }}
+              </button>
+            </td>
+            <td>
+              <a [href]="item.itemUrl" target="_blank" rel="noopener">{{ item.itemName }}</a>
+            </td>
+            <td>{{ item.itemType }}</td>
+            <td>
+              <span class="rarity" [class]="'rarity rarity--' + raritySlug(item.itemRarity)">
+                {{ item.itemRarity }}
+              </span>
+            </td>
+            <td class="market-table__cost">{{ item.itemCost | number }}</td>
+            <td>{{ item.itemAttunement }}</td>
+            <td>{{ item.itemSource }}</td>
+          </tr>
+          @if (expandedId() === item.itemID) {
+            <tr class="market-table__details">
+              <td colspan="7">
+                @if (item.itemShopkeeperDesc && item.itemShopkeeperDesc !== 'N/A') {
+                  <p class="market-table__quote">“{{ item.itemShopkeeperDesc }}”</p>
+                }
+                @if (item.itemVisualDesc && item.itemVisualDesc !== 'N/A') {
+                  <p>{{ item.itemVisualDesc }}</p>
+                }
+                @if (item.itemRestrictions && item.itemRestrictions !== 'None') {
+                  <p><strong>Restrictions:</strong> {{ item.itemRestrictions }}</p>
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+
+    <div class="market-pagination">
+      <label>
+        Per page
+        <select #pageSizeSelect (change)="setPageSize(pageSizeSelect.value)">
+          @for (size of pageSizes; track size) {
+            <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="market-pagination__controls">
+        <button type="button" (click)="goToPage(1)" [disabled]="page() === 1" aria-label="First page">
+          «
+        </button>
+        <button
+          type="button"
+          (click)="goToPage(page() - 1)"
+          [disabled]="page() === 1"
+          aria-label="Previous page"
+        >
+          ‹
+        </button>
+        <span class="market-pagination__page">Page {{ page() }} of {{ totalPages() }}</span>
+        <button
+          type="button"
+          (click)="goToPage(page() + 1)"
+          [disabled]="page() === totalPages()"
+          aria-label="Next page"
+        >
+          ›
+        </button>
+        <button
+          type="button"
+          (click)="goToPage(totalPages())"
+          [disabled]="page() === totalPages()"
+          aria-label="Last page"
+        >
+          »
+        </button>
+      </div>
+    </div>
+  }
 }

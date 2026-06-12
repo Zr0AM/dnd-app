@@ -47,14 +47,10 @@ p {
 }
 
 main {
-  width: 100%;
-  min-height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 2.5rem;
   box-sizing: inherit;
-  position: relative;
 }
 
 .content h1 {

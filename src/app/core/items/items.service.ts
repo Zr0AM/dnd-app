@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { catchError, map, Observable, shareReplay, throwError } from 'rxjs';
 
 export interface Item {
   itemID: number;
@@ -16,13 +16,6 @@ export interface Item {
   itemShopkeeperDesc: string;
 }
 
-export interface ItemQuery {
-  sortBy?: keyof Item;
-  order?: 'asc' | 'desc';
-  limit?: number;
-  offset?: number;
-}
-
 interface ItemsResponse {
   success: boolean;
   results: Item[];
@@ -31,21 +24,20 @@ interface ItemsResponse {
 @Injectable({ providedIn: 'root' })
 export class ItemsService {
   private readonly http = inject(HttpClient);
+  private items$?: Observable<Item[]>;
 
-  getItems(query: ItemQuery = {}): Observable<Item[]> {
-    let params = new HttpParams();
-    if (query.sortBy) {
-      params = params.set('sort_by', query.sortBy).set('order', query.order ?? 'asc');
-    }
-    if (query.limit != null) {
-      params = params.set('limit', query.limit);
-    }
-    if (query.offset != null) {
-      params = params.set('offset', query.offset);
-    }
-
-    return this.http
-      .get<ItemsResponse>('/api/items', { params })
-      .pipe(map((res) => res.results ?? []));
+  // Fetches the full catalog once and replays it to every subscriber;
+  // filtering, sorting, and paging happen client-side on the cached list.
+  // A failed request clears the cache so the next call retries.
+  getItems(): Observable<Item[]> {
+    this.items$ ??= this.http.get<ItemsResponse>('/api/items').pipe(
+      map((res) => res.results ?? []),
+      catchError((err) => {
+        this.items$ = undefined;
+        return throwError(() => err);
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+    return this.items$;
   }
 }

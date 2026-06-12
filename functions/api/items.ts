@@ -18,7 +18,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // Service bindings ignore the hostname; only the path and query string
   // reach the Worker, but the Request constructor requires an absolute URL.
   const search = new URL(request.url).search;
-  return env.DND_DB_REST_CONN.fetch(`https://dnd-db-rest/rest/Item${search}`, {
+  const upstream = await env.DND_DB_REST_CONN.fetch(`https://dnd-db-rest/rest/Item${search}`, {
     headers: { Authorization: `Bearer ${env.DND_API_TOKEN}` },
   });
+  if (!upstream.ok) {
+    return upstream;
+  }
+
+  // The catalog changes rarely; let browsers and the Cloudflare edge reuse
+  // successful responses for a few minutes instead of re-querying D1.
+  const response = new Response(upstream.body, upstream);
+  response.headers.set('Cache-Control', 'public, max-age=300');
+  return response;
 };
