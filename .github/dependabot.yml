@@ -51,6 +51,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Angular's compiler pins the TypeScript range (21.x: <6.0), so a TypeScript major
+      # can only land alongside an Angular upgrade that supports it
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
