@@ -39,7 +39,7 @@
     "wrangler": "^4.139.0"
   },
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "^2.3.1",
+    "@analogjs/vite-plugin-angular": "^2.7.2",
     "@angular/build": "^21.2.24",
     "@angular/cli": "^21.2.24",
     "@angular/compiler-cli": "^21.2.24",
