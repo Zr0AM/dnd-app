@@ -4,13 +4,59 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 10
+    # A dependency joins the first group it matches, so specific groups come before catch-alls
     groups:
+      # All security fixes in one PR, instead of one PR per vulnerable package
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+      # Angular packages pin each other as exact peers, so they must move together.
+      # @analogjs/vite-plugin-angular peers on @angular/build and has to track it.
       angular:
         patterns:
           - "@angular/*"
           - "@angular-devkit/*"
+          - "@analogjs/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Majors kept separate: they need `ng update` migrations and shouldn't block patch releases
+      angular-major:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@analogjs/*"
+        update-types:
+          - "major"
+
+      # wrangler peers on a matching @cloudflare/workers-types major
+      cloudflare:
+        patterns:
+          - "wrangler"
+          - "@cloudflare/*"
+
+      # @vitest/* packages must match the vitest version
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+
+      # Everything else that's low-risk in one weekly PR; other majors still arrive individually
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
