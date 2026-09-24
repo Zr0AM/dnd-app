@@ -1,37 +1,58 @@
-name: Build
+name: SonarQube
 on:
-  workflow_dispatch: 
-  push:
-    branches:
-      - main
-      - f-develop
-  pull_request:
-    types: [ opened, synchronize, reopened ]
+  workflow_run:
+    workflows: [ Build ]
+    types: [ completed ]
+
+permissions:
+  contents: read
+  actions: read  # download the coverage artifact from the Build run
+
 jobs:
   sonarqube:
     name: SonarQube
+    # workflow_run has access to secrets, so only analyse code from this repository, never from forks
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Download coverage
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          node-version: 22
-          cache: 'npm'
+          name: coverage
+          path: coverage/dnd-app
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
 
-      - name: Install dependencies
-        run: npm install --ignore-scripts
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm run test:ci
+      # Under workflow_run the scanner can't detect the PR or branch itself, so pass it explicitly.
+      # sonar.host.url is pinned so the checked-out sonar-project.properties can't redirect the token.
+      - name: Build scanner arguments
+        id: args
+        env:
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          PR_BRANCH: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
+          PR_BASE: ${{ github.event.workflow_run.pull_requests[0].base.ref }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          args="-Dsonar.host.url=https://sonarcloud.io -Dsonar.qualitygate.wait=true"
+          if [ -n "$PR_NUMBER" ]; then
+            args="$args -Dsonar.pullrequest.key=$PR_NUMBER -Dsonar.pullrequest.branch=$PR_BRANCH -Dsonar.pullrequest.base=$PR_BASE"
+          else
+            args="$args -Dsonar.branch.name=$HEAD_BRANCH"
+          fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        with:
+          args: ${{ steps.args.outputs.args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
