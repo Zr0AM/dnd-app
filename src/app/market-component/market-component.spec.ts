@@ -133,14 +133,14 @@ describe('MarketComponent', () => {
     );
     flushItems(items);
 
-    expect(rowNames().length).toBe(25);
+    expect(rowNames()).toHaveLength(25);
     expect(fixture.nativeElement.textContent).toContain('Page 1 of 2');
 
     const next: HTMLButtonElement = fixture.nativeElement.querySelector('[aria-label="Next page"]');
     next.click();
     fixture.detectChanges();
 
-    expect(rowNames().length).toBe(5);
+    expect(rowNames()).toHaveLength(5);
     expect(fixture.nativeElement.textContent).toContain('Showing 26–30 of 30 items');
 
     // Changing a filter must jump back to page 1.
@@ -150,7 +150,7 @@ describe('MarketComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Page 1 of 2');
-    expect(rowNames().length).toBe(25);
+    expect(rowNames()).toHaveLength(25);
   });
 
   it('should change the page size', () => {
@@ -165,7 +165,7 @@ describe('MarketComponent', () => {
     pageSize.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
-    expect(rowNames().length).toBe(10);
+    expect(rowNames()).toHaveLength(10);
     expect(fixture.nativeElement.textContent).toContain('Page 1 of 3');
   });
 
