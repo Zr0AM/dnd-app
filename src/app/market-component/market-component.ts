@@ -74,10 +74,10 @@ export class MarketComponent implements OnInit {
     ),
   );
   protected readonly typeOptions = computed(() =>
-    [...new Set(this.items().map((i) => i.itemType))].sort(),
+    [...new Set(this.items().map((i) => i.itemType))].sort((a, b) => a.localeCompare(b)),
   );
   protected readonly attunementOptions = computed(() =>
-    [...new Set(this.items().map((i) => i.itemAttunement))].sort(),
+    [...new Set(this.items().map((i) => i.itemAttunement))].sort((a, b) => a.localeCompare(b)),
   );
 
   protected readonly hasActiveFilters = computed(
