@@ -46,7 +46,7 @@
     "@cloudflare/workers-types": "^5.20260923.1",
     "@vitest/coverage-v8": "^4.1.11",
     "jsdom": "^27.1.0",
-    "typescript": "~5.9.2",
+    "typescript": "~7.0.2",
     "vitest": "^4.1.11"
   }
 }
