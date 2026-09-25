@@ -1,0 +1,38 @@
+<section class="hero">
+  <span class="hero__badge">
+    <app-icon name="sparkles" [size]="16" /> The Adventurer’s Ledger
+  </span>
+  <h1 class="hero__title">Tools for the table, forged for the tale.</h1>
+  <p class="hero__lede flavor">
+    A companion for players and dungeon masters alike — browse the magic-item emporium and
+    divide your hard-won hoard without a single argument.
+  </p>
+
+  <div class="hero__actions">
+    <a class="btn btn--primary" routerLink="/market">
+      <app-icon name="scroll" [size]="18" /> Browse the Emporium
+    </a>
+    <a class="btn" routerLink="/loot-splitter">
+      <app-icon name="coins" [size]="18" /> Split some loot
+    </a>
+  </div>
+
+  @if (!catalog.error() && catalog.value().length) {
+    <p class="hero__stat">
+      <strong>{{ catalog.value().length | number }}</strong> items catalogued and counting.
+    </p>
+  }
+</section>
+
+<div class="rule" role="presentation"><app-icon name="gem" [size]="16" /></div>
+
+<section class="features">
+  @for (feature of features; track feature.path) {
+    <a class="panel feature" [routerLink]="feature.path">
+      <span class="feature__icon"><app-icon [name]="feature.icon" [size]="26" /></span>
+      <h2 class="feature__title">{{ feature.title }}</h2>
+      <p class="feature__blurb">{{ feature.blurb }}</p>
+      <span class="feature__cta">Open <app-icon name="arrow-right" [size]="16" /></span>
+    </a>
+  }
+</section>

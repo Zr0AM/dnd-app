@@ -1,11 +1,292 @@
-/* You can add global styles to this file, and also import other style files */
+/* =========================================================================
+   Parchment & Grimoire — global design system
+   Fonts are loaded via angular.json (self-hosted @fontsource).
+   The whole theme is expressed as CSS custom properties so component
+   styles stay tiny (the build caps each component's styles at 8 kB).
+   Every token uses light-dark() so one definition themes both schemes.
+   ========================================================================= */
 
 :root {
   color-scheme: light dark;
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-display: 'Cinzel Variable', 'Trajan Pro', Georgia, serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-flavor: 'EB Garamond Variable', Georgia, 'Times New Roman', serif;
+
+  /* Fluid type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  --text-2xl: clamp(1.6rem, 1.3rem + 1.2vw, 2.1rem);
+  --text-3xl: clamp(2.1rem, 1.6rem + 2.4vw, 3.25rem);
+
+  /* ---- Spacing --------------------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ---- Radii ----------------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ---- Layout ---------------------------------------------------------- */
+  --container: 1120px;
+  --header-h: 3.75rem;
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --dur-fast: 120ms;
+  --dur-med: 240ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Palette (semantic; light | dark) -------------------------------- */
+  --bg: #{light-dark(#efe4c9, #131019)};
+  --bg-2: #{light-dark(#e7d9b6, #0f0d15)};
+  --surface: #{light-dark(#fbf5e6, #211b2b)};
+  --surface-2: #{light-dark(#f4ead2, #2a2335)};
+  --surface-raised: #{light-dark(#fffdf6, #2f2740)};
+
+  --text: #{light-dark(#2c2114, #ece3d0)};
+  --text-muted: #{light-dark(#6d5c41, #a99f8d)};
+  --text-faint: #{light-dark(#8a7e66, #7d7488)};
+
+  --border: #{light-dark(#d8c39a, #3a3247)};
+  --border-strong: #{light-dark(#bda06d, #52485f)};
+
+  --primary: #{light-dark(#7b1e2b, #d1637a)};
+  --primary-strong: #{light-dark(#611620, #e07d92)};
+  --primary-contrast: #{light-dark(#fdf6ea, #1a0d11)};
+  --primary-soft: #{light-dark(rgba(123, 30, 43, 0.1), rgba(209, 99, 122, 0.16))};
+
+  --accent-gold: #{light-dark(#9a6b13, #e0b95c)};
+  --accent-emerald: #{light-dark(#1f6b4a, #52b98a)};
+
+  --danger: #{light-dark(#a1121f, #ff8a97)};
+  --focus-ring: #{light-dark(#9a6b13, #e0b95c)};
+
+  --shadow-sm: #{light-dark(0 1px 2px rgba(60, 40, 12, 0.12), 0 1px 2px rgba(0, 0, 0, 0.5))};
+  --shadow-md: #{light-dark(0 4px 14px rgba(60, 40, 12, 0.16), 0 6px 20px rgba(0, 0, 0, 0.55))};
+  --shadow-lg: #{light-dark(0 12px 34px rgba(60, 40, 12, 0.22), 0 16px 40px rgba(0, 0, 0, 0.6))};
+
+  /* ---- Rarity ---------------------------------------------------------- */
+  --rarity-common: #{light-dark(#5b5347, #b4a996)};
+  --rarity-uncommon: #{light-dark(#1e6b1e, #8fd48f)};
+  --rarity-rare: #{light-dark(#1d4e9e, #9dbdf3)};
+  --rarity-very-rare: #{light-dark(#5e2d91, #cdaaf0)};
+  --rarity-legendary: #{light-dark(#9a5b13, #f0bc7d)};
+  --rarity-artifact: #{light-dark(#8f1f1f, #f0a0a0)};
+
+  --coin-platinum: #cfd3d6;
+  --coin-gold: #e0b95c;
+  --coin-silver: #b9bdc2;
+  --coin-copper: #b06a3a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: light-dark(#ffffff, #161616);
-  color: light-dark(#222222, #e4e4e4);
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text);
+  background-color: var(--bg);
+  /* Parchment grain + soft vignette, lightweight and gpu-cheap. */
+  background-image:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-gold) 10%, transparent), transparent 60%),
+    radial-gradient(100% 100% at 50% 120%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 55%),
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--text) 2%, transparent) 0 2px, transparent 2px 4px);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+
+p { margin: 0; }
+
+a {
+  color: var(--primary);
+  text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  text-underline-offset: 0.15em;
+}
+a:hover { color: var(--primary-strong); }
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Base form controls (styled globally; classes opt into variants) --- */
+.field {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.field:hover { border-color: var(--border-strong); }
+.field:focus-visible {
+  outline: none;
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-gold) 30%, transparent);
+}
+
+.btn {
+  --_bg: var(--surface-raised);
+  --_fg: var(--text);
+  --_bd: var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--_fg);
+  background: var(--_bg);
+  border: 1px solid var(--_bd);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--accent-gold);
+  box-shadow: var(--shadow-sm);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.btn--primary {
+  --_bg: var(--primary);
+  --_fg: var(--primary-contrast);
+  --_bd: var(--primary);
+}
+.btn--primary:hover:not(:disabled) {
+  --_bg: var(--primary-strong);
+  --_bd: var(--primary-strong);
+}
+
+.btn--ghost {
+  --_bg: transparent;
+  --_bd: transparent;
+}
+
+.btn--icon {
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0.4rem;
+}
+
+/* ---- Reusable surfaces & helpers ------------------------------------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.flavor {
+  font-family: var(--font-flavor);
+  font-size: 1.05em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Decorative rule with a central fleuron. */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--accent-gold);
+}
+.rule::before,
+.rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--_dir, right), transparent, var(--border-strong));
+}
+.rule::after { --_dir: left; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }

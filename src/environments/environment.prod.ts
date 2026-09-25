@@ -1,4 +1,6 @@
 export const environment = {
   production: true,
-  envConfig: {} as any // In production, we expect to fetch from the API
+  // Production always talks to the real /api/items Worker.
+  useMockApi: false,
+  envConfig: {} as Record<string, unknown>,
 };

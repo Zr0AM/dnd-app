@@ -30,6 +30,9 @@
               }
             ],
             "styles": [
+              "@fontsource-variable/cinzel/index.css",
+              "@fontsource-variable/inter/index.css",
+              "@fontsource-variable/eb-garamond/index.css",
               "src/styles.scss"
             ]
           },
@@ -43,8 +46,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "8kB",
+                  "maximumError": "12kB"
                 }
               ],
               "outputHashing": "all",

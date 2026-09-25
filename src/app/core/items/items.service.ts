@@ -1,6 +1,5 @@
-import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { catchError, map, Observable, shareReplay, throwError } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 
 export interface Item {
   itemID: number;
@@ -23,21 +22,11 @@ interface ItemsResponse {
 
 @Injectable({ providedIn: 'root' })
 export class ItemsService {
-  private readonly http = inject(HttpClient);
-  private items$?: Observable<Item[]>;
-
-  // Fetches the full catalog once and replays it to every subscriber;
-  // filtering, sorting, and paging happen client-side on the cached list.
-  // A failed request clears the cache so the next call retries.
-  getItems(): Observable<Item[]> {
-    this.items$ ??= this.http.get<ItemsResponse>('/api/items').pipe(
-      map((res) => res.results ?? []),
-      catchError((err) => {
-        this.items$ = undefined;
-        return throwError(() => err);
-      }),
-      shareReplay({ bufferSize: 1, refCount: false }),
-    );
-    return this.items$;
-  }
+  // A single, app-wide reactive resource: the catalog is fetched once when
+  // first read and shared with every consumer. `.reload()` re-fetches on demand
+  // (e.g. after an error). Filtering/sorting/paging happen client-side on this.
+  readonly catalog = httpResource<Item[]>(() => '/api/items', {
+    parse: (raw) => (raw as ItemsResponse).results ?? [],
+    defaultValue: [],
+  });
 }

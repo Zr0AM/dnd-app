@@ -1,4 +1,6 @@
 export const environment = {
   production: false,
-  envConfig: {} as any
+  // Dev serves the local sample catalog via the mock interceptor.
+  useMockApi: true,
+  envConfig: {} as Record<string, unknown>,
 };
