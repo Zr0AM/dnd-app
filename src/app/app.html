@@ -1,13 +1,62 @@
-<nav>
-  <ul>
-    @for (item of menuItems; track item.path) {
-      <li>
-        <a [routerLink]="['/' + item.path]">{{ item.label }}</a>
-      </li>
-    }
-  </ul>
-</nav>
+<a class="skip-link" href="#main-content">Skip to content</a>
 
-<main>
+<header class="topbar">
+  <div class="topbar__inner container">
+    <a class="brand" routerLink="/home" aria-label="Adventurer's Ledger — home">
+      <span class="brand__sigil"><app-icon name="d20" [size]="26" /></span>
+      <span class="brand__name">Adventurer’s Ledger</span>
+    </a>
+
+    <nav class="nav-desktop" aria-label="Primary">
+      @for (item of menuItems; track item.path) {
+        <a
+          class="nav-link"
+          [routerLink]="['/' + item.path]"
+          routerLinkActive="nav-link--active"
+          ariaCurrentWhenActive="page"
+        >
+          <app-icon [name]="item.icon" [size]="18" />
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <button
+      type="button"
+      class="btn btn--icon btn--ghost menu-toggle"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="mobile-drawer"
+      aria-label="Toggle navigation menu"
+      (click)="toggleMenu()"
+    >
+      <app-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="24" />
+    </button>
+  </div>
+</header>
+
+@if (menuOpen()) {
+  <div class="drawer-backdrop" (click)="closeMenu()"></div>
+  <nav
+    id="mobile-drawer"
+    class="drawer"
+    aria-label="Primary"
+    cdkTrapFocus
+    cdkTrapFocusAutoCapture
+  >
+    @for (item of menuItems; track item.path) {
+      <a
+        class="drawer__link"
+        [routerLink]="['/' + item.path]"
+        routerLinkActive="drawer__link--active"
+        ariaCurrentWhenActive="page"
+      >
+        <app-icon [name]="item.icon" [size]="20" />
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+}
+
+<main id="main-content" class="container">
   <router-outlet />
 </main>

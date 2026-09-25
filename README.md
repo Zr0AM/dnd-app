@@ -1,59 +1,54 @@
-# DndApp
+# Adventurer's Ledger
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.0.
+A companion web app for D&D players and dungeon masters — a searchable magic-item
+emporium and a fair loot splitter. Built with **Angular 22** (zoneless, standalone,
+signal-first) and deployed to **Cloudflare Pages** with a Pages Function proxying the
+item catalog from a backing Worker.
+
+## Tech at a glance
+
+- **Angular 22**, zoneless change detection, all components `OnPush` + signals.
+- **Reactive data** via `httpResource` (a single shared catalog resource).
+- **URL-synced state** on the Market (search, filters, sort, paging) through
+  `withComponentInputBinding()` — links are shareable and the back button works.
+- **Fantasy design system** in `src/styles.scss` (parchment/grimoire themes via
+  `light-dark()` tokens), self-hosted fonts (Cinzel / Inter / EB Garamond), and
+  `@angular/cdk` for the accessible mobile drawer.
+- **Vitest** + jsdom for unit tests.
 
 ## Development server
 
-To start a local development server, run:
-
 ```bash
-ng serve
+npm start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
+Open `http://localhost:4200/`. In development the `/api/items` request is served by a
+local mock interceptor (`src/app/core/items/mock-items.interceptor.ts`) using the
+sample catalog in `src/dev/items.fixture.ts`, so the app is fully browsable without the
+Cloudflare backend. The mock is gated by `environment.useMockApi` and never ships to
+production.
 
 ## Building
 
-To build the project run:
-
 ```bash
-ng build
+npm run build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Artifacts are written to `dist/dnd-app/browser` (the Cloudflare Pages output dir).
 
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+## Testing
 
 ```bash
-ng test
+npm test          # watch mode
+npm run test:ci   # single run with coverage
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+## Deploying
 
 ```bash
-ng e2e
+npm run pages:deploy
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The `functions/api/items.ts` Pages Function proxies `GET /api/items` to the
+`dnd-db-rest` Worker over a service binding, attaching the bearer token server-side so
+the secret never reaches the browser.

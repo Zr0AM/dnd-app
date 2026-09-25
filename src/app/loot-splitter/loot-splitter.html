@@ -1,43 +1,94 @@
-<div class="loot-splitter-container">
-    <div class="currency-inputs">
-    <div class="input-group">
-      <label for="platinum">Platinum</label>
-      <input type="number" id="platinum" [(ngModel)]="platinum" min="0" max="50000">
-    </div>
-    <div class="input-group">
-      <label for="gold">Gold</label>
-      <input type="number" id="gold" [(ngModel)]="gold" min="0" max="50000">
-    </div>
-    <div class="input-group">
-      <label for="silver">Silver</label>
-      <input type="number" id="silver" [(ngModel)]="silver" min="0" max="50000">
-    </div>
-    <div class="input-group">
-      <label for="copper">Copper</label>
-      <input type="number" id="copper" [(ngModel)]="copper" min="0" max="50000">
-    </div>
-  </div>
+<header class="loot-head">
+  <h1>Loot Splitter</h1>
+  <p class="loot-head__sub flavor">Pour out the hoard and divide it fairly among the party.</p>
+</header>
 
-  <div class="controls">
-    <div class="input-group">
-      <label for="players">Players</label>
-      <input type="number" id="players" [(ngModel)]="players" min="2" max="20">
+<div class="loot-grid">
+  <section class="panel loot-inputs" aria-label="Loot to divide">
+    <h2 class="loot-section-title">The Hoard</h2>
+    <div class="coin-inputs">
+      @for (c of coinInputs; track c.key) {
+        <label class="coin-input">
+          <span class="coin-input__dot" [class]="'coin-input__dot coin--' + c.key"></span>
+          <span class="coin-input__label">{{ c.label }}</span>
+          <span class="coin-input__control">
+            <input
+              #coinRef
+              class="field"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="50000"
+              [value]="c.sig()"
+              (input)="setNum(c.sig, coinRef.value, 0, 50000)"
+            />
+            <span class="coin-input__abbr">{{ c.abbr }}</span>
+          </span>
+        </label>
+      }
     </div>
-    <button (click)="splitLoot()">Go</button>
-  </div>
 
-  <div class="results" *ngIf="distributions.length > 0">
-    <h3>Distribution</h3>
-    <div class="player-row" *ngFor="let player of distributions; let i = index">
-      <span class="player-label">Player {{ i + 1 }}:</span>
-      <div class="coins">
-        <span *ngIf="player.platinum > 0" class="coin platinum">{{ player.platinum }} pp</span>
-        <span *ngIf="player.gold > 0" class="coin gold">{{ player.gold }} gp</span>
-        <span *ngIf="player.silver > 0" class="coin silver">{{ player.silver }} sp</span>
-        <span *ngIf="player.copper > 0" class="coin copper">{{ player.copper }} cp</span>
-        <span *ngIf="player.platinum === 0 && player.gold === 0 && player.silver === 0 && player.copper === 0">No loot</span>
+    <div class="loot-controls">
+      <label class="coin-input coin-input--players">
+        <span class="coin-input__label">Players</span>
+        <input
+          #playersRef
+          class="field"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max="20"
+          [value]="players()"
+          (input)="setNum(players, playersRef.value, 1, 20)"
+        />
+      </label>
+      <button type="button" class="btn btn--ghost" (click)="reset()">Reset coins</button>
+    </div>
+
+    <div class="loot-pool">
+      <span class="loot-pool__label">Total pool</span>
+      <span class="loot-pool__value">{{ totalCp() / 100 | number: '1.0-2' }} gp</span>
+      <span class="loot-pool__sub">{{ totalCp() | number }} cp</span>
+    </div>
+  </section>
+
+  <section class="panel loot-results" aria-label="Distribution" aria-live="polite">
+    <div class="loot-results__head">
+      <h2 class="loot-section-title">Each Share</h2>
+      @if (hasLoot()) {
+        <span class="chip" [class.loot-even]="spreadCp() === 0">
+          @if (spreadCp() === 0) {
+            Perfectly even
+          } @else {
+            {{ spreadCp() | number }} cp spread
+          }
+        </span>
+      }
+    </div>
+
+    @if (!hasLoot()) {
+      <div class="loot-empty">
+        <app-icon name="coins" [size]="34" />
+        <p class="flavor">Enter some coin above and the split appears here, live.</p>
       </div>
-      <span class="player-total">Total: {{ player.value }} cp</span>
-    </div>
-  </div>
+    } @else {
+      <ol class="loot-players">
+        @for (purse of distributions(); track $index) {
+          <li class="loot-player">
+            <span class="loot-player__name">Player {{ $index + 1 }}</span>
+            <span class="loot-player__coins">
+              @for (coin of coinsOf(purse); track coin.key) {
+                <span class="coin" [class]="'coin coin--' + coin.key">
+                  {{ coin.count | number }} {{ coin.abbr }}
+                </span>
+              } @empty {
+                <span class="coin coin--none">—</span>
+              }
+            </span>
+            <span class="loot-player__total">{{ purse.valueCp / 100 | number: '1.0-2' }} gp</span>
+          </li>
+        }
+      </ol>
+    }
+  </section>
 </div>

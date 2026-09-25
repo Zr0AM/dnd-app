@@ -1,3 +1,4 @@
+import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -22,42 +23,31 @@ describe('ItemsService', () => {
     httpMock.verify();
   });
 
-  it('should map the results array from the API response', () => {
-    let received: Item[] | undefined;
-    service.getItems().subscribe((items) => (received = items));
+  // The resource issues its request on the next application tick; flush the
+  // testing backend, then await stability so the result propagates into signals.
+  async function load(items: Item[], status?: { status: number; statusText: string }) {
+    TestBed.tick();
+    const req = httpMock.expectOne('/api/items');
+    req.flush(status ? { success: false } : { success: true, results: items }, status);
+    await TestBed.inject(ApplicationRef).whenStable();
+  }
 
-    httpMock.expectOne('/api/items').flush({ success: true, results: [item] });
-
-    expect(received).toEqual([item]);
+  it('exposes an empty default before the request resolves', async () => {
+    expect(service.catalog.value()).toEqual([]);
+    await load([]);
   });
 
-  it('should cache the catalog and reuse it for later subscribers', () => {
-    let first: Item[] | undefined;
-    let second: Item[] | undefined;
-
-    service.getItems().subscribe((items) => (first = items));
-    httpMock.expectOne('/api/items').flush({ success: true, results: [item] });
-
-    // No new request may be issued for the second subscription.
-    service.getItems().subscribe((items) => (second = items));
-    httpMock.expectNone('/api/items');
-
-    expect(first).toEqual([item]);
-    expect(second).toEqual([item]);
+  it('parses the results array from the API response', async () => {
+    await load([item]);
+    expect(service.catalog.value()).toEqual([item]);
   });
 
-  it('should retry the request after a failure instead of caching the error', () => {
-    let failed = false;
-    service.getItems().subscribe({ error: () => (failed = true) });
-    httpMock
-      .expectOne('/api/items')
-      .flush({ success: false }, { status: 500, statusText: 'Server Error' });
-    expect(failed).toBe(true);
+  it('reports an error status when the request fails and can reload', async () => {
+    await load([], { status: 500, statusText: 'Server Error' });
+    expect(service.catalog.error()).toBeTruthy();
 
-    let received: Item[] | undefined;
-    service.getItems().subscribe((items) => (received = items));
-    httpMock.expectOne('/api/items').flush({ success: true, results: [item] });
-
-    expect(received).toEqual([item]);
+    service.catalog.reload();
+    await load([item]);
+    expect(service.catalog.value()).toEqual([item]);
   });
 });
