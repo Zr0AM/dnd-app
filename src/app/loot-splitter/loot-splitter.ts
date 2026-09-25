@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -14,6 +14,7 @@ interface CoinPurse {
   selector: 'app-loot-splitter',
   imports: [FormsModule, CommonModule],
   templateUrl: './loot-splitter.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './loot-splitter.scss',
 })
 export class LootSplitter {
