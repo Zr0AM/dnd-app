@@ -188,7 +188,7 @@
     </div>
 
     <!-- Narrow: card list -->
-    <ul class="market-cards" role="list">
+    <ul class="market-cards">
       @for (item of pagedItems(); track item.itemID) {
         <li class="panel market-card" [class.is-open]="expandedId() === item.itemID">
           <button
