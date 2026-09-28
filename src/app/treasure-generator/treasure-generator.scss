@@ -313,7 +313,8 @@
   display: grid;
   gap: var(--space-1);
 }
-.hoard-list__item {
+.hoard-list__item,
+.hoard-magic__toggle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -321,6 +322,8 @@
   gap: var(--space-1) var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
+}
+.hoard-list__item {
   background: var(--surface-2);
 }
 .hoard-list__name {
@@ -340,6 +343,45 @@
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+/* Magic items expand in place to show their catalog entry. */
+.hoard-magic {
+  display: block;
+  padding: 0;
+}
+.hoard-magic.is-open {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.hoard-magic__toggle {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.hoard-magic__name {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  text-underline-offset: 0.15em;
+}
+.hoard-magic__toggle:hover .hoard-magic__name {
+  color: var(--primary-strong);
+}
+.hoard-magic__caret {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.hoard-magic.is-open .hoard-magic__caret {
+  transform: rotate(180deg);
+}
+.hoard-magic__details {
+  margin: 0 var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  animation: reveal var(--dur-med) var(--ease-out);
 }
 
 .hoard-total {
