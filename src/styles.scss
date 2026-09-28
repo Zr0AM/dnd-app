@@ -237,6 +237,41 @@ a:hover { color: var(--primary-strong); }
   color: var(--text);
 }
 
+/* ---- Coin chips (pp / gp / sp / cp) ----------------------------------- */
+.coin {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
+.coin--platinum { background: color-mix(in srgb, var(--coin-platinum) 26%, transparent); border-color: var(--coin-platinum); }
+.coin--gold { background: color-mix(in srgb, var(--coin-gold) 26%, transparent); border-color: var(--coin-gold); }
+.coin--silver { background: color-mix(in srgb, var(--coin-silver) 26%, transparent); border-color: var(--coin-silver); }
+.coin--copper { background: color-mix(in srgb, var(--coin-copper) 26%, transparent); border-color: var(--coin-copper); }
+.coin--none { color: var(--text-faint); border-color: var(--border); }
+
+/* ---- Rarity badges ---------------------------------------------------- */
+.rarity {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--rarity-common);
+  background: color-mix(in srgb, var(--rarity-common) 16%, transparent);
+}
+.rarity--uncommon { color: var(--rarity-uncommon); background: color-mix(in srgb, var(--rarity-uncommon) 16%, transparent); }
+.rarity--rare { color: var(--rarity-rare); background: color-mix(in srgb, var(--rarity-rare) 16%, transparent); }
+.rarity--very-rare { color: var(--rarity-very-rare); background: color-mix(in srgb, var(--rarity-very-rare) 16%, transparent); }
+.rarity--legendary { color: var(--rarity-legendary); background: color-mix(in srgb, var(--rarity-legendary) 18%, transparent); }
+.rarity--artifact { color: var(--rarity-artifact); background: color-mix(in srgb, var(--rarity-artifact) 16%, transparent); }
+
 .container {
   width: 100%;
   max-width: var(--container);

@@ -135,3 +135,9 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+@media (min-width: 960px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
