@@ -214,7 +214,7 @@ describe('MarketComponent', () => {
     search.dispatchEvent(new Event('input'));
     harness.detectChanges();
 
-    expect(el.textContent).toContain('No treasures match');
+    expect(el.textContent).toContain('No magic items match');
 
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
     const clearBtn = [...el.querySelectorAll('button')].find((b) =>
@@ -255,7 +255,7 @@ describe('MarketComponent', () => {
     harness.detectChanges();
     el = harness.routeNativeElement as HTMLElement;
 
-    expect(el.textContent).toContain('The ledger is unreachable');
+    expect(el.textContent).toContain('The Market is unreachable');
 
     const retry = [...el.querySelectorAll('button')].find((b) =>
       b.textContent?.includes('Try again'),

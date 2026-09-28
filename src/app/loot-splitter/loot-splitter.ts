@@ -67,7 +67,7 @@ function poorest(purses: Purse[]): Purse {
 export class LootSplitter {
   protected readonly maxCoins = MAX_COINS;
 
-  // Optional query params (e.g. from the Treasure Hoard) seed the form once;
+  // Optional query params (e.g. from the Loot Generator) seed the form once;
   // edits after that stay local and are not written back to the URL.
   readonly pp = input(0, { transform: parseCoinCount });
   readonly gp = input(0, { transform: parseCoinCount });

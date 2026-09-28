@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 
@@ -23,8 +23,14 @@ describe('App', () => {
     const links = fixture.nativeElement.querySelectorAll('.nav-desktop .nav-link');
     expect(links).toHaveLength(4);
     expect(fixture.nativeElement.textContent).toContain('Market');
-    expect(fixture.nativeElement.textContent).toContain('Treasure');
+    expect(fixture.nativeElement.textContent).toContain('Loot Generator');
     expect(fixture.nativeElement.textContent).toContain('Loot Splitter');
+  });
+
+  it('redirects the old /treasure path to the Loot Generator', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/treasure');
+    expect(router.url).toBe('/loot-generator');
   });
 
   it('opens the mobile drawer and closes it on Escape', () => {

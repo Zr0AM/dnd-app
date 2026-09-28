@@ -1,7 +1,7 @@
 <header class="market-head">
   <div>
-    <h1>The Emporium</h1>
-    <p class="market-head__sub flavor">Wares magical and mundane, laid out for the discerning adventurer.</p>
+    <h1>Market</h1>
+    <p class="market-head__sub flavor">Magic items of every rarity, laid out for the discerning adventurer.</p>
   </div>
   @if (!catalog.error() && items().length) {
     <span class="chip market-head__count">{{ items().length | number }} items</span>
@@ -22,8 +22,8 @@
     <app-empty-state
       icon="alert"
       tone="danger"
-      heading="The ledger is unreachable"
-      message="We couldn’t summon the item catalog. Check your connection and try again."
+      heading="The Market is unreachable"
+      message="We couldn’t summon the magic items. Check your connection and try again."
     >
       <button type="button" class="btn btn--primary" (click)="reload()">
         <app-icon name="arrow-right" [size]="18" /> Try again
@@ -95,8 +95,8 @@
     <div class="panel">
       <app-empty-state
         icon="search"
-        heading="No treasures match"
-        message="Try loosening your filters — the vault holds more than this."
+        heading="No magic items match"
+        message="Try loosening your filters — the Market holds more than this."
       >
         <button type="button" class="btn" (click)="clearFilters()">Clear filters</button>
       </app-empty-state>
