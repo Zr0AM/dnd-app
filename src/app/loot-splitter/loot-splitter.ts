@@ -54,7 +54,7 @@ function give(purse: Purse, denom: Denomination, coins: number) {
 
 // First purse with the lowest value, so ties resolve in player order.
 function poorest(purses: Purse[]): Purse {
-  return purses.reduce((min, p) => (p.valueCp < min.valueCp ? p : min));
+  return purses.reduce((min, p) => (p.valueCp < min.valueCp ? p : min), purses[0]);
 }
 
 @Component({
