@@ -43,4 +43,20 @@ describe('App', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.drawer')).toBeNull();
   });
+
+  it('closes the mobile drawer from its backdrop without adding a tab stop', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.menu-toggle').click();
+    fixture.detectChanges();
+
+    const backdrop: HTMLButtonElement = fixture.nativeElement.querySelector('.drawer-backdrop');
+    expect(backdrop.tagName).toBe('BUTTON');
+    expect(backdrop.tabIndex).toBe(-1);
+    expect(backdrop.getAttribute('aria-label')).toBe('Close navigation menu');
+
+    backdrop.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.drawer')).toBeNull();
+  });
 });

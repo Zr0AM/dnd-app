@@ -33,8 +33,11 @@ describe('mockItemsInterceptor', () => {
     httpMock.expectNone('/api/items');
   });
 
-  it('passes other requests through to the network', () => {
-    http.get('/api/other').subscribe();
-    httpMock.expectOne('/api/other').flush({});
+  it('passes other requests through to the network', async () => {
+    const response = firstValueFrom(http.get('/api/other'));
+    const request = httpMock.expectOne('/api/other');
+    expect(request.request.method).toBe('GET');
+    request.flush({ from: 'network' });
+    expect(await response).toEqual({ from: 'network' });
   });
 });

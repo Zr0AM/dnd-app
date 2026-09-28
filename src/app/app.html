@@ -35,7 +35,14 @@
 </header>
 
 @if (menuOpen()) {
-  <div class="drawer-backdrop" (click)="closeMenu()"></div>
+  <!-- Out of the tab order: focus is trapped in the drawer and Escape also closes it. -->
+  <button
+    type="button"
+    class="drawer-backdrop"
+    tabindex="-1"
+    aria-label="Close navigation menu"
+    (click)="closeMenu()"
+  ></button>
   <nav
     id="mobile-drawer"
     class="drawer"
