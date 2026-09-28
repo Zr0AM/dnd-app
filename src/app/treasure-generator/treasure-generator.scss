@@ -25,59 +25,127 @@
   margin-bottom: var(--space-4);
 }
 
-.bands {
-  margin: 0;
-  padding: 0;
-  border: none;
-  min-width: 0;
-}
-.bands legend {
-  padding: 0;
-  margin-bottom: var(--space-3);
-}
-.bands__options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+/* ---- CR slider -------------------------------------------------------- */
+// Maps a 0–1 track fraction to where the thumb's centre sits at that value.
+@function along($frac) {
+  @return calc(var(--thumb) / 2 + (100% - var(--thumb)) * #{$frac});
 }
 
-.band {
+.cr {
+  --thumb: 1.5rem;
+  --track-h: 0.55rem;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.cr__readout {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
 }
-.band:hover {
-  border-color: var(--border-strong);
+.cr__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
-.band:has(input:focus-visible) {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-.band--active {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  box-shadow: inset 0 0 0 1px var(--primary);
-}
-.band__label {
+.cr__value {
+  min-width: 4.5ch;
+  text-align: center;
   font-family: var(--font-display);
+  font-size: var(--text-2xl);
   font-weight: 600;
-  font-size: var(--text-lg);
-}
-.band--active .band__label {
   color: var(--primary);
+  font-variant-numeric: tabular-nums;
 }
-.band__blurb {
+.cr__meta {
+  display: grid;
+  gap: 0.1rem;
+  font-size: var(--text-sm);
+}
+.cr__band {
+  font-weight: 600;
+}
+.cr__scale {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+
+// Track tint deepens per DMG table; boundaries sit halfway between CRs.
+.cr__slider {
+  --_gold: var(--accent-gold);
+  --_track: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--_gold) 18%, var(--surface-2)) 0 #{along(0.15)},
+    color-mix(in srgb, var(--_gold) 38%, var(--surface-2)) #{along(0.15)} #{along(0.35)},
+    color-mix(in srgb, var(--_gold) 60%, var(--surface-2)) #{along(0.35)} #{along(0.55)},
+    color-mix(in srgb, var(--_gold) 88%, var(--surface-2)) #{along(0.55)} 100%
+  );
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: var(--thumb);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.cr__slider:focus-visible {
+  outline: none;
+}
+.cr__slider::-webkit-slider-runnable-track {
+  height: var(--track-h);
+  border-radius: var(--radius-full);
+  background: var(--_track);
+}
+.cr__slider::-moz-range-track {
+  height: var(--track-h);
+  border-radius: var(--radius-full);
+  background: var(--_track);
+}
+.cr__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((var(--track-h) - var(--thumb)) / 2);
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  border: 3px solid var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.cr__slider::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  box-sizing: border-box;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  border: 3px solid var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+}
+.cr__slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.cr__slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 55%, transparent);
+}
+.cr__slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 55%, transparent);
+}
+
+.cr__ticks {
+  position: relative;
+  height: 1.1rem;
+  margin-top: var(--space-1);
+}
+.cr__tick {
+  position: absolute;
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--frac));
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .hoard-roll {
@@ -94,6 +162,46 @@
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+/* ---- Replay a saved hoard --------------------------------------------- */
+.replay {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.replay__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.replay__row {
+  display: flex;
+  gap: var(--space-2);
+}
+.replay__input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.replay__input::placeholder {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.replay__input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.replay__hint,
+.replay__error {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.replay__error {
+  color: var(--danger);
 }
 
 /* ---- Result ----------------------------------------------------------- */
@@ -115,6 +223,43 @@
 }
 .hoard-result__head .hoard-section-title {
   margin-right: auto;
+}
+
+.hoard-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+  font-size: var(--text-sm);
+}
+.hoard-code__label {
+  color: var(--text-muted);
+}
+.hoard-code__pair {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+@media (max-width: 479px) {
+  .hoard-code__label {
+    width: 100%;
+  }
+}
+.hoard-code__value {
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+.hoard-code__copy {
+  min-height: 2rem;
+  padding: 0.25rem 0.6rem;
+  font-size: var(--text-sm);
 }
 
 .hoard-group {
@@ -241,9 +386,6 @@
 }
 
 @media (min-width: 760px) {
-  .bands__options {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
   .hoard-roll {
     justify-self: end;
     width: auto;

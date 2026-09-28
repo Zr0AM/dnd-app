@@ -23,7 +23,9 @@ export type IconName =
   | 'shield'
   | 'gem'
   | 'chest'
-  | 'crown';
+  | 'crown'
+  | 'copy'
+  | 'check';
 
 @Component({
   selector: 'app-icon',
@@ -129,6 +131,13 @@ export type IconName =
         @case ('crown') {
           <path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7Z" />
           <path d="M5 21h14" />
+        }
+        @case ('copy') {
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+        }
+        @case ('check') {
+          <path d="m5 12 5 5L20 7" />
         }
       }
     </svg>

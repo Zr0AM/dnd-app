@@ -30,6 +30,7 @@ export interface HoardRow {
 
 export interface CrBand {
   id: CrBandId;
+  minCr: number;
   label: string;
   blurb: string;
   coins: CoinFormula[];
@@ -69,6 +70,7 @@ export const MAGIC_TABLE_RARITY: Record<MagicTable, string> = {
 export const CR_BANDS: readonly CrBand[] = [
   {
     id: 'cr0-4',
+    minCr: 0,
     label: 'CR 0–4',
     blurb: 'Kobold dens & bandit caches',
     coins: [coin('cp', [6, 6], 100), coin('sp', [3, 6], 100), coin('gp', [2, 6], 10)],
@@ -94,6 +96,7 @@ export const CR_BANDS: readonly CrBand[] = [
   },
   {
     id: 'cr5-10',
+    minCr: 5,
     label: 'CR 5–10',
     blurb: 'Young dragons & giant strongholds',
     coins: [
@@ -136,6 +139,7 @@ export const CR_BANDS: readonly CrBand[] = [
   },
   {
     id: 'cr11-16',
+    minCr: 11,
     label: 'CR 11–16',
     blurb: 'Adult dragons & beholder lairs',
     coins: [coin('gp', [4, 6], 1000), coin('pp', [5, 6], 100)],
@@ -177,6 +181,7 @@ export const CR_BANDS: readonly CrBand[] = [
   },
   {
     id: 'cr17',
+    minCr: 17,
     label: 'CR 17+',
     blurb: 'Ancient wyrms & demon lords',
     coins: [coin('gp', [12, 6], 1000), coin('pp', [8, 6], 1000)],
@@ -209,6 +214,25 @@ export const CR_BANDS: readonly CrBand[] = [
     ],
   },
 ];
+
+export const MAX_CR = 30;
+
+export function clampCr(value: number): number {
+  const n = Math.round(value);
+  return Number.isFinite(n) ? Math.min(MAX_CR, Math.max(0, n)) : 0;
+}
+
+export function bandIndexForCr(cr: number): number {
+  let i = CR_BANDS.length - 1;
+  while (i > 0 && cr < CR_BANDS[i].minCr) {
+    i--;
+  }
+  return i;
+}
+
+export function bandForCr(cr: number): CrBand {
+  return CR_BANDS[bandIndexForCr(cr)];
+}
 
 export const GEM_NAMES: Record<number, readonly string[]> = {
   10: ['Azurite', 'Banded agate', 'Blue quartz', 'Eye agate', 'Hematite', 'Lapis lazuli',
