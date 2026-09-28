@@ -1,0 +1,272 @@
+<header class="hoard-head">
+  <h1>Treasure Hoard</h1>
+  <p class="hoard-head__sub flavor">
+    Choose the challenge, roll the bones, and see what the dragon was sleeping on.
+  </p>
+</header>
+
+<section class="panel hoard-controls" aria-label="Roll a hoard">
+  <div class="cr">
+    <label class="hoard-section-title" for="cr-slider">Challenge rating</label>
+
+    <div class="cr__readout">
+      <span class="cr__stepper">
+        <button
+          type="button"
+          class="btn btn--icon"
+          aria-label="Lower challenge rating"
+          [disabled]="selectedCr() === 0"
+          (click)="setCr(selectedCr() - 1)"
+        >
+          <app-icon name="minus" [size]="18" />
+        </button>
+        <span class="cr__value">CR {{ selectedCr() }}</span>
+        <button
+          type="button"
+          class="btn btn--icon"
+          aria-label="Raise challenge rating"
+          [disabled]="selectedCr() === maxCr"
+          (click)="setCr(selectedCr() + 1)"
+        >
+          <app-icon name="plus" [size]="18" />
+        </button>
+      </span>
+      <span class="cr__meta">
+        <span class="cr__band">{{ selectedBand().label }} table · {{ selectedBand().blurb }}</span>
+        <span class="cr__scale">
+          Coin ×{{ selectedScale() | number: '1.1-1' }} the table’s DMG average
+        </span>
+      </span>
+    </div>
+
+    <div class="cr__track">
+      <input
+        #slider
+        id="cr-slider"
+        class="cr__slider"
+        type="range"
+        min="0"
+        [max]="maxCr"
+        step="1"
+        [value]="selectedCr()"
+        [attr.aria-valuetext]="'CR ' + selectedCr() + ', ' + selectedBand().label + ' table'"
+        (input)="setCr(slider.value)"
+      />
+      <div class="cr__ticks" aria-hidden="true">
+        @for (t of ticks; track t.cr) {
+          <span class="cr__tick" [style.--frac]="t.frac">{{ t.cr }}</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn--primary hoard-roll"
+    [disabled]="catalog.isLoading()"
+    (click)="roll()"
+  >
+    <app-icon name="d20" [size]="20" />
+    @if (catalog.isLoading()) {
+      Stocking the vault…
+    } @else if (hoard()) {
+      Roll again
+    } @else {
+      Roll the hoard
+    }
+  </button>
+
+  @if (catalog.error()) {
+    <p class="hoard-note">
+      <app-icon name="alert" [size]="16" /> The emporium is unreachable, so magic items will name
+      the DMG table to roll on instead.
+    </p>
+  }
+
+  <form class="replay" (submit)="$event.preventDefault(); replay(codeInput.value)">
+    <label class="replay__label" for="hoard-code">Replay a saved hoard</label>
+    <div class="replay__row">
+      <input
+        #codeInput
+        id="hoard-code"
+        class="field replay__input"
+        type="text"
+        placeholder="Paste a code"
+        autocomplete="off"
+        spellcheck="false"
+        [attr.aria-invalid]="replayError() ? true : null"
+        [attr.aria-describedby]="replayError() ? 'hoard-code-error' : 'hoard-code-hint'"
+        (input)="replayError.set('')"
+      />
+      <button type="submit" class="btn" [disabled]="catalog.isLoading()">Replay</button>
+    </div>
+    @if (replayError()) {
+      <p id="hoard-code-error" class="replay__error" role="alert">{{ replayError() }}</p>
+    } @else {
+      <p id="hoard-code-hint" class="replay__hint">
+        A code replays the same coin, gems and art. Magic items can differ if the Emporium’s
+        stock has changed since.
+      </p>
+    }
+  </form>
+</section>
+
+<output class="visually-hidden">{{ summary() }}</output>
+
+@if (hoard(); as h) {
+  <!-- Re-keyed per roll so the reveal animation replays. -->
+  @for (id of [rollId()]; track id) {
+    <section class="panel hoard-result" aria-labelledby="hoard-title">
+      <div class="hoard-result__head">
+        <h2 id="hoard-title" class="hoard-section-title">The Hoard</h2>
+        <span class="chip">CR {{ h.cr }}</span>
+        <span class="chip" title="The DMG treasure hoard table used for this CR">
+          {{ bandLabel() }} table
+        </span>
+        <span class="chip" title="Coin scaled for this CR against the table’s DMG average">
+          Coin ×{{ h.coinScale | number: '1.1-1' }}
+        </span>
+        <span class="chip" title="The d100 roll on the treasure hoard table">
+          d100 · {{ h.itemRoll }}
+        </span>
+        <div class="hoard-code">
+          <span class="hoard-code__label">Hoard code</span>
+          <span class="hoard-code__pair">
+            <code #codeEl class="hoard-code__value">{{ code() }}</code>
+            <button type="button" class="btn btn--ghost hoard-code__copy" (click)="copyCode()">
+              @switch (copyState()) {
+                @case ('copied') {
+                  <app-icon name="check" [size]="16" /> Copied
+                }
+                @case ('failed') {
+                  <app-icon name="alert" [size]="16" /> Selected — press Ctrl/⌘+C to copy
+                }
+                @default {
+                  <app-icon name="copy" [size]="16" /> Copy
+                }
+              }
+            </button>
+          </span>
+          <span class="visually-hidden" aria-live="polite">
+            {{ copyState() === 'copied' ? 'Hoard code copied' : '' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="hoard-group">
+        <div class="hoard-group__head">
+          <h3 class="hoard-group__title"><app-icon name="coins" [size]="18" /> Coin</h3>
+          <span class="hoard-group__value">{{ coinsGp() | number: '1.0-2' }} gp</span>
+        </div>
+        <div class="hoard-coins">
+          @for (c of coinChips(); track c.key) {
+            <span [class]="'coin coin--' + c.name">{{ c.count | number }} {{ c.key }}</span>
+          }
+        </div>
+      </div>
+
+      @if (h.gems.length) {
+        <div class="hoard-group">
+          <div class="hoard-group__head">
+            <h3 class="hoard-group__title"><app-icon name="gem" [size]="18" /> Gems</h3>
+            <span class="hoard-group__value">{{ gemsGp() | number }} gp</span>
+          </div>
+          <ul class="hoard-list">
+            @for (g of h.gems; track g.name) {
+              <li class="hoard-list__item">
+                <span class="hoard-list__name">
+                  @if (g.count > 1) {
+                    <span class="hoard-list__qty">{{ g.count }} × </span>
+                  }
+                  {{ g.name }}
+                </span>
+                <span class="hoard-list__meta">{{ g.valueGp | number }} gp each</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (h.art.length) {
+        <div class="hoard-group">
+          <div class="hoard-group__head">
+            <h3 class="hoard-group__title"><app-icon name="crown" [size]="18" /> Art objects</h3>
+            <span class="hoard-group__value">{{ artGp() | number }} gp</span>
+          </div>
+          <ul class="hoard-list">
+            @for (a of h.art; track a.name) {
+              <li class="hoard-list__item">
+                <span class="hoard-list__name">
+                  @if (a.count > 1) {
+                    <span class="hoard-list__qty">{{ a.count }} × </span>
+                  }
+                  {{ a.name }}
+                </span>
+                <span class="hoard-list__meta">{{ a.valueGp | number }} gp each</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (h.magic.length) {
+        <div class="hoard-group">
+          <div class="hoard-group__head">
+            <h3 class="hoard-group__title">
+              <app-icon name="sparkles" [size]="18" /> Magic items
+            </h3>
+            <span class="hoard-group__value">{{ magicCount() }}</span>
+          </div>
+          <ul class="hoard-list">
+            @for (m of h.magic; track m.key) {
+              <li class="hoard-list__item">
+                <span class="hoard-list__name">
+                  @if (m.count > 1) {
+                    <span class="hoard-list__qty">{{ m.count }} × </span>
+                  }
+                  @if (m.item; as item) {
+                    <a routerLink="/market" [queryParams]="{ q: item.itemName }">{{ item.itemName }}</a>
+                  } @else {
+                    <span class="hoard-list__unrolled">Unnamed {{ m.rarity | lowercase }} item</span>
+                  }
+                </span>
+                <span class="hoard-list__meta">
+                  <span [class]="'rarity rarity--' + raritySlug(m.rarity)">{{ m.rarity }}</span>
+                  <span class="chip" title="DMG magic item table">Table {{ m.table }}</span>
+                </span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (onlyCoin()) {
+        <p class="hoard-note flavor">No gems, art or magic this time — just cold, hard coin.</p>
+      }
+
+      <div class="hoard-total">
+        <div class="hoard-total__sum">
+          <span class="hoard-total__label">Coin, gems &amp; art</span>
+          <span class="hoard-total__value">{{ totalGp() | number: '1.0-2' }} gp</span>
+          @if (magicCount()) {
+            <span class="hoard-total__sub">
+              + {{ magicCount() }} magic item{{ magicCount() === 1 ? '' : 's' }}
+            </span>
+          }
+        </div>
+        <a class="btn btn--primary" routerLink="/loot-splitter" [queryParams]="splitParams()">
+          Split the coin <app-icon name="arrow-right" [size]="18" />
+        </a>
+      </div>
+      <p class="hoard-note">Gems, art and magic items stay whole — divvy those up at the table.</p>
+    </section>
+  }
+} @else {
+  <div class="panel hoard-empty">
+    <app-empty-state
+      icon="chest"
+      heading="The vault is sealed"
+      message="Pick a challenge rating and roll to crack it open."
+    />
+  </div>
+}

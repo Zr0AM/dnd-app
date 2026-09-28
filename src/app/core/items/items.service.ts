@@ -15,6 +15,11 @@ export interface Item {
   itemShopkeeperDesc: string;
 }
 
+// Maps a rarity to its CSS modifier, e.g. 'Very Rare' → 'very-rare' (.rarity--very-rare).
+export function raritySlug(rarity: string): string {
+  return rarity.toLowerCase().replace(/\s+/g, '-');
+}
+
 interface ItemsResponse {
   success: boolean;
   results: Item[];

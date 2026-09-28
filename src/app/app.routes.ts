@@ -25,6 +25,17 @@ export const routes: Routes = [
     } satisfies NavData,
   },
   {
+    path: 'treasure',
+    loadComponent: () =>
+      import('./treasure-generator/treasure-generator').then((m) => m.TreasureGenerator),
+    title: 'Treasure Hoard · Adventurer’s Ledger',
+    data: {
+      name: 'Treasure',
+      icon: 'chest',
+      tagline: 'Roll a hoard from the DMG tables',
+    } satisfies NavData,
+  },
+  {
     path: 'loot-splitter',
     loadComponent: () => import('./loot-splitter/loot-splitter').then((m) => m.LootSplitter),
     title: 'Loot Splitter · Adventurer’s Ledger',
