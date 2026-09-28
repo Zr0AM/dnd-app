@@ -14,6 +14,6 @@ export function parseHoardCode(raw: string): { cr: number; seed: number } | null
     return null;
   }
   const cr = Number(match[1]);
-  const seed = parseInt(match[2], 36);
+  const seed = Number.parseInt(match[2], 36);
   return cr <= MAX_CR && seed <= 0xffffffff ? { cr, seed } : null;
 }

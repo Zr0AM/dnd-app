@@ -92,9 +92,13 @@ export class TreasureGenerator {
     if (!h) {
       return '';
     }
+    const coinText = `Rolled ${h.itemRoll}: ${this.totalGp().toLocaleString()} gp in coin, gems and art`;
     const items = this.magicCount();
-    const magic = items ? `, plus ${items} magic item${items === 1 ? '' : 's'}` : '';
-    return `Rolled ${h.itemRoll}: ${this.totalGp().toLocaleString()} gp in coin, gems and art${magic}.`;
+    if (!items) {
+      return `${coinText}.`;
+    }
+    const noun = items === 1 ? 'item' : 'items';
+    return `${coinText}, plus ${items} magic ${noun}.`;
   });
 
   protected setCr(value: number | string) {

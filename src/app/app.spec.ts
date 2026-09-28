@@ -21,7 +21,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const links = fixture.nativeElement.querySelectorAll('.nav-desktop .nav-link');
-    expect(links.length).toBe(4);
+    expect(links).toHaveLength(4);
     expect(fixture.nativeElement.textContent).toContain('Market');
     expect(fixture.nativeElement.textContent).toContain('Treasure');
     expect(fixture.nativeElement.textContent).toContain('Loot Splitter');

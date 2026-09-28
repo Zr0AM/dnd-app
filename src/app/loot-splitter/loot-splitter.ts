@@ -36,29 +36,25 @@ function splitLoot(counts: Coins, players: number): Purse[] {
   for (const denom of DENOMS) {
     const count = counts[denom.key];
     const base = Math.floor(count / players);
-    let remainder = count % players;
-
-    if (base > 0) {
-      for (const purse of purses) {
-        purse[denom.key] += base;
-        purse.valueCp += base * denom.valueCp;
-      }
+    for (const purse of purses) {
+      give(purse, denom, base);
     }
-
-    while (remainder > 0) {
-      let min = 0;
-      for (let i = 1; i < players; i++) {
-        if (purses[i].valueCp < purses[min].valueCp) {
-          min = i;
-        }
-      }
-      purses[min][denom.key] += 1;
-      purses[min].valueCp += denom.valueCp;
-      remainder--;
+    for (let remainder = count % players; remainder > 0; remainder--) {
+      give(poorest(purses), denom, 1);
     }
   }
 
   return purses;
+}
+
+function give(purse: Purse, denom: Denomination, coins: number) {
+  purse[denom.key] += coins;
+  purse.valueCp += coins * denom.valueCp;
+}
+
+// First purse with the lowest value, so ties resolve in player order.
+function poorest(purses: Purse[]): Purse {
+  return purses.reduce((min, p) => (p.valueCp < min.valueCp ? p : min));
 }
 
 @Component({

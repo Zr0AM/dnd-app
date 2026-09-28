@@ -11,7 +11,9 @@ import {
   HoardRow,
   MAGIC_TABLE_RARITY,
   MAX_CR,
+  MagicRoll,
   MagicTable,
+  ValuablesRoll,
   bandForCr,
 } from './hoard-tables';
 
@@ -57,7 +59,7 @@ function pick<T>(list: readonly T[], rng: Rng): T {
 }
 
 export function findRow(rows: readonly HoardRow[], roll: number): HoardRow {
-  return rows.find((r) => roll <= r.upTo) ?? rows[rows.length - 1];
+  return rows.find((r) => roll <= r.upTo) ?? rows.at(-1)!;
 }
 
 // Collapses repeats into one entry with a count, keeping first-seen order.
@@ -111,34 +113,27 @@ export function sumGp(valuables: readonly Valuable[]): number {
   return valuables.reduce((sum, v) => sum + v.valueGp * v.count, 0);
 }
 
-// For a given rng seed, coin, gems, art and magic item counts always replay
-// identically; only the named magic items can differ if the catalog changes.
-export function rollHoard(cr: number, catalog: readonly Item[], rng: Rng): Hoard {
-  const band = bandForCr(cr);
-  const scale = coinScale(cr);
+function rollCoins(band: CrBand, scale: number, rng: Rng): Coins {
   const coins = emptyCoins();
-  for (const formula of band.coins) {
-    coins[formula.denom] += Math.round(
-      rollDice(formula.dice, rng) * formula.multiplier * scale,
-    );
+  for (const { denom, dice, multiplier } of band.coins) {
+    coins[denom] += Math.round(rollDice(dice, rng) * multiplier * scale);
   }
+  return coins;
+}
 
-  const itemRoll = die(100, rng);
-  const row = findRow(band.rows, itemRoll);
+function rollValuables(roll: ValuablesRoll, rng: Rng): Valuable[] {
+  const names = (roll.kind === 'gem' ? GEM_NAMES : ART_NAMES)[roll.valueGp];
+  const count = rollDice(roll.dice, rng);
+  const found = Array.from({ length: count }, () => ({
+    name: pick(names, rng),
+    valueGp: roll.valueGp,
+  }));
+  return tally(found, (v) => v.name);
+}
 
-  const valuables: Omit<Valuable, 'count'>[] = [];
-  if (row.valuables) {
-    const { kind, dice, valueGp } = row.valuables;
-    const names = (kind === 'gem' ? GEM_NAMES : ART_NAMES)[valueGp];
-    const count = rollDice(dice, rng);
-    for (let i = 0; i < count; i++) {
-      valuables.push({ name: pick(names, rng), valueGp });
-    }
-  }
-  const grouped = tally(valuables, (v) => v.name);
-
+function rollMagic(rolls: readonly MagicRoll[], catalog: readonly Item[], rng: Rng): MagicDrop[] {
   const drops: Omit<MagicDrop, 'count'>[] = [];
-  for (const { table, dice } of row.magic) {
+  for (const { table, dice } of rolls) {
     const rarity = MAGIC_TABLE_RARITY[table];
     // Sorted so API ordering can't change which item a seed lands on.
     const pool = catalog
@@ -146,12 +141,35 @@ export function rollHoard(cr: number, catalog: readonly Item[], rng: Rng): Hoard
       .sort((a, b) => a.itemID - b.itemID);
     const count = rollDice(dice, rng);
     for (let i = 0; i < count; i++) {
-      // Always draw, even from an empty pool, so later rolls stay in sync.
-      const draw = rng();
-      const item = pool.length ? pool[Math.floor(draw * pool.length)] : null;
-      drops.push({ key: item ? `item-${item.itemID}` : `table-${table}`, table, rarity, item });
+      drops.push(drawMagic(table, rarity, pool, rng));
     }
   }
+  return tally(drops, (d) => d.key);
+}
+
+function drawMagic(
+  table: MagicTable,
+  rarity: string,
+  pool: readonly Item[],
+  rng: Rng,
+): Omit<MagicDrop, 'count'> {
+  // Always draw, even from an empty pool, so later rolls stay in sync.
+  const draw = rng();
+  const item = pool.length ? pool[Math.floor(draw * pool.length)] : null;
+  return { key: item ? `item-${item.itemID}` : `table-${table}`, table, rarity, item };
+}
+
+// For a given rng seed, coin, gems, art and magic item counts always replay
+// identically; only the named magic items can differ if the catalog changes.
+export function rollHoard(cr: number, catalog: readonly Item[], rng: Rng): Hoard {
+  const band = bandForCr(cr);
+  const scale = coinScale(cr);
+  const coins = rollCoins(band, scale, rng);
+
+  const itemRoll = die(100, rng);
+  const row = findRow(band.rows, itemRoll);
+  const valuables = row.valuables ? rollValuables(row.valuables, rng) : [];
+  const magic = rollMagic(row.magic, catalog, rng);
 
   return {
     cr,
@@ -159,8 +177,8 @@ export function rollHoard(cr: number, catalog: readonly Item[], rng: Rng): Hoard
     coinScale: scale,
     itemRoll,
     coins,
-    gems: row.valuables?.kind === 'gem' ? grouped : [],
-    art: row.valuables?.kind === 'art' ? grouped : [],
-    magic: tally(drops, (d) => d.key),
+    gems: row.valuables?.kind === 'gem' ? valuables : [],
+    art: row.valuables?.kind === 'art' ? valuables : [],
+    magic,
   };
 }
