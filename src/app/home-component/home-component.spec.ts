@@ -32,9 +32,9 @@ describe('HomeComponent', () => {
   });
 
   it('renders the feature cards', () => {
-    expect(fixture.nativeElement.textContent).toContain('The Emporium');
+    expect(fixture.nativeElement.textContent).toContain('Market');
     expect(fixture.nativeElement.textContent).toContain('Loot Splitter');
-    expect(fixture.nativeElement.textContent).toContain('Treasure Hoard');
+    expect(fixture.nativeElement.textContent).toContain('Loot Generator');
   });
 
   it('shows the live item count once the catalog loads', async () => {
@@ -47,6 +47,6 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('3');
-    expect(fixture.nativeElement.textContent).toContain('items catalogued');
+    expect(fixture.nativeElement.textContent).toContain('magic items in the Market');
   });
 });

@@ -76,6 +76,7 @@
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 600;
+  white-space: nowrap;
   border: 1px solid transparent;
   transition:
     color var(--dur-fast) var(--ease-out),
@@ -152,7 +153,8 @@ main {
   }
 }
 
-@media (max-width: 640px) {
+// Below this the brand plus four one-line nav labels no longer fit (~776px).
+@media (max-width: 799px) {
   .nav-desktop {
     display: none;
   }

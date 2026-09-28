@@ -34,7 +34,7 @@ describe('TreasureGenerator', () => {
       providers: [
         provideRouter(
           [
-            { path: 'treasure', component: TreasureGenerator },
+            { path: 'loot-generator', component: TreasureGenerator },
             { path: 'loot-splitter', component: LootSplitter },
           ],
           withComponentInputBinding(),
@@ -53,7 +53,7 @@ describe('TreasureGenerator', () => {
   const stable = () => TestBed.inject(ApplicationRef).whenStable();
 
   async function render(flush = true) {
-    harness = await RouterTestingHarness.create('/treasure');
+    harness = await RouterTestingHarness.create('/loot-generator');
     TestBed.tick();
     if (flush) {
       httpMock.expectOne('/api/items').flush({ success: true, results: items });
@@ -84,7 +84,7 @@ describe('TreasureGenerator', () => {
   it('disables rolling until the catalog has loaded', async () => {
     await render(false);
     expect(rollButton().disabled).toBe(true);
-    expect(rollButton().textContent).toContain('Stocking the vault');
+    expect(rollButton().textContent).toContain('Stocking the Market');
     httpMock.expectOne('/api/items').flush({ success: true, results: items });
     await stable();
     harness.detectChanges();

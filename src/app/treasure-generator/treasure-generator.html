@@ -1,5 +1,5 @@
 <header class="hoard-head">
-  <h1>Treasure Hoard</h1>
+  <h1>Loot Generator</h1>
   <p class="hoard-head__sub flavor">
     Choose the challenge, roll the bones, and see what the dragon was sleeping on.
   </p>
@@ -68,7 +68,7 @@
   >
     <app-icon name="d20" [size]="20" />
     @if (catalog.isLoading()) {
-      Stocking the vault…
+      Stocking the Market…
     } @else if (hoard()) {
       Roll again
     } @else {
@@ -78,7 +78,7 @@
 
   @if (catalog.error()) {
     <p class="hoard-note">
-      <app-icon name="alert" [size]="16" /> The emporium is unreachable, so magic items will name
+      <app-icon name="alert" [size]="16" /> The Market is unreachable, so magic items will name
       the DMG table to roll on instead.
     </p>
   }
@@ -104,7 +104,7 @@
       <p id="hoard-code-error" class="replay__error" role="alert">{{ replayError() }}</p>
     } @else {
       <p id="hoard-code-hint" class="replay__hint">
-        A code replays the same coin, gems and art. Magic items can differ if the Emporium’s
+        A code replays the same coin, gems and art objects. Magic items can differ if the Market’s
         stock has changed since.
       </p>
     }
@@ -268,12 +268,12 @@
       }
 
       @if (onlyCoin()) {
-        <p class="hoard-note flavor">No gems, art or magic this time — just cold, hard coin.</p>
+        <p class="hoard-note flavor">No gems, art objects or magic items this time — just cold, hard coin.</p>
       }
 
       <div class="hoard-total">
         <div class="hoard-total__sum">
-          <span class="hoard-total__label">Coin, gems &amp; art</span>
+          <span class="hoard-total__label">Coin, gems &amp; art objects</span>
           <span class="hoard-total__value">{{ totalGp() | number: '1.0-2' }} gp</span>
           @if (magicCount()) {
             <span class="hoard-total__sub">
@@ -285,7 +285,7 @@
           Split the coin <app-icon name="arrow-right" [size]="18" />
         </a>
       </div>
-      <p class="hoard-note">Gems, art and magic items stay whole — divvy those up at the table.</p>
+      <p class="hoard-note">Gems, art objects and magic items stay whole — divvy those up at the table.</p>
     </section>
   }
 } @else {

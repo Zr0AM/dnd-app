@@ -27,20 +27,20 @@ export class HomeComponent {
     {
       path: '/market',
       icon: 'scroll',
-      title: 'The Emporium',
+      title: 'Market',
       blurb: 'Search, sort and sift a full catalog of magic items — from common trinkets to world-shaking artifacts.',
     },
     {
-      path: '/treasure',
+      path: '/loot-generator',
       icon: 'chest',
-      title: 'Treasure Hoard',
-      blurb: 'Pick a challenge rating and roll a hoard straight from the DMG tables — coin, gems, art and magic items.',
+      title: 'Loot Generator',
+      blurb: 'Pick a challenge rating and roll a hoard straight from the DMG tables — coin, gems, art objects and magic items.',
     },
     {
       path: '/loot-splitter',
       icon: 'coins',
       title: 'Loot Splitter',
-      blurb: 'Drop in the hoard and the party size; get a fair, denomination-aware split in an instant.',
+      blurb: 'Drop in the loot and the number of players; get a fair, denomination-aware split in an instant.',
     },
   ];
 }

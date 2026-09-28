@@ -1,7 +1,8 @@
-# Adventurer's Ledger
+# Adventurer’s Ledger
 
-A companion web app for D&D players and dungeon masters — a searchable magic-item
-emporium and a fair loot splitter. Built with **Angular 22** (zoneless, standalone,
+A companion web app for D&D players and dungeon masters — a searchable magic item
+Market, a Loot Generator that rolls DMG treasure hoards, and a fair Loot Splitter.
+Built with **Angular 22** (zoneless, standalone,
 signal-first) and deployed to **Cloudflare Pages** with a Pages Function proxying the
 item catalog from a backing Worker.
 

@@ -94,7 +94,7 @@ export class TreasureGenerator {
     if (!h) {
       return '';
     }
-    const coinText = `Rolled ${h.itemRoll}: ${this.totalGp().toLocaleString()} gp in coin, gems and art`;
+    const coinText = `Rolled ${h.itemRoll}: ${this.totalGp().toLocaleString()} gp in coin, gems and art objects`;
     const items = this.magicCount();
     if (!items) {
       return `${coinText}.`;

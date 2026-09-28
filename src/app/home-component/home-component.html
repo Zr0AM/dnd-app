@@ -1,16 +1,16 @@
 <section class="hero">
   <span class="hero__badge">
-    <app-icon name="sparkles" [size]="16" /> The Adventurer’s Ledger
+    <app-icon name="sparkles" [size]="16" /> Adventurer’s Ledger
   </span>
   <h1 class="hero__title">Tools for the table, forged for the tale.</h1>
   <p class="hero__lede flavor">
-    A companion for players and dungeon masters alike — browse the magic-item emporium, roll up
-    a dragon’s hoard, and divide it without a single argument.
+    A companion for players and dungeon masters alike — browse the magic item Market, roll up
+    a dragon’s hoard, and divide the loot without a single argument.
   </p>
 
   <div class="hero__actions">
     <a class="btn btn--primary" routerLink="/market">
-      <app-icon name="scroll" [size]="18" /> Browse the Emporium
+      <app-icon name="scroll" [size]="18" /> Browse the Market
     </a>
     <a class="btn" routerLink="/loot-splitter">
       <app-icon name="coins" [size]="18" /> Split some loot
@@ -19,7 +19,7 @@
 
   @if (!catalog.error() && catalog.value().length) {
     <p class="hero__stat">
-      <strong>{{ catalog.value().length | number }}</strong> items catalogued and counting.
+      <strong>{{ catalog.value().length | number }}</strong> magic items in the Market and counting.
     </p>
   }
 </section>
