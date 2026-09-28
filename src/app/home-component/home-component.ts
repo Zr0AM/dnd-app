@@ -31,6 +31,12 @@ export class HomeComponent {
       blurb: 'Search, sort and sift a full catalog of magic items — from common trinkets to world-shaking artifacts.',
     },
     {
+      path: '/treasure',
+      icon: 'chest',
+      title: 'Treasure Hoard',
+      blurb: 'Pick a challenge rating and roll a hoard straight from the DMG tables — coin, gems, art and magic items.',
+    },
+    {
       path: '/loot-splitter',
       icon: 'coins',
       title: 'Loot Splitter',

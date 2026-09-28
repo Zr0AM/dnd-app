@@ -168,22 +168,6 @@
   white-space: nowrap;
 }
 
-.coin {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  border: 1px solid transparent;
-  font-variant-numeric: tabular-nums;
-}
-.coin--platinum { background: color-mix(in srgb, var(--coin-platinum) 26%, transparent); border-color: var(--coin-platinum); color: var(--text); }
-.coin--gold { background: color-mix(in srgb, var(--coin-gold) 26%, transparent); border-color: var(--coin-gold); color: var(--text); }
-.coin--silver { background: color-mix(in srgb, var(--coin-silver) 26%, transparent); border-color: var(--coin-silver); color: var(--text); }
-.coin--copper { background: color-mix(in srgb, var(--coin-copper) 26%, transparent); border-color: var(--coin-copper); color: var(--text); }
-.coin--none { color: var(--text-faint); border-color: var(--border); }
-
 .coin-input__dot.coin--platinum { background: var(--coin-platinum); }
 .coin-input__dot.coin--gold { background: var(--coin-gold); }
 .coin-input__dot.coin--silver { background: var(--coin-silver); }

@@ -1,65 +1,60 @@
-import { ChangeDetectionStrategy, Component, WritableSignal, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  WritableSignal,
+  computed,
+  input,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Icon } from '../shared/icon/icon';
+import {
+  CoinKey,
+  Coins,
+  DENOMS,
+  Denomination,
+  MAX_COINS,
+  emptyCoins,
+  parseCoinCount,
+  toCp,
+} from '../core/coins/coins';
 
-interface Purse {
-  platinum: number;
-  gold: number;
-  silver: number;
-  copper: number;
+export interface Purse extends Coins {
   valueCp: number;
 }
-
-type CoinKey = 'platinum' | 'gold' | 'silver' | 'copper';
-
-const DENOMS: { key: CoinKey; value: number; abbr: string }[] = [
-  { key: 'platinum', value: 1000, abbr: 'pp' },
-  { key: 'gold', value: 100, abbr: 'gp' },
-  { key: 'silver', value: 10, abbr: 'sp' },
-  { key: 'copper', value: 1, abbr: 'cp' },
-];
 
 // Fair, denomination-preserving split in O(players): hand each player the whole
 // share of every coin type, then deal the leftover coins one at a time to the
 // currently poorest purse so totals stay as even as indivisible coins allow.
-function splitLoot(counts: Record<CoinKey, number>, players: number): Purse[] {
+function splitLoot(counts: Coins, players: number): Purse[] {
   if (players <= 0) {
     return [];
   }
-  const purses: Purse[] = Array.from({ length: players }, () => ({
-    platinum: 0,
-    gold: 0,
-    silver: 0,
-    copper: 0,
-    valueCp: 0,
-  }));
+  const purses: Purse[] = Array.from({ length: players }, () => ({ ...emptyCoins(), valueCp: 0 }));
 
   for (const denom of DENOMS) {
     const count = counts[denom.key];
     const base = Math.floor(count / players);
-    let remainder = count % players;
-
-    if (base > 0) {
-      for (const purse of purses) {
-        purse[denom.key] += base;
-        purse.valueCp += base * denom.value;
-      }
+    for (const purse of purses) {
+      give(purse, denom, base);
     }
-
-    while (remainder > 0) {
-      let min = 0;
-      for (let i = 1; i < players; i++) {
-        if (purses[i].valueCp < purses[min].valueCp) {
-          min = i;
-        }
-      }
-      purses[min][denom.key] += 1;
-      purses[min].valueCp += denom.value;
-      remainder--;
+    for (let remainder = count % players; remainder > 0; remainder--) {
+      give(poorest(purses), denom, 1);
     }
   }
 
   return purses;
+}
+
+function give(purse: Purse, denom: Denomination, coins: number) {
+  purse[denom.key] += coins;
+  purse.valueCp += coins * denom.valueCp;
+}
+
+// First purse with the lowest value, so ties resolve in player order.
+function poorest(purses: Purse[]): Purse {
+  return purses.reduce((min, p) => (p.valueCp < min.valueCp ? p : min), purses[0]);
 }
 
 @Component({
@@ -70,39 +65,42 @@ function splitLoot(counts: Record<CoinKey, number>, players: number): Purse[] {
   styleUrl: './loot-splitter.scss',
 })
 export class LootSplitter {
-  protected readonly denoms = DENOMS;
+  protected readonly maxCoins = MAX_COINS;
 
-  protected readonly platinum = signal(0);
-  protected readonly gold = signal(0);
-  protected readonly silver = signal(0);
-  protected readonly copper = signal(0);
+  // Optional query params (e.g. from the Treasure Hoard) seed the form once;
+  // edits after that stay local and are not written back to the URL.
+  readonly pp = input(0, { transform: parseCoinCount });
+  readonly gp = input(0, { transform: parseCoinCount });
+  readonly sp = input(0, { transform: parseCoinCount });
+  readonly cp = input(0, { transform: parseCoinCount });
+
+  protected readonly platinum = linkedSignal(() => this.pp());
+  protected readonly gold = linkedSignal(() => this.gp());
+  protected readonly silver = linkedSignal(() => this.sp());
+  protected readonly copper = linkedSignal(() => this.cp());
   protected readonly players = signal(4);
 
-  protected readonly coinInputs = [
-    { label: 'Platinum', abbr: 'pp', key: 'platinum' as CoinKey, sig: this.platinum },
-    { label: 'Gold', abbr: 'gp', key: 'gold' as CoinKey, sig: this.gold },
-    { label: 'Silver', abbr: 'sp', key: 'silver' as CoinKey, sig: this.silver },
-    { label: 'Copper', abbr: 'cp', key: 'copper' as CoinKey, sig: this.copper },
-  ];
+  private readonly coinSignals: Record<CoinKey, WritableSignal<number>> = {
+    pp: this.platinum,
+    gp: this.gold,
+    sp: this.silver,
+    cp: this.copper,
+  };
 
-  protected readonly totalCp = computed(
-    () =>
-      this.platinum() * 1000 + this.gold() * 100 + this.silver() * 10 + this.copper(),
-  );
+  protected readonly coinInputs = DENOMS.map((d) => ({ ...d, sig: this.coinSignals[d.key] }));
+
+  protected readonly coins = computed<Coins>(() => ({
+    pp: this.platinum(),
+    gp: this.gold(),
+    sp: this.silver(),
+    cp: this.copper(),
+  }));
+
+  protected readonly totalCp = computed(() => toCp(this.coins()));
 
   protected readonly hasLoot = computed(() => this.totalCp() > 0 && this.players() > 0);
 
-  protected readonly distributions = computed(() =>
-    splitLoot(
-      {
-        platinum: this.platinum(),
-        gold: this.gold(),
-        silver: this.silver(),
-        copper: this.copper(),
-      },
-      this.players(),
-    ),
-  );
+  protected readonly distributions = computed(() => splitLoot(this.coins(), this.players()));
 
   // Spread between the richest and poorest share — 0 means a perfectly even split.
   protected readonly spreadCp = computed(() => {
@@ -120,14 +118,13 @@ export class LootSplitter {
   }
 
   protected reset() {
-    this.platinum.set(0);
-    this.gold.set(0);
-    this.silver.set(0);
-    this.copper.set(0);
+    for (const sig of Object.values(this.coinSignals)) {
+      sig.set(0);
+    }
   }
 
-  protected coinsOf(purse: Purse): { abbr: string; key: CoinKey; count: number }[] {
-    return DENOMS.map((d) => ({ abbr: d.abbr, key: d.key, count: purse[d.key] })).filter(
+  protected coinsOf(purse: Purse): (Pick<Denomination, 'key' | 'name'> & { count: number })[] {
+    return DENOMS.map((d) => ({ key: d.key, name: d.name, count: purse[d.key] })).filter(
       (c) => c.count > 0,
     );
   }

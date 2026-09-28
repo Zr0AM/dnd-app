@@ -11,7 +11,7 @@ import { DecimalPipe } from '@angular/common';
 import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime } from 'rxjs';
-import { Item, ItemsService } from '../core/items/items.service';
+import { Item, ItemsService, raritySlug } from '../core/items/items.service';
 import { Icon } from '../shared/icon/icon';
 import { Skeleton } from '../shared/skeleton/skeleton';
 import { EmptyState } from '../shared/empty-state/empty-state';
@@ -232,9 +232,7 @@ export class MarketComponent {
     this.expandedId.update((current) => (current === id ? null : id));
   }
 
-  protected raritySlug(rarity: string): string {
-    return rarity.toLowerCase().replace(/\s+/g, '-');
-  }
+  protected readonly raritySlug = raritySlug;
 
   protected readonly columns = SORT_COLUMNS;
 }

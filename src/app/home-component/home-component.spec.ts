@@ -34,6 +34,7 @@ describe('HomeComponent', () => {
   it('renders the feature cards', () => {
     expect(fixture.nativeElement.textContent).toContain('The Emporium');
     expect(fixture.nativeElement.textContent).toContain('Loot Splitter');
+    expect(fixture.nativeElement.textContent).toContain('Treasure Hoard');
   });
 
   it('shows the live item count once the catalog loads', async () => {

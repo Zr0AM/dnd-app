@@ -9,7 +9,7 @@
     <div class="coin-inputs">
       @for (c of coinInputs; track c.key) {
         <label class="coin-input">
-          <span class="coin-input__dot" [class]="'coin-input__dot coin--' + c.key"></span>
+          <span class="coin-input__dot" [class]="'coin-input__dot coin--' + c.name"></span>
           <span class="coin-input__label">{{ c.label }}</span>
           <span class="coin-input__control">
             <input
@@ -18,11 +18,11 @@
               type="number"
               inputmode="numeric"
               min="0"
-              max="50000"
+              [max]="maxCoins"
               [value]="c.sig()"
-              (input)="setNum(c.sig, coinRef.value, 0, 50000)"
+              (input)="setNum(c.sig, coinRef.value, 0, maxCoins)"
             />
-            <span class="coin-input__abbr">{{ c.abbr }}</span>
+            <span class="coin-input__abbr">{{ c.key }}</span>
           </span>
         </label>
       }
@@ -78,8 +78,8 @@
             <span class="loot-player__name">Player {{ $index + 1 }}</span>
             <span class="loot-player__coins">
               @for (coin of coinsOf(purse); track coin.key) {
-                <span class="coin" [class]="'coin coin--' + coin.key">
-                  {{ coin.count | number }} {{ coin.abbr }}
+                <span class="coin" [class]="'coin coin--' + coin.name">
+                  {{ coin.count | number }} {{ coin.key }}
                 </span>
               } @empty {
                 <span class="coin coin--none">—</span>
