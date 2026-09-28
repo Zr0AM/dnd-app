@@ -121,11 +121,47 @@ describe('TreasureGenerator', () => {
     expect(el.textContent).toContain('Table G');
   });
 
-  it('links catalog items to their market search', async () => {
+  it('expands a magic item in place to show its catalog entry', async () => {
     await render();
     setHoard(KNOWN_HOARD);
-    const link = el.querySelector('.hoard-list a') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/market?q=Potion%20of%20Healing');
+    const toggle = el.querySelector('.hoard-magic__toggle') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(el.querySelector('app-item-details')).toBeNull();
+
+    toggle.click();
+    harness.detectChanges();
+    const details = el.querySelector('app-item-details') as HTMLElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-controls')).toBe(details.id);
+    const text = details.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('Potion');
+    expect(text).toContain('50 gp');
+    expect(text).toContain('Red liquid that shimmers when shaken.');
+    expect(details.querySelector('a')?.getAttribute('href')).toBe(items[11].itemUrl);
+
+    toggle.click();
+    harness.detectChanges();
+    expect(el.querySelector('app-item-details')).toBeNull();
+  });
+
+  it('leaves unnamed placeholder items as plain rows', async () => {
+    await render();
+    setHoard(KNOWN_HOARD);
+    expect(el.querySelectorAll('.hoard-magic__toggle')).toHaveLength(1);
+    expect(el.textContent).toContain('Unnamed rare item');
+  });
+
+  it('collapses expanded items when a new hoard is rolled', async () => {
+    await render();
+    setCr(0);
+    for (let i = 0; i < 50 && !el.querySelector('.hoard-magic__toggle'); i++) {
+      roll();
+    }
+    (el.querySelector('.hoard-magic__toggle') as HTMLButtonElement).click();
+    harness.detectChanges();
+    expect(el.querySelector('app-item-details')).not.toBeNull();
+    roll();
+    expect(el.querySelector('app-item-details')).toBeNull();
   });
 
   function slider(): HTMLInputElement {

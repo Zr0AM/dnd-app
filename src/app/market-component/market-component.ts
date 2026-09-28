@@ -12,9 +12,11 @@ import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { Item, ItemsService, raritySlug } from '../core/items/items.service';
+import { matchesSearch, toSearchText } from '../core/items/item-search';
 import { Icon } from '../shared/icon/icon';
 import { Skeleton } from '../shared/skeleton/skeleton';
 import { EmptyState } from '../shared/empty-state/empty-state';
+import { ItemDetails } from '../shared/item-details/item-details';
 
 type SortColumn = 'itemName' | 'itemType' | 'itemRarity' | 'itemCost' | 'itemSource';
 type SortDirection = 'asc' | 'desc';
@@ -65,7 +67,7 @@ function compareItems(a: Item, b: Item, column: SortColumn): number {
 
 @Component({
   selector: 'app-market-component',
-  imports: [DecimalPipe, Icon, Skeleton, EmptyState],
+  imports: [DecimalPipe, Icon, Skeleton, EmptyState, ItemDetails],
   templateUrl: './market-component.html',
   styleUrl: './market-component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -121,18 +123,25 @@ export class MarketComponent {
     () => !!(this.searchDraft().trim() || this.rarity() || this.type() || this.attunement()),
   );
 
+  // Names are normalized once per catalog load, not on every keystroke.
+  private readonly searchIndex = computed(() =>
+    this.items().map((item) => ({ item, name: toSearchText(item.itemName) })),
+  );
+
   protected readonly filtered = computed(() => {
-    const term = this.searchDraft().trim().toLowerCase();
+    const query = toSearchText(this.searchDraft());
     const rarity = this.rarity();
     const type = this.type();
     const attunement = this.attunement();
-    return this.items().filter(
-      (item) =>
-        (!term || item.itemName.toLowerCase().includes(term)) &&
-        (!rarity || item.itemRarity === rarity) &&
-        (!type || item.itemType === type) &&
-        (!attunement || item.itemAttunement === attunement),
-    );
+    return this.searchIndex()
+      .filter(
+        ({ item, name }) =>
+          matchesSearch(name, query) &&
+          (!rarity || item.itemRarity === rarity) &&
+          (!type || item.itemType === type) &&
+          (!attunement || item.itemAttunement === attunement),
+      )
+      .map(({ item }) => item);
   });
 
   protected readonly sorted = computed(() => {

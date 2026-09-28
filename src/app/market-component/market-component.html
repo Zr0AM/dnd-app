@@ -168,17 +168,12 @@
             @if (expandedId() === item.itemID) {
               <tr class="market-table__details">
                 <td colspan="7">
-                  <div class="market-detail">
-                    @if (item.itemShopkeeperDesc && item.itemShopkeeperDesc !== 'N/A') {
-                      <p class="market-detail__quote flavor">“{{ item.itemShopkeeperDesc }}”</p>
-                    }
-                    @if (item.itemVisualDesc && item.itemVisualDesc !== 'N/A') {
-                      <p>{{ item.itemVisualDesc }}</p>
-                    }
-                    @if (item.itemRestrictions && item.itemRestrictions !== 'None') {
-                      <p><strong>Restrictions:</strong> {{ item.itemRestrictions }}</p>
-                    }
-                  </div>
+                  <app-item-details
+                    class="market-detail"
+                    [item]="item"
+                    [fields]="[]"
+                    [showLink]="false"
+                  />
                 </td>
               </tr>
             }
@@ -209,24 +204,11 @@
             <span class="market-card__cost">{{ item.itemCost | number }} gp</span>
           </div>
           @if (expandedId() === item.itemID) {
-            <div class="market-card__body">
-              <dl>
-                <div><dt>Attunement</dt><dd>{{ item.itemAttunement }}</dd></div>
-                <div><dt>Source</dt><dd>{{ item.itemSource }}</dd></div>
-              </dl>
-              @if (item.itemShopkeeperDesc && item.itemShopkeeperDesc !== 'N/A') {
-                <p class="market-detail__quote flavor">“{{ item.itemShopkeeperDesc }}”</p>
-              }
-              @if (item.itemVisualDesc && item.itemVisualDesc !== 'N/A') {
-                <p>{{ item.itemVisualDesc }}</p>
-              }
-              @if (item.itemRestrictions && item.itemRestrictions !== 'None') {
-                <p><strong>Restrictions:</strong> {{ item.itemRestrictions }}</p>
-              }
-              <a class="market-card__link" [href]="item.itemUrl" target="_blank" rel="noopener">
-                View full entry <app-icon name="external" [size]="14" />
-              </a>
-            </div>
+            <app-item-details
+              class="market-card__body"
+              [item]="item"
+              [fields]="['attunement', 'source']"
+            />
           }
         </li>
       }

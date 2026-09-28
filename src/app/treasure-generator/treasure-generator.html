@@ -219,22 +219,49 @@
           </div>
           <ul class="hoard-list">
             @for (m of h.magic; track m.key) {
-              <li class="hoard-list__item">
-                <span class="hoard-list__name">
-                  @if (m.count > 1) {
-                    <span class="hoard-list__qty">{{ m.count }} × </span>
+              @if (m.item; as item) {
+                <li class="hoard-list__item hoard-magic" [class.is-open]="isOpen(m.key)">
+                  <button
+                    type="button"
+                    class="hoard-magic__toggle"
+                    [attr.aria-expanded]="isOpen(m.key)"
+                    [attr.aria-controls]="'hoard-magic-' + m.key"
+                    (click)="toggleMagic(m.key)"
+                  >
+                    <span class="hoard-list__name">
+                      @if (m.count > 1) {
+                        <span class="hoard-list__qty">{{ m.count }} × </span>
+                      }
+                      <span class="hoard-magic__name">{{ item.itemName }}</span>
+                    </span>
+                    <span class="hoard-list__meta">
+                      <span [class]="'rarity rarity--' + raritySlug(m.rarity)">{{ m.rarity }}</span>
+                      <span class="chip" title="DMG magic item table">Table {{ m.table }}</span>
+                      <app-icon class="hoard-magic__caret" name="chevron-down" [size]="18" />
+                    </span>
+                  </button>
+                  @if (isOpen(m.key)) {
+                    <app-item-details
+                      class="hoard-magic__details"
+                      [attr.id]="'hoard-magic-' + m.key"
+                      [item]="item"
+                    />
                   }
-                  @if (m.item; as item) {
-                    <a routerLink="/market" [queryParams]="{ q: item.itemName }">{{ item.itemName }}</a>
-                  } @else {
+                </li>
+              } @else {
+                <li class="hoard-list__item">
+                  <span class="hoard-list__name">
+                    @if (m.count > 1) {
+                      <span class="hoard-list__qty">{{ m.count }} × </span>
+                    }
                     <span class="hoard-list__unrolled">Unnamed {{ m.rarity | lowercase }} item</span>
-                  }
-                </span>
-                <span class="hoard-list__meta">
-                  <span [class]="'rarity rarity--' + raritySlug(m.rarity)">{{ m.rarity }}</span>
-                  <span class="chip" title="DMG magic item table">Table {{ m.table }}</span>
-                </span>
-              </li>
+                  </span>
+                  <span class="hoard-list__meta">
+                    <span [class]="'rarity rarity--' + raritySlug(m.rarity)">{{ m.rarity }}</span>
+                    <span class="chip" title="DMG magic item table">Table {{ m.table }}</span>
+                  </span>
+                </li>
+              }
             }
           </ul>
         </div>

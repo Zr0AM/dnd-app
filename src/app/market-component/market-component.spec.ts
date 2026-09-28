@@ -87,6 +87,33 @@ describe('MarketComponent', () => {
     expect(rowNames()).toEqual(['Cloak of Protection']);
   });
 
+  it('forgives word order, punctuation and typos in the search', async () => {
+    await render([
+      makeItem({ itemID: 1, itemName: 'Armor, +1: Studded Leather' }),
+      makeItem({ itemID: 2, itemName: 'Armor, +2: Studded Leather' }),
+      makeItem({ itemID: 3, itemName: 'Cloak of Protection' }),
+    ]);
+
+    const search: HTMLInputElement = el.querySelector('.market-filters__input')!;
+    search.value = 'studed leather +1';
+    search.dispatchEvent(new Event('input'));
+    harness.detectChanges();
+
+    expect(rowNames()).toEqual(['Armor, +1: Studded Leather']);
+  });
+
+  it('applies the search from a shared URL', async () => {
+    await render(
+      [
+        makeItem({ itemID: 1, itemName: 'Armor, +1: Studded Leather' }),
+        makeItem({ itemID: 2, itemName: 'Bag of Holding' }),
+      ],
+      '/market?q=Armor,%20%2B1:%20Studded',
+    );
+
+    expect(rowNames()).toEqual(['Armor, +1: Studded Leather']);
+  });
+
   it('reflects the rarity filter carried in the URL', async () => {
     await render(
       [
