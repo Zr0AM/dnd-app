@@ -16,7 +16,7 @@ describe('LootSplitter', () => {
     totalCp(): number;
     hasLoot(): boolean;
     spreadCp(): number;
-    distributions(): { platinum: number; gold: number; silver: number; copper: number; valueCp: number }[];
+    distributions(): { pp: number; gp: number; sp: number; cp: number; valueCp: number }[];
   };
 
   function set(coins: Partial<Record<'platinum' | 'gold' | 'silver' | 'copper' | 'players', number>>) {
@@ -51,7 +51,7 @@ describe('LootSplitter', () => {
     set({ gold: 100, players: 4 });
     const purses = read().distributions();
     expect(purses).toHaveLength(4);
-    expect(purses.every((p) => p.gold === 25)).toBe(true);
+    expect(purses.every((p) => p.gp === 25)).toBe(true);
     expect(read().spreadCp()).toBe(0);
   });
 
@@ -59,7 +59,7 @@ describe('LootSplitter', () => {
     // 10 gp among 3 players: 3 each + 1 leftover. Total value must be preserved.
     set({ gold: 10, players: 3 });
     const purses = read().distributions();
-    const totalGold = purses.reduce((sum, p) => sum + p.gold, 0);
+    const totalGold = purses.reduce((sum, p) => sum + p.gp, 0);
     expect(totalGold).toBe(10);
     // No player differs from another by more than one coin's worth here.
     expect(read().spreadCp()).toBeLessThanOrEqual(100);
@@ -76,7 +76,7 @@ describe('LootSplitter', () => {
     set({ gold: 42, players: 1 });
     const purses = read().distributions();
     expect(purses).toHaveLength(1);
-    expect(purses[0].gold).toBe(42);
+    expect(purses[0].gp).toBe(42);
   });
 
   it('reports no loot when the hoard is empty', () => {
@@ -98,16 +98,29 @@ describe('LootSplitter', () => {
   });
 
   it('lists only the non-zero coins for a purse', () => {
-    const purse = { platinum: 0, gold: 2, silver: 0, copper: 3, valueCp: 203 };
+    const purse = { pp: 0, gp: 2, sp: 0, cp: 3, valueCp: 203 };
     const coins = (
       component as unknown as {
-        coinsOf(p: typeof purse): { abbr: string; count: number }[];
+        coinsOf(p: typeof purse): { key: string; name: string; count: number }[];
       }
     ).coinsOf(purse);
     expect(coins).toEqual([
-      { abbr: 'gp', key: 'gold', count: 2 },
-      { abbr: 'cp', key: 'copper', count: 3 },
+      { key: 'gp', name: 'gold', count: 2 },
+      { key: 'cp', name: 'copper', count: 3 },
     ]);
+  });
+
+  it('seeds the hoard from query-param inputs', () => {
+    fixture.componentRef.setInput('pp', '3');
+    fixture.componentRef.setInput('gp', '250');
+    fixture.componentRef.setInput('sp', 'junk');
+    expect(read().totalCp()).toBe(3 * 1000 + 250 * 100);
+  });
+
+  it('lets the user edit coins after seeding from the URL', () => {
+    fixture.componentRef.setInput('gp', '250');
+    set({ gold: 10 });
+    expect(read().totalCp()).toBe(1000);
   });
 
   it('sanitizes out-of-range and non-numeric input', () => {

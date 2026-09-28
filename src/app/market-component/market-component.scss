@@ -86,23 +86,7 @@
   margin-bottom: var(--space-3);
 }
 
-/* ---- Rarity ----------------------------------------------------------- */
-.rarity {
-  display: inline-block;
-  padding: 0.1rem 0.55rem;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--rarity-common);
-  background: color-mix(in srgb, var(--rarity-common) 16%, transparent);
-}
-.rarity--uncommon { color: var(--rarity-uncommon); background: color-mix(in srgb, var(--rarity-uncommon) 16%, transparent); }
-.rarity--rare { color: var(--rarity-rare); background: color-mix(in srgb, var(--rarity-rare) 16%, transparent); }
-.rarity--very-rare { color: var(--rarity-very-rare); background: color-mix(in srgb, var(--rarity-very-rare) 16%, transparent); }
-.rarity--legendary { color: var(--rarity-legendary); background: color-mix(in srgb, var(--rarity-legendary) 18%, transparent); }
-.rarity--artifact { color: var(--rarity-artifact); background: color-mix(in srgb, var(--rarity-artifact) 16%, transparent); }
-
+/* ---- Rarity dot (badge styles are global) ------------------------------ */
 .rarity-dot {
   display: inline-block;
   width: 0.6rem;
