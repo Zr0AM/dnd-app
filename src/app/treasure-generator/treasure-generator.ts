@@ -13,6 +13,7 @@ import { ItemsService, raritySlug } from '../core/items/items.service';
 import { DENOMS, toGp, toQueryParams } from '../core/coins/coins';
 import { Icon } from '../shared/icon/icon';
 import { EmptyState } from '../shared/empty-state/empty-state';
+import { ItemDetails } from '../shared/item-details/item-details';
 import { randomSeed, seededRng } from '../core/random/random';
 import { CR_BANDS, MAX_CR, bandForCr, clampCr } from './hoard-tables';
 import { Hoard, coinScale, rollHoard, sumGp } from './hoard';
@@ -20,7 +21,7 @@ import { formatHoardCode, parseHoardCode } from './hoard-code';
 
 @Component({
   selector: 'app-treasure-generator',
-  imports: [DecimalPipe, LowerCasePipe, RouterLink, Icon, EmptyState],
+  imports: [DecimalPipe, LowerCasePipe, RouterLink, Icon, EmptyState, ItemDetails],
   templateUrl: './treasure-generator.html',
   styleUrl: './treasure-generator.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +44,7 @@ export class TreasureGenerator {
   protected readonly hoard = signal<Hoard | null>(null);
   protected readonly seed = signal<number | null>(null);
   protected readonly rollId = signal(0);
+  private readonly openMagic = signal<ReadonlySet<string>>(new Set());
 
   protected readonly code = computed(() => {
     const h = this.hoard();
@@ -110,6 +112,21 @@ export class TreasureGenerator {
     this.hoard.set(rollHoard(this.selectedCr(), this.catalog.value(), seededRng(seed)));
     this.rollId.update((n) => n + 1);
     this.copyState.set('idle');
+    this.openMagic.set(new Set());
+  }
+
+  protected isOpen(key: string): boolean {
+    return this.openMagic().has(key);
+  }
+
+  protected toggleMagic(key: string) {
+    this.openMagic.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(key)) {
+        next.add(key);
+      }
+      return next;
+    });
   }
 
   protected replay(raw: string) {
