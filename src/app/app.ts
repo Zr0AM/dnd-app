@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { A11yModule } from '@angular/cdk/a11y';
 import { filter } from 'rxjs';
+import { AppFooter } from './shared/app-footer/app-footer';
 import { Icon, IconName } from './shared/icon/icon';
 import { NavData } from './app.routes';
 
@@ -15,7 +16,7 @@ interface MenuItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, A11yModule, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, A11yModule, Icon, AppFooter],
   templateUrl: './app.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './app.scss',

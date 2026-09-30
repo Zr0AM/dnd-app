@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.footer {
+  padding-block: var(--space-5);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.footer__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.footer__legal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 75ch;
+}
+a {
+  // Long URLs must wrap instead of overflowing on narrow screens.
+  overflow-wrap: anywhere;
+}
+.footer__build {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
