@@ -111,16 +111,31 @@ body {
   background-color: var(--bg);
   /* Parchment grain + soft vignette, lightweight and gpu-cheap. */
   background-image:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-gold) 10%, transparent), transparent 60%),
-    radial-gradient(100% 100% at 50% 120%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 55%),
-    repeating-linear-gradient(45deg, color-mix(in srgb, var(--text) 2%, transparent) 0 2px, transparent 2px 4px);
+    radial-gradient(
+      120% 90% at 50% -10%,
+      color-mix(in srgb, var(--accent-gold) 10%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      100% 100% at 50% 120%,
+      color-mix(in srgb, var(--primary) 8%, transparent),
+      transparent 55%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--text) 2%, transparent) 0 2px,
+      transparent 2px 4px
+    );
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-display);
   font-weight: 600;
   line-height: 1.1;
@@ -128,18 +143,28 @@ h1, h2, h3, h4 {
   margin: 0;
 }
 
-h1 { font-size: var(--text-3xl); }
-h2 { font-size: var(--text-2xl); }
-h3 { font-size: var(--text-xl); }
+h1 {
+  font-size: var(--text-3xl);
+}
+h2 {
+  font-size: var(--text-2xl);
+}
+h3 {
+  font-size: var(--text-xl);
+}
 
-p { margin: 0; }
+p {
+  margin: 0;
+}
 
 a {
   color: var(--primary);
   text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
   text-underline-offset: 0.15em;
 }
-a:hover { color: var(--primary-strong); }
+a:hover {
+  color: var(--primary-strong);
+}
 
 :focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -156,10 +181,13 @@ a:hover { color: var(--primary-strong); }
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  transition: border-color var(--dur-fast) var(--ease-out),
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
 }
-.field:hover { border-color: var(--border-strong); }
+.field:hover {
+  border-color: var(--border-strong);
+}
 .field:focus-visible {
   outline: none;
   border-color: var(--accent-gold);
@@ -183,7 +211,8 @@ a:hover { color: var(--primary-strong); }
   border: 1px solid var(--_bd);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease-out),
+  transition:
+    transform var(--dur-fast) var(--ease-out),
     background var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out);
@@ -192,8 +221,13 @@ a:hover { color: var(--primary-strong); }
   border-color: var(--accent-gold);
   box-shadow: var(--shadow-sm);
 }
-.btn:active:not(:disabled) { transform: translateY(1px); }
-.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 .btn--primary {
   --_bg: var(--primary);
@@ -249,11 +283,26 @@ a:hover { color: var(--primary-strong); }
   border: 1px solid transparent;
   font-variant-numeric: tabular-nums;
 }
-.coin--platinum { background: color-mix(in srgb, var(--coin-platinum) 26%, transparent); border-color: var(--coin-platinum); }
-.coin--gold { background: color-mix(in srgb, var(--coin-gold) 26%, transparent); border-color: var(--coin-gold); }
-.coin--silver { background: color-mix(in srgb, var(--coin-silver) 26%, transparent); border-color: var(--coin-silver); }
-.coin--copper { background: color-mix(in srgb, var(--coin-copper) 26%, transparent); border-color: var(--coin-copper); }
-.coin--none { color: var(--text-faint); border-color: var(--border); }
+.coin--platinum {
+  background: color-mix(in srgb, var(--coin-platinum) 26%, transparent);
+  border-color: var(--coin-platinum);
+}
+.coin--gold {
+  background: color-mix(in srgb, var(--coin-gold) 26%, transparent);
+  border-color: var(--coin-gold);
+}
+.coin--silver {
+  background: color-mix(in srgb, var(--coin-silver) 26%, transparent);
+  border-color: var(--coin-silver);
+}
+.coin--copper {
+  background: color-mix(in srgb, var(--coin-copper) 26%, transparent);
+  border-color: var(--coin-copper);
+}
+.coin--none {
+  color: var(--text-faint);
+  border-color: var(--border);
+}
 
 /* ---- Rarity badges ---------------------------------------------------- */
 .rarity {
@@ -266,11 +315,26 @@ a:hover { color: var(--primary-strong); }
   color: var(--rarity-common);
   background: color-mix(in srgb, var(--rarity-common) 16%, transparent);
 }
-.rarity--uncommon { color: var(--rarity-uncommon); background: color-mix(in srgb, var(--rarity-uncommon) 16%, transparent); }
-.rarity--rare { color: var(--rarity-rare); background: color-mix(in srgb, var(--rarity-rare) 16%, transparent); }
-.rarity--very-rare { color: var(--rarity-very-rare); background: color-mix(in srgb, var(--rarity-very-rare) 16%, transparent); }
-.rarity--legendary { color: var(--rarity-legendary); background: color-mix(in srgb, var(--rarity-legendary) 18%, transparent); }
-.rarity--artifact { color: var(--rarity-artifact); background: color-mix(in srgb, var(--rarity-artifact) 16%, transparent); }
+.rarity--uncommon {
+  color: var(--rarity-uncommon);
+  background: color-mix(in srgb, var(--rarity-uncommon) 16%, transparent);
+}
+.rarity--rare {
+  color: var(--rarity-rare);
+  background: color-mix(in srgb, var(--rarity-rare) 16%, transparent);
+}
+.rarity--very-rare {
+  color: var(--rarity-very-rare);
+  background: color-mix(in srgb, var(--rarity-very-rare) 16%, transparent);
+}
+.rarity--legendary {
+  color: var(--rarity-legendary);
+  background: color-mix(in srgb, var(--rarity-legendary) 18%, transparent);
+}
+.rarity--artifact {
+  color: var(--rarity-artifact);
+  background: color-mix(in srgb, var(--rarity-artifact) 16%, transparent);
+}
 
 .container {
   width: 100%;
@@ -308,7 +372,9 @@ a:hover { color: var(--primary-strong); }
   height: 1px;
   background: linear-gradient(to var(--_dir, right), transparent, var(--border-strong));
 }
-.rule::after { --_dir: left; }
+.rule::after {
+  --_dir: left;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

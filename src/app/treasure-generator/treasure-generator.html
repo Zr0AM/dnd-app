@@ -78,8 +78,8 @@
 
   @if (catalog.error()) {
     <p class="hoard-note">
-      <app-icon name="alert" [size]="16" /> The Market is unreachable, so magic items will name
-      the DMG table to roll on instead.
+      <app-icon name="alert" [size]="16" /> The Market is unreachable, so magic items will name the
+      DMG table to roll on instead.
     </p>
   }
 
@@ -212,9 +212,7 @@
       @if (h.magic.length) {
         <div class="hoard-group">
           <div class="hoard-group__head">
-            <h3 class="hoard-group__title">
-              <app-icon name="sparkles" [size]="18" /> Magic items
-            </h3>
+            <h3 class="hoard-group__title"><app-icon name="sparkles" [size]="18" /> Magic items</h3>
             <span class="hoard-group__value">{{ magicCount() }}</span>
           </div>
           <ul class="hoard-list">
@@ -254,7 +252,9 @@
                     @if (m.count > 1) {
                       <span class="hoard-list__qty">{{ m.count }} × </span>
                     }
-                    <span class="hoard-list__unrolled">Unnamed {{ m.rarity | lowercase }} item</span>
+                    <span class="hoard-list__unrolled"
+                      >Unnamed {{ m.rarity | lowercase }} item</span
+                    >
                   </span>
                   <span class="hoard-list__meta">
                     <span [class]="'rarity rarity--' + raritySlug(m.rarity)">{{ m.rarity }}</span>
@@ -268,7 +268,9 @@
       }
 
       @if (onlyCoin()) {
-        <p class="hoard-note flavor">No gems, art objects or magic items this time — just cold, hard coin.</p>
+        <p class="hoard-note flavor">
+          No gems, art objects or magic items this time — just cold, hard coin.
+        </p>
       }
 
       <div class="hoard-total">
@@ -285,7 +287,9 @@
           Split the coin <app-icon name="arrow-right" [size]="18" />
         </a>
       </div>
-      <p class="hoard-note">Gems, art objects and magic items stay whole — divvy those up at the table.</p>
+      <p class="hoard-note">
+        Gems, art objects and magic items stay whole — divvy those up at the table.
+      </p>
     </section>
   }
 } @else {

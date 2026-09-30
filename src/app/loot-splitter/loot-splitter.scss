@@ -168,10 +168,18 @@
   white-space: nowrap;
 }
 
-.coin-input__dot.coin--platinum { background: var(--coin-platinum); }
-.coin-input__dot.coin--gold { background: var(--coin-gold); }
-.coin-input__dot.coin--silver { background: var(--coin-silver); }
-.coin-input__dot.coin--copper { background: var(--coin-copper); }
+.coin-input__dot.coin--platinum {
+  background: var(--coin-platinum);
+}
+.coin-input__dot.coin--gold {
+  background: var(--coin-gold);
+}
+.coin-input__dot.coin--silver {
+  background: var(--coin-silver);
+}
+.coin-input__dot.coin--copper {
+  background: var(--coin-copper);
+}
 
 @keyframes purse-in {
   from {

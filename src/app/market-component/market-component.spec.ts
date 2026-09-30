@@ -33,7 +33,10 @@ describe('MarketComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'market', component: MarketComponent }], withComponentInputBinding()),
+        provideRouter(
+          [{ path: 'market', component: MarketComponent }],
+          withComponentInputBinding(),
+        ),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],

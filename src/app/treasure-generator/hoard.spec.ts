@@ -135,8 +135,14 @@ describe('rollHoard', () => {
 describe('CR mapping', () => {
   it('selects the DMG table for each CR', () => {
     const cases: [number, CrBandId][] = [
-      [0, 'cr0-4'], [4, 'cr0-4'], [5, 'cr5-10'], [10, 'cr5-10'],
-      [11, 'cr11-16'], [16, 'cr11-16'], [17, 'cr17'], [30, 'cr17'],
+      [0, 'cr0-4'],
+      [4, 'cr0-4'],
+      [5, 'cr5-10'],
+      [10, 'cr5-10'],
+      [11, 'cr11-16'],
+      [16, 'cr11-16'],
+      [17, 'cr17'],
+      [30, 'cr17'],
     ];
     for (const [cr, id] of cases) {
       expect(bandForCr(cr).id, `CR ${cr}`).toBe(id);

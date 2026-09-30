@@ -71,7 +71,6 @@
   color: var(--text-muted);
 }
 
-
 // Track tint deepens per DMG table; boundaries sit halfway between CRs.
 .cr__slider {
   --_gold: var(--accent-gold);
@@ -269,10 +268,18 @@
   border-top: 1px solid var(--border);
   animation: reveal var(--dur-slow) var(--ease-out) both;
 }
-.hoard-group:nth-of-type(2) { animation-delay: 80ms; }
-.hoard-group:nth-of-type(3) { animation-delay: 160ms; }
-.hoard-group:nth-of-type(4) { animation-delay: 240ms; }
-.hoard-group:nth-of-type(5) { animation-delay: 320ms; }
+.hoard-group:nth-of-type(2) {
+  animation-delay: 80ms;
+}
+.hoard-group:nth-of-type(3) {
+  animation-delay: 160ms;
+}
+.hoard-group:nth-of-type(4) {
+  animation-delay: 240ms;
+}
+.hoard-group:nth-of-type(5) {
+  animation-delay: 320ms;
+}
 
 .hoard-group__head {
   display: flex;
@@ -423,8 +430,12 @@
 }
 
 @keyframes wobble {
-  30% { transform: rotate(-18deg); }
-  70% { transform: rotate(12deg); }
+  30% {
+    transform: rotate(-18deg);
+  }
+  70% {
+    transform: rotate(12deg);
+  }
 }
 
 @media (min-width: 760px) {

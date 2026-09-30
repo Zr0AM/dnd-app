@@ -79,7 +79,11 @@ function tally<T extends object>(entries: readonly T[], keyOf: (entry: T) => str
 
 export function expectedCoinGp(band: CrBand): number {
   const average = emptyCoins();
-  for (const { denom, dice: [count, sides], multiplier } of band.coins) {
+  for (const {
+    denom,
+    dice: [count, sides],
+    multiplier,
+  } of band.coins) {
     average[denom] += ((count * (sides + 1)) / 2) * multiplier;
   }
   return toGp(average);
@@ -136,9 +140,7 @@ function rollMagic(rolls: readonly MagicRoll[], catalog: readonly Item[], rng: R
   for (const { table, dice } of rolls) {
     const rarity = MAGIC_TABLE_RARITY[table];
     // Sorted so API ordering can't change which item a seed lands on.
-    const pool = catalog
-      .filter((i) => i.itemRarity === rarity)
-      .sort((a, b) => a.itemID - b.itemID);
+    const pool = catalog.filter((i) => i.itemRarity === rarity).sort((a, b) => a.itemID - b.itemID);
     const count = rollDice(dice, rng);
     for (let i = 0; i < count; i++) {
       drops.push(drawMagic(table, rarity, pool, rng));

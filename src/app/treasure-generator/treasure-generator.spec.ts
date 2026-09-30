@@ -247,7 +247,9 @@ describe('TreasureGenerator', () => {
     roll();
     const code = codeText();
     replay('not-a-code');
-    expect(el.querySelector('.replay__error')?.textContent).toContain('doesn’t look like a hoard code');
+    expect(el.querySelector('.replay__error')?.textContent).toContain(
+      'doesn’t look like a hoard code',
+    );
     expect(el.querySelector('#hoard-code')?.getAttribute('aria-invalid')).toBe('true');
     expect(codeText()).toBe(code);
   });
