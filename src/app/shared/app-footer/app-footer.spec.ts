@@ -12,7 +12,7 @@ function render(info: BuildInfo = { version: '0.1.0', commit: 'a1b2c3d', date: '
   const fixture = TestBed.createComponent(AppFooter);
   fixture.detectChanges();
   const el: HTMLElement = fixture.nativeElement;
-  return { el, text: (node: Element) => node.textContent.replace(/\s+/g, ' ').trim() };
+  return { el, text: (node: Element) => node.textContent.replace(/[ \t\r\n]+/g, ' ').trim() };
 }
 
 describe('AppFooter', () => {
@@ -32,13 +32,20 @@ describe('AppFooter', () => {
     expect(text(el.querySelector('.footer__build')!)).toBe('Adventurer’s Ledger · v0.1.0');
   });
 
-  it('links to /legal and points at the SRD license', () => {
+  it('has one link to /legal and mentions the SRD license as plain text', () => {
     const { el, text } = render();
     const links = Array.from(el.querySelectorAll('a'));
-    expect(links.length).toBeGreaterThanOrEqual(1);
-    for (const a of links) expect(a.getAttribute('href')).toBe('/legal');
-    expect(links.map((a) => text(a))).toContain('Legal & attribution');
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute('href')).toBe('/legal');
+    expect(text(links[0])).toBe('Legal & attribution');
     expect(text(el)).toContain('Includes SRD 5.2.1 content under CC BY 4.0');
+    expect(text(el.querySelector('.footer__legal')!)).toBe(
+      'Legal & attribution Includes SRD 5.2.1 content under CC BY 4.0',
+    );
+  });
+
+  it('does not render a dangling separator glyph', () => {
+    expect(render().el.textContent).not.toMatch(/Legal & attribution\s*·|CC BY 4\.0\s*·/);
   });
 
   it('contains no Wizards of the Coast or D&D Beyond text', () => {

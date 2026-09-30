@@ -11,9 +11,11 @@ const ATTRIBUTION =
   'licensed under the Creative Commons Attribution 4.0 International License, available at ' +
   'https://creativecommons.org/licenses/by/4.0/legalcode.';
 
-const collapse = (node: Element) => node.textContent.replace(/\s+/g, ' ').trim();
+// Only ASCII whitespace is normalised: /\s/ also matches NBSP, which would let a non-breaking
+// space inside the required wording pass the exact-text assertions.
+const collapse = (node: Element) => node.textContent.replace(/[ \t\r\n]+/g, ' ').trim();
 
-function render() {
+function render(attach = false) {
   TestBed.configureTestingModule({
     imports: [Legal],
     providers: [
@@ -24,8 +26,10 @@ function render() {
     ],
   });
   const fixture = TestBed.createComponent(Legal);
+  const el = fixture.nativeElement as HTMLElement;
+  if (attach) document.body.appendChild(el);
   fixture.detectChanges();
-  return fixture.nativeElement as HTMLElement;
+  return el;
 }
 
 describe('Legal page', () => {
@@ -33,6 +37,14 @@ describe('Legal page', () => {
     const el = render();
     expect(el.querySelectorAll('h1')).toHaveLength(1);
     expect(collapse(el.querySelector('h1')!)).toBe('Legal & attribution');
+  });
+
+  it('moves focus to the h1 on arrival', () => {
+    const el = render(true);
+    const h1 = el.querySelector('h1')!;
+    expect(h1.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(h1);
+    el.remove();
   });
 
   it('renders the required attribution verbatim as one paragraph', () => {
@@ -53,6 +65,13 @@ describe('Legal page', () => {
       expect(a.getAttribute('target')).toBe('_blank');
       expect(a.getAttribute('rel')).toBe('noopener noreferrer');
     }
+  });
+
+  it('rejects a non-breaking space inside the required wording', () => {
+    const el = render();
+    const p = el.querySelector('blockquote p')!;
+    p.innerHTML = p.innerHTML.replace('System Reference', 'System\u00a0Reference');
+    expect(collapse(p)).not.toBe(ATTRIBUTION);
   });
 
   it('mentions Wizards of the Coast exactly once and adds no other claims', () => {
