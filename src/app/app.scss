@@ -1,5 +1,8 @@
 :host {
-  display: block;
+  // Column shell: the footer sits at the bottom of short pages and below long content.
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
 
 .skip-link {
@@ -139,7 +142,7 @@
 
 main {
   padding-block: var(--space-6) var(--space-8);
-  min-height: calc(100dvh - var(--header-h));
+  flex: 1 0 auto;
 }
 
 @keyframes fade-in {
