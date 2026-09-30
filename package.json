@@ -8,9 +8,13 @@
     "watch": "ng build --watch --configuration development",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.spec.json --noEmit && tsc -p functions --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "pages:deploy": "npm run build && wrangler pages deploy dist/dnd-app/browser --project-name=dnd-app",
     "pages:dev": "wrangler pages dev dist/dnd-app/browser",
-    "sonar": "sonar-scanner"
+    "sonar": "sonar-scanner",
+    "lint": "ng lint"
   },
   "prettier": {
     "printWidth": 100,
@@ -47,9 +51,14 @@
     "@angular/cli": "^22.2.0",
     "@angular/compiler-cli": "^22.2.0",
     "@cloudflare/workers-types": "^5.20260925.1",
+    "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^5.0.1",
+    "angular-eslint": "22.5.0",
+    "eslint": "^10.9.1",
     "jsdom": "^30.1.1",
+    "prettier": "3.8.1",
     "typescript": "~6.0.3",
+    "typescript-eslint": "8.69.0",
     "vitest": "^5.0.1"
   }
 }

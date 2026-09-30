@@ -150,7 +150,9 @@ export class MarketComponent {
     return [...this.filtered()].sort((a, b) => dir * compareItems(a, b, column));
   });
 
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.sorted().length / this.size())));
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.sorted().length / this.size())),
+  );
   // The URL page may exceed the available pages after filtering; clamp for display.
   protected readonly currentPage = computed(() =>
     Math.min(Math.max(1, this.page()), this.totalPages()),

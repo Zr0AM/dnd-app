@@ -95,11 +95,21 @@
   background: var(--rarity-common);
   flex-shrink: 0;
 }
-.rarity-dot.rarity--uncommon { background: var(--rarity-uncommon); }
-.rarity-dot.rarity--rare { background: var(--rarity-rare); }
-.rarity-dot.rarity--very-rare { background: var(--rarity-very-rare); }
-.rarity-dot.rarity--legendary { background: var(--rarity-legendary); }
-.rarity-dot.rarity--artifact { background: var(--rarity-artifact); }
+.rarity-dot.rarity--uncommon {
+  background: var(--rarity-uncommon);
+}
+.rarity-dot.rarity--rare {
+  background: var(--rarity-rare);
+}
+.rarity-dot.rarity--very-rare {
+  background: var(--rarity-very-rare);
+}
+.rarity-dot.rarity--legendary {
+  background: var(--rarity-legendary);
+}
+.rarity-dot.rarity--artifact {
+  background: var(--rarity-artifact);
+}
 
 /* ---- Table (wide screens) -------------------------------------------- */
 .market-table-wrap {

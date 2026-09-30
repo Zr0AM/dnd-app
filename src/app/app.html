@@ -43,13 +43,7 @@
     aria-label="Close navigation menu"
     (click)="closeMenu()"
   ></button>
-  <nav
-    id="mobile-drawer"
-    class="drawer"
-    aria-label="Primary"
-    cdkTrapFocus
-    cdkTrapFocusAutoCapture
-  >
+  <nav id="mobile-drawer" class="drawer" aria-label="Primary" cdkTrapFocus cdkTrapFocusAutoCapture>
     @for (item of menuItems; track item.path) {
       <a
         class="drawer__link"

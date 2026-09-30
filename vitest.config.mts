@@ -14,12 +14,7 @@ export default defineConfig({
       reporter: ['lcov', 'text-summary'],
       reportsDirectory: 'coverage/dnd-app',
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/main.ts',
-        'src/**/*.spec.ts',
-        'src/environments/**',
-        '**/*.d.ts'
-      ],
+      exclude: ['src/main.ts', 'src/**/*.spec.ts', 'src/environments/**', '**/*.d.ts'],
       all: true,
     },
   },

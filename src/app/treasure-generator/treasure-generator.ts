@@ -132,7 +132,9 @@ export class TreasureGenerator {
   protected replay(raw: string) {
     const parsed = parseHoardCode(raw);
     if (!parsed) {
-      this.replayError.set('That doesn’t look like a hoard code — it should resemble CR13-1K3F9QX.');
+      this.replayError.set(
+        'That doesn’t look like a hoard code — it should resemble CR13-1K3F9QX.',
+      );
       return;
     }
     this.replayError.set('');

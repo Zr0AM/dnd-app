@@ -1,12 +1,14 @@
 name: SonarQube
-on:
+# workflow_run has access to secrets; the job below only runs for code from this repository
+on: # zizmor: ignore[dangerous-triggers]
   workflow_run:
-    workflows: [ Build ]
-    types: [ completed ]
+    workflows: [Build]
+    types: [completed]
 
 permissions:
   contents: read
-  actions: read  # download the coverage artifact from the Build run
+  actions: read # download the coverage artifact from the Build run
+  statuses: write # report the quality gate on the analysed commit, so PRs can require it
 
 jobs:
   sonarqube:
@@ -17,11 +19,24 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      STATUS_CONTEXT: SonarQube quality gate
     steps:
+      # A workflow_run job doesn't show up on the PR, so report the result as a commit status instead
+      - name: Mark quality gate pending
+        run: >-
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA"
+          -f state=pending
+          -f context="$STATUS_CONTEXT"
+          -f description="Analysis in progress"
+          -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
           persist-credentials: false
 
       - name: Download coverage
@@ -33,26 +48,56 @@ jobs:
           github-token: ${{ github.token }}
 
       # Under workflow_run the scanner can't detect the PR or branch itself, so pass it explicitly.
+      # pull_requests is also filled in for pushes to a branch that is the head of an open PR,
+      # so only treat the run as a PR analysis when Build ran for a pull_request event.
       # sonar.host.url is pinned so the checked-out sonar-project.properties can't redirect the token.
       - name: Build scanner arguments
         id: args
         env:
+          EVENT: ${{ github.event.workflow_run.event }}
           PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           PR_BRANCH: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
           PR_BASE: ${{ github.event.workflow_run.pull_requests[0].base.ref }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           args="-Dsonar.host.url=https://sonarcloud.io -Dsonar.qualitygate.wait=true"
-          if [ -n "$PR_NUMBER" ]; then
+          if [ "$EVENT" = "pull_request" ]; then
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::Build ran for a pull request, but no pull request is attached to the run"
+              exit 1
+            fi
             args="$args -Dsonar.pullrequest.key=$PR_NUMBER -Dsonar.pullrequest.branch=$PR_BRANCH -Dsonar.pullrequest.base=$PR_BASE"
+            echo "dashboard=https://sonarcloud.io/dashboard?id=Zr0AM_dnd-app&pullRequest=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           else
             args="$args -Dsonar.branch.name=$HEAD_BRANCH"
+            echo "dashboard=https://sonarcloud.io/dashboard?id=Zr0AM_dnd-app&branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
 
       - name: SonarQube Scan
+        id: scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
         with:
           args: ${{ steps.args.outputs.args }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Any earlier failure skips the scan, which also reports as a failure
+      - name: Report quality gate
+        if: always()
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+          DASHBOARD: ${{ steps.args.outputs.dashboard }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            state=success
+            description="Quality gate passed"
+          else
+            state=failure
+            description="Quality gate failed or the analysis did not run"
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f context="$STATUS_CONTEXT" \
+            -f description="$description" \
+            -f target_url="${DASHBOARD:-$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID}"

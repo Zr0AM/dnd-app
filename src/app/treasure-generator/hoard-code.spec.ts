@@ -20,7 +20,16 @@ describe('hoard codes', () => {
   });
 
   it('rejects malformed codes', () => {
-    for (const bad of ['', 'hello', 'CR-0000001', 'CR5-', 'CR5-ABC$', 'CR5-ZZZZZZZZ', '0000001', 'CR5-10-0000001']) {
+    for (const bad of [
+      '',
+      'hello',
+      'CR-0000001',
+      'CR5-',
+      'CR5-ABC$',
+      'CR5-ZZZZZZZZ',
+      '0000001',
+      'CR5-10-0000001',
+    ]) {
       expect(parseHoardCode(bad), bad).toBeNull();
     }
   });

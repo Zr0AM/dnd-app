@@ -7,7 +7,7 @@ describe('LootSplitter', () => {
   let fixture: ComponentFixture<LootSplitter>;
 
   // The signals under test are protected; this narrows access for the specs.
-  type Testable = {
+  interface Testable {
     platinum: { set(v: number): void };
     gold: { set(v: number): void };
     silver: { set(v: number): void };
@@ -17,9 +17,11 @@ describe('LootSplitter', () => {
     hasLoot(): boolean;
     spreadCp(): number;
     distributions(): { pp: number; gp: number; sp: number; cp: number; valueCp: number }[];
-  };
+  }
 
-  function set(coins: Partial<Record<'platinum' | 'gold' | 'silver' | 'copper' | 'players', number>>) {
+  function set(
+    coins: Partial<Record<'platinum' | 'gold' | 'silver' | 'copper' | 'players', number>>,
+  ) {
     const c = component as unknown as Testable;
     if (coins.platinum !== undefined) c.platinum.set(coins.platinum);
     if (coins.gold !== undefined) c.gold.set(coins.gold);
@@ -125,12 +127,11 @@ describe('LootSplitter', () => {
 
   it('sanitizes out-of-range and non-numeric input', () => {
     const c = component as unknown as Testable;
-    (component as unknown as { setNum(t: { set(v: number): void }, raw: string, min: number, max: number): void }).setNum(
-      c.gold,
-      '-40',
-      0,
-      50000,
-    );
+    (
+      component as unknown as {
+        setNum(t: { set(v: number): void }, raw: string, min: number, max: number): void;
+      }
+    ).setNum(c.gold, '-40', 0, 50000);
     expect((component as unknown as { gold(): number }).gold()).toBe(0);
   });
 });

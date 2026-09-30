@@ -1,7 +1,9 @@
 <header class="market-head">
   <div>
     <h1>Market</h1>
-    <p class="market-head__sub flavor">Magic items of every rarity, laid out for the discerning adventurer.</p>
+    <p class="market-head__sub flavor">
+      Magic items of every rarity, laid out for the discerning adventurer.
+    </p>
   </div>
   @if (!catalog.error() && items().length) {
     <span class="chip market-head__count">{{ items().length | number }} items</span>
@@ -47,7 +49,12 @@
 
     <label class="market-filters__field">
       <span>Rarity</span>
-      <select class="field" #raritySelect [value]="rarity()" (change)="setRarity(raritySelect.value)">
+      <select
+        class="field"
+        #raritySelect
+        [value]="rarity()"
+        (change)="setRarity(raritySelect.value)"
+      >
         <option value="">All</option>
         @for (option of rarityOptions(); track option) {
           <option [value]="option">{{ option }}</option>
@@ -119,15 +126,28 @@
                 <button type="button" class="market-table__sortbtn" (click)="sortBy(col)">
                   <span>
                     @switch (col) {
-                      @case ('itemName') { Name }
-                      @case ('itemType') { Type }
-                      @case ('itemRarity') { Rarity }
-                      @case ('itemCost') { Cost (gp) }
-                      @case ('itemSource') { Source }
+                      @case ('itemName') {
+                        Name
+                      }
+                      @case ('itemType') {
+                        Type
+                      }
+                      @case ('itemRarity') {
+                        Rarity
+                      }
+                      @case ('itemCost') {
+                        Cost (gp)
+                      }
+                      @case ('itemSource') {
+                        Source
+                      }
                     }
                   </span>
                   @if (isSorted(col)) {
-                    <app-icon [name]="dir() === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="14" />
+                    <app-icon
+                      [name]="dir() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                      [size]="14"
+                    />
                   }
                 </button>
               </th>
@@ -193,13 +213,18 @@
             (click)="toggleExpand(item.itemID)"
           >
             <span class="market-card__title">
-              <span class="rarity-dot" [class]="'rarity-dot rarity--' + raritySlug(item.itemRarity)"></span>
+              <span
+                class="rarity-dot"
+                [class]="'rarity-dot rarity--' + raritySlug(item.itemRarity)"
+              ></span>
               {{ item.itemName }}
             </span>
             <app-icon name="chevron-down" [size]="18" class="market-card__caret" />
           </button>
           <div class="market-card__meta">
-            <span class="rarity" [class]="'rarity rarity--' + raritySlug(item.itemRarity)">{{ item.itemRarity }}</span>
+            <span class="rarity" [class]="'rarity rarity--' + raritySlug(item.itemRarity)">{{
+              item.itemRarity
+            }}</span>
             <span class="market-card__type">{{ item.itemType }}</span>
             <span class="market-card__cost">{{ item.itemCost | number }} gp</span>
           </div>
@@ -225,17 +250,41 @@
       </label>
 
       <div class="market-pagination__controls">
-        <button type="button" class="btn btn--icon" (click)="goToPage(1)" [disabled]="currentPage() === 1" aria-label="First page">
+        <button
+          type="button"
+          class="btn btn--icon"
+          (click)="goToPage(1)"
+          [disabled]="currentPage() === 1"
+          aria-label="First page"
+        >
           <app-icon name="chevrons-left" [size]="18" />
         </button>
-        <button type="button" class="btn btn--icon" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1" aria-label="Previous page">
+        <button
+          type="button"
+          class="btn btn--icon"
+          (click)="goToPage(currentPage() - 1)"
+          [disabled]="currentPage() === 1"
+          aria-label="Previous page"
+        >
           <app-icon name="chevron-left" [size]="18" />
         </button>
         <span class="market-pagination__page">Page {{ currentPage() }} of {{ totalPages() }}</span>
-        <button type="button" class="btn btn--icon" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages()" aria-label="Next page">
+        <button
+          type="button"
+          class="btn btn--icon"
+          (click)="goToPage(currentPage() + 1)"
+          [disabled]="currentPage() === totalPages()"
+          aria-label="Next page"
+        >
           <app-icon name="chevron-right" [size]="18" />
         </button>
-        <button type="button" class="btn btn--icon" (click)="goToPage(totalPages())" [disabled]="currentPage() === totalPages()" aria-label="Last page">
+        <button
+          type="button"
+          class="btn btn--icon"
+          (click)="goToPage(totalPages())"
+          [disabled]="currentPage() === totalPages()"
+          aria-label="Last page"
+        >
           <app-icon name="chevrons-right" [size]="18" />
         </button>
       </div>

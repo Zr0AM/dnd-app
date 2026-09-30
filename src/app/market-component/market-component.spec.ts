@@ -33,7 +33,10 @@ describe('MarketComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'market', component: MarketComponent }], withComponentInputBinding()),
+        provideRouter(
+          [{ path: 'market', component: MarketComponent }],
+          withComponentInputBinding(),
+        ),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -179,7 +182,7 @@ describe('MarketComponent', () => {
     );
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
 
-    const raritySelect: HTMLSelectElement = el.querySelectorAll('.market-filters select')[0];
+    const raritySelect = el.querySelectorAll<HTMLSelectElement>('.market-filters select')[0];
     raritySelect.value = 'Rare';
     raritySelect.dispatchEvent(new Event('change'));
 
@@ -197,7 +200,7 @@ describe('MarketComponent', () => {
     await render([makeItem({ itemID: 1, itemName: 'Aaa' })], '/market?sort=itemName&dir=asc');
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
 
-    const nameHeader: HTMLButtonElement = el.querySelectorAll('thead .market-table__sortbtn')[0];
+    const nameHeader = el.querySelectorAll<HTMLButtonElement>('thead .market-table__sortbtn')[0];
     nameHeader.click();
 
     expect(navigate).toHaveBeenCalledWith(
