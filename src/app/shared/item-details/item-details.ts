@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { Item } from '../../core/items/items.service';
+import { formatCostGp } from '../../core/items/item-cost';
 import { Icon } from '../icon/icon';
 
 export type ItemDetailField = 'type' | 'cost' | 'attunement' | 'source';
@@ -15,7 +15,7 @@ function present(value: string | undefined, placeholder: string): value is strin
 @Component({
   selector: 'app-item-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, Icon],
+  imports: [Icon],
   template: `
     @if (fields().length) {
       <dl>
@@ -28,7 +28,7 @@ function present(value: string | undefined, placeholder: string): value is strin
               }
               @case ('cost') {
                 <dt>Cost</dt>
-                <dd>{{ item().itemCost | number }} gp</dd>
+                <dd>{{ formatCostGp(item().itemCost) }}</dd>
               }
               @case ('attunement') {
                 <dt>Attunement</dt>
@@ -94,6 +94,8 @@ export class ItemDetails {
   readonly item = input.required<Item>();
   readonly fields = input<readonly ItemDetailField[]>(ALL_FIELDS);
   readonly showLink = input(true);
+
+  protected readonly formatCostGp = formatCostGp;
 
   protected readonly quote = computed(() => {
     const text = this.item().itemShopkeeperDesc;
