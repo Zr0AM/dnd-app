@@ -181,7 +181,7 @@
                   {{ item.itemRarity }}
                 </span>
               </td>
-              <td class="market-table__cost">{{ item.itemCost | number }}</td>
+              <td class="market-table__cost">{{ formatCost(item.itemCost) }}</td>
               <td>{{ item.itemSource }}</td>
               <td>{{ item.itemAttunement }}</td>
             </tr>
@@ -226,7 +226,7 @@
               item.itemRarity
             }}</span>
             <span class="market-card__type">{{ item.itemType }}</span>
-            <span class="market-card__cost">{{ item.itemCost | number }} gp</span>
+            <span class="market-card__cost">{{ formatCostGp(item.itemCost) }}</span>
           </div>
           @if (expandedId() === item.itemID) {
             <app-item-details

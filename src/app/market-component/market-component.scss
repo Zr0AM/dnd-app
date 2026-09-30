@@ -113,7 +113,12 @@
 
 /* ---- Table (wide screens) -------------------------------------------- */
 .market-table-wrap {
-  overflow: hidden;
+  /* `clip`, not `hidden`: it still trims the table to the panel's rounded
+     corners, but unlike `hidden` it does not make this wrapper a scroll
+     container. With `hidden`, the sticky <th> below would stick relative to
+     this wrapper (which never scrolls) instead of the viewport, leaving a gap
+     above the header and covering the first rows. */
+  overflow: clip;
 }
 .market-table {
   width: 100%;

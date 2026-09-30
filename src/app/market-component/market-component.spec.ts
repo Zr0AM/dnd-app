@@ -152,6 +152,39 @@ describe('MarketComponent', () => {
     expect(rowNames()).toEqual(['Zzz', 'Aaa']);
   });
 
+  describe('cost column', () => {
+    const priced = () => [
+      makeItem({ itemID: 1, itemName: 'Cheap', itemRarity: 'Rare', itemCost: 500 }),
+      makeItem({ itemID: 2, itemName: 'Pricey', itemRarity: 'Legendary', itemCost: 200000 }),
+      makeItem({ itemID: 3, itemName: 'Zed Artifact', itemRarity: 'Artifact', itemCost: 0 }),
+      makeItem({ itemID: 4, itemName: 'Alpha Artifact', itemRarity: 'Artifact', itemCost: 0 }),
+    ];
+
+    it('sorts priceless Artifacts last ascending, ties by name', async () => {
+      await render(priced(), '/market?sort=itemCost&dir=asc');
+      expect(rowNames()).toEqual(['Cheap', 'Pricey', 'Alpha Artifact', 'Zed Artifact']);
+    });
+
+    it('sorts priceless Artifacts first descending, ties by name descending', async () => {
+      await render(priced(), '/market?sort=itemCost&dir=desc');
+      expect(rowNames()).toEqual(['Zed Artifact', 'Alpha Artifact', 'Pricey', 'Cheap']);
+    });
+
+    it('shows Priceless, not 0 or gp, in the table and the card', async () => {
+      await render([priced()[2], priced()[1]]);
+
+      const cells = [...el.querySelectorAll('.market-table__row .market-table__cost')].map((c) =>
+        c.textContent!.trim(),
+      );
+      expect(cells).toEqual(['200,000', 'Priceless']);
+
+      const cards = [...el.querySelectorAll('.market-card__cost')].map((c) =>
+        c.textContent!.trim(),
+      );
+      expect(cards).toEqual(['200,000 gp', 'Priceless']);
+    });
+  });
+
   it('paginates from the URL and reports the range', async () => {
     const items = Array.from({ length: 30 }, (_, i) =>
       makeItem({ itemID: i + 1, itemName: `Item ${String(i + 1).padStart(2, '0')}` }),

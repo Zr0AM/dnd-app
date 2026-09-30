@@ -23,6 +23,11 @@ describe('ItemDetails', () => {
   const terms = () =>
     [...(fixture.nativeElement as HTMLElement).querySelectorAll('dt')].map((dt) => dt.textContent);
 
+  const costValue = () =>
+    [...(fixture.nativeElement as HTMLElement).querySelectorAll('dt')]
+      .find((dt) => dt.textContent === 'Cost')
+      ?.nextElementSibling?.textContent?.trim();
+
   beforeEach(() => {
     fixture = TestBed.createComponent(ItemDetails);
     fixture.componentRef.setInput('item', ITEM);
@@ -36,6 +41,20 @@ describe('ItemDetails', () => {
     expect(text()).toContain('Gnarled darkwood');
     expect(text()).toContain('Restrictions: Sorcerer, Warlock, Wizard');
     expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toBe(ITEM.itemUrl);
+  });
+
+  it('shows Priceless instead of 0 gp for a zero-cost item', () => {
+    fixture.componentRef.setInput('item', { ...ITEM, itemCost: 0 });
+    fixture.detectChanges();
+    expect(costValue()).toBe('Priceless');
+    expect(text()).not.toContain('0 gp');
+    expect(text()).not.toMatch(/Priceless gp/);
+  });
+
+  it('shows a dash when the cost is missing', () => {
+    fixture.componentRef.setInput('item', { ...ITEM, itemCost: null as unknown as number });
+    fixture.detectChanges();
+    expect(costValue()).toBe('—');
   });
 
   it('shows only the requested fields and can hide the link', () => {

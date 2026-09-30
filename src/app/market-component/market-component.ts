@@ -12,6 +12,7 @@ import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { Item, ItemsService, raritySlug } from '../core/items/items.service';
+import { compareCost, formatCost, formatCostGp } from '../core/items/item-cost';
 import { matchesSearch, toSearchText } from '../core/items/item-search';
 import { Icon } from '../shared/icon/icon';
 import { Skeleton } from '../shared/skeleton/skeleton';
@@ -53,7 +54,7 @@ function compareItems(a: Item, b: Item, column: SortColumn): number {
   let result: number;
   switch (column) {
     case 'itemCost':
-      result = a.itemCost - b.itemCost;
+      result = compareCost(a.itemCost, b.itemCost);
       break;
     case 'itemRarity':
       result = (RARITY_RANK[a.itemRarity] ?? 99) - (RARITY_RANK[b.itemRarity] ?? 99);
@@ -244,6 +245,8 @@ export class MarketComponent {
   }
 
   protected readonly raritySlug = raritySlug;
+  protected readonly formatCost = formatCost;
+  protected readonly formatCostGp = formatCostGp;
 
   protected readonly columns = SORT_COLUMNS;
 }
