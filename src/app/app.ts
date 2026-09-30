@@ -31,11 +31,12 @@ export class App {
       (route) => route.path && route.path !== '**' && !route.redirectTo && route.data?.['name'],
     )
     .map((route) => {
-      const data = route.data as Partial<NavData> | undefined;
+      // The filter above guarantees data.name exists; icon is optional.
+      const data = route.data as Partial<NavData>;
       return {
         path: route.path!,
-        label: data?.name ?? route.path!,
-        icon: (data?.icon as IconName) ?? 'sparkles',
+        label: data.name!,
+        icon: (data.icon as IconName) ?? 'sparkles',
       };
     });
 
