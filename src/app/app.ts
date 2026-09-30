@@ -27,7 +27,9 @@ export class App {
   protected readonly menuOpen = signal(false);
 
   protected readonly menuItems: MenuItem[] = this.router.config
-    .filter((route) => route.path && route.path !== '**' && !route.redirectTo)
+    .filter(
+      (route) => route.path && route.path !== '**' && !route.redirectTo && route.data?.['name'],
+    )
     .map((route) => {
       const data = route.data as Partial<NavData> | undefined;
       return {

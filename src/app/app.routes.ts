@@ -32,6 +32,12 @@ export const routes: Routes = [
     title: 'Loot Splitter · Adventurer’s Ledger',
     data: { name: 'Loot Splitter', icon: 'coins' } satisfies NavData,
   },
+  {
+    // Reached from the footer only, so it has no `data` and stays out of the nav menu.
+    path: 'legal',
+    loadComponent: () => import('./legal/legal').then((m) => m.Legal),
+    title: 'Legal & attribution · Adventurer’s Ledger',
+  },
   // Keeps links shared before the Loot Generator was renamed working.
   { path: 'treasure', redirectTo: 'loot-generator', pathMatch: 'full' },
   { path: '', redirectTo: '/home', pathMatch: 'full' },
