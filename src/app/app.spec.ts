@@ -37,6 +37,14 @@ describe('App', () => {
     expect(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('keeps the legal page out of the nav menu but links it from the footer', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('.nav-desktop a[href="/legal"]')).toBeNull();
+    expect(root.querySelector('app-footer a[href="/legal"]')).toBeTruthy();
+  });
+
   it('redirects the old /treasure path to the Loot Generator', async () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/treasure');
