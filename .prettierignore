@@ -3,3 +3,5 @@ coverage
 .angular
 package-lock.json
 public
+
+src/**/*.generated.ts

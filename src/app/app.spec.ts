@@ -27,6 +27,16 @@ describe('App', () => {
     expect(fixture.nativeElement.textContent).toContain('Loot Splitter');
   });
 
+  it('renders the site footer after the main content', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const main = root.querySelector('main')!;
+    const footer = root.querySelector('app-footer footer')!;
+    expect(footer).toBeTruthy();
+    expect(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('redirects the old /treasure path to the Loot Generator', async () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/treasure');
