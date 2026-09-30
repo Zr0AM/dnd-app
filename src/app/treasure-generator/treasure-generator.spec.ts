@@ -144,6 +144,25 @@ describe('TreasureGenerator', () => {
     expect(el.querySelector('app-item-details')).toBeNull();
   });
 
+  it('shows the rules description and provenance for a dropped item', async () => {
+    const described = items.find(
+      (i) => i.itemDescription && i.itemDescriptionSource === 'D&D Beyond',
+    )!;
+    await render();
+    setHoard({
+      ...KNOWN_HOARD,
+      magic: [{ key: 'item-described', table: 'A', rarity: 'Rare', item: described, count: 1 }],
+    });
+    (el.querySelector('.hoard-magic__toggle') as HTMLButtonElement).click();
+    harness.detectChanges();
+
+    const details = el.querySelector('app-item-details')!;
+    expect(details.querySelector('.description__text')!.textContent).toBe(
+      described.itemDescription,
+    );
+    expect(details.querySelector('.provenance')!.textContent).toContain('D&D Beyond');
+  });
+
   it('leaves unnamed placeholder items as plain rows', async () => {
     await render();
     setHoard(KNOWN_HOARD);
