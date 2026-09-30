@@ -164,6 +164,9 @@
                   class="btn btn--ghost btn--icon market-table__expand"
                   [class.is-open]="expandedId() === item.itemID"
                   [attr.aria-expanded]="expandedId() === item.itemID"
+                  [attr.aria-controls]="
+                    expandedId() === item.itemID ? 'market-details-' + item.itemID : null
+                  "
                   [attr.aria-label]="'Toggle details for ' + item.itemName"
                   (click)="toggleExpand(item.itemID)"
                 >
@@ -187,7 +190,7 @@
             </tr>
             @if (expandedId() === item.itemID) {
               <tr class="market-table__details">
-                <td colspan="7">
+                <td colspan="7" [attr.id]="'market-details-' + item.itemID">
                   <app-item-details
                     class="market-detail"
                     [item]="item"
@@ -210,6 +213,9 @@
             type="button"
             class="market-card__head"
             [attr.aria-expanded]="expandedId() === item.itemID"
+            [attr.aria-controls]="
+              expandedId() === item.itemID ? 'market-card-details-' + item.itemID : null
+            "
             (click)="toggleExpand(item.itemID)"
           >
             <span class="market-card__title">
@@ -231,6 +237,7 @@
           @if (expandedId() === item.itemID) {
             <app-item-details
               class="market-card__body"
+              [attr.id]="'market-card-details-' + item.itemID"
               [item]="item"
               [fields]="['attunement', 'source']"
             />
