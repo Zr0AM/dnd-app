@@ -7,7 +7,7 @@ describe('LootSplitter', () => {
   let fixture: ComponentFixture<LootSplitter>;
 
   // The signals under test are protected; this narrows access for the specs.
-  type Testable = {
+  interface Testable {
     platinum: { set(v: number): void };
     gold: { set(v: number): void };
     silver: { set(v: number): void };
@@ -17,7 +17,7 @@ describe('LootSplitter', () => {
     hasLoot(): boolean;
     spreadCp(): number;
     distributions(): { pp: number; gp: number; sp: number; cp: number; valueCp: number }[];
-  };
+  }
 
   function set(coins: Partial<Record<'platinum' | 'gold' | 'silver' | 'copper' | 'players', number>>) {
     const c = component as unknown as Testable;
