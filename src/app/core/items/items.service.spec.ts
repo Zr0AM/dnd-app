@@ -42,6 +42,25 @@ describe('ItemsService', () => {
     expect(service.catalog.value()).toEqual([item]);
   });
 
+  it('never exposes inactive rows, but keeps rows that carry no active flag', async () => {
+    const live = { ...item, itemID: 2, active: 1 } as Item;
+    const retired = { ...item, itemID: 3, active: 0 } as Item;
+    const legacy = { itemID: 4, itemName: 'Legacy' } as Item;
+    await load([live, retired, legacy]);
+    expect(service.catalog.value().map((i) => i.itemID)).toEqual([2, 4]);
+  });
+
+  it('passes the description fields through untouched', async () => {
+    const described = {
+      ...item,
+      active: 1,
+      itemDescription: 'Line one.\nLine two.',
+      itemDescriptionSource: 'D&D Beyond',
+    } as Item;
+    await load([described]);
+    expect(service.catalog.value()).toEqual([described]);
+  });
+
   it('reports an error status when the request fails and can reload', async () => {
     await load([], { status: 500, statusText: 'Server Error' });
     expect(service.catalog.error()).toBeTruthy();
