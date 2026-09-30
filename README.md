@@ -37,6 +37,13 @@ npm run build
 
 Artifacts are written to `dist/dnd-app/browser` (the Cloudflare Pages output dir).
 
+The footer shows the version, git commit and build date. These come from a generated,
+gitignored file (`src/app/core/build-info/build-info.values.generated.ts`) that
+`angular.json` swaps in through `fileReplacements`. `npm run build|start|watch|test|test:ci`
+generate it first via their `pre*` hooks, but running `ng build` or `ng serve` directly on a
+fresh clone fails because the file does not exist yet. Run `npm run generate:build-info` once
+first (or use the npm scripts). Type-checking, linting and the tests do not need it.
+
 ## Testing
 
 ```bash
