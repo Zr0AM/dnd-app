@@ -1,3 +1,5 @@
+import { withActiveOnly } from '../_lib/active-only';
+
 interface Env {
   DND_DB_REST_CONN: Fetcher;
   DND_API_TOKEN: string;
@@ -6,7 +8,9 @@ interface Env {
 // Proxies GET /api/items to the dnd-db-rest Worker over the service binding,
 // attaching the bearer token so the secret never reaches the browser.
 // Supported query params (forwarded as-is): sort_by, order, limit, offset,
-// plus any Item column as a filter (e.g. ?itemRarity=Rare).
+// plus any Item column as a filter (e.g. ?itemRarity=Rare). Only active
+// items are ever requested: active=1 is always sent upstream, overriding any
+// caller-supplied active param.
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DND_API_TOKEN) {
     return Response.json(
@@ -17,7 +21,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   // Service bindings ignore the hostname; only the path and query string
   // reach the Worker, but the Request constructor requires an absolute URL.
-  const search = new URL(request.url).search;
+  const search = withActiveOnly(new URL(request.url).search);
   const upstream = await env.DND_DB_REST_CONN.fetch(`https://dnd-db-rest/rest/Item${search}`, {
     headers: { Authorization: `Bearer ${env.DND_API_TOKEN}` },
   });
