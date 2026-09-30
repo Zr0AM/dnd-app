@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait a week before proposing a new release, so a compromised or broken publish is usually
+    # caught and pulled first. Security updates ignore the cooldown.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     # A dependency joins the first group it matches, so specific groups come before catch-alls
     groups:
@@ -44,6 +48,14 @@ updates:
           - "vitest"
           - "@vitest/*"
 
+      # angular-eslint and typescript-eslint peer on each other and on eslint
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "angular-eslint"
+          - "typescript-eslint"
+
       # Everything else that's low-risk in one weekly PR; other majors still arrive individually
       minor-and-patch:
         patterns:
@@ -52,16 +64,19 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Angular's compiler pins the TypeScript range (21.x: <6.0), so a TypeScript major
-      # can only land alongside an Angular upgrade that supports it
+      # Angular's compiler pins TypeScript to a single minor (22.x: >=6.0 <6.1), so anything past a
+      # TypeScript patch has to land alongside an Angular upgrade that supports it (via ng update)
       - dependency-name: "typescript"
         update-types:
+          - "version-update:semver-minor"
           - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns:
