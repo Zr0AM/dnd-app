@@ -13,7 +13,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['lcov', 'text-summary'],
       reportsDirectory: 'coverage/dnd-app',
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'functions/**/*.ts', 'scripts/build-number.mjs'],
       exclude: [
         'src/main.ts',
         'src/**/*.spec.ts',

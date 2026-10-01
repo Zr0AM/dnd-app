@@ -2,12 +2,13 @@ import { InjectionToken } from '@angular/core';
 import { BUILD_INFO_VALUES } from './build-info.values';
 
 export interface BuildInfo {
-  /** package.json version. */
-  readonly version: string;
   /** Short git commit, or 'unknown'. */
   readonly commit: string;
-  /** UTC build date (YYYY-MM-DD), or 'unknown'. */
-  readonly date: string;
+  /**
+   * Build number "<UTC date>_<GitHub Actions run>", e.g. "2026-10-01_042" ("_dev" suffix for a
+   * local build, "_000" if the run number could not be determined), or 'unknown'.
+   */
+  readonly build: string;
 }
 
 /** Injectable so tests (and anything else) can supply their own value. */
@@ -16,12 +17,11 @@ export const BUILD_INFO = new InjectionToken<BuildInfo>('BUILD_INFO', {
   factory: () => BUILD_INFO_VALUES,
 });
 
-/** e.g. "v0.1.0 · a1b2c3d · built 2026-09-30"; unknown parts are left out. */
+/** e.g. "2026-09-30_042 · a1b2c3d"; unknown parts are left out (empty if both are). */
 export function formatBuildInfo(info: BuildInfo): string {
   return [
-    `v${info.version}`,
+    info.build !== 'unknown' ? info.build : null,
     info.commit !== 'unknown' ? info.commit : null,
-    info.date !== 'unknown' ? `built ${info.date}` : null,
   ]
     .filter((part) => part !== null)
     .join(' · ');

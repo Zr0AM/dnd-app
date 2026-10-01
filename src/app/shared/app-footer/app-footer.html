@@ -1,10 +1,22 @@
 <footer class="footer">
   <div class="footer__inner container">
-    <p class="footer__build">Adventurer’s Ledger · {{ buildInfo }}</p>
+    <p class="footer__build">
+      Adventurer’s Ledger
+      @if (buildInfo) {
+        · {{ buildInfo }}
+      }
+    </p>
     <p class="footer__legal">
-      <a routerLink="/legal">Legal &amp; attribution</a>
-      <span class="footer__sep" aria-hidden="true">·</span>
-      <span>Includes SRD 5.2.1 content under <a routerLink="/legal">CC BY 4.0</a></span>
+      <a routerLink="/legal">Legal &amp; attribution</a>&ngsp;
+      <span
+        >Includes SRD 5.2.1 content under
+        <a
+          href="https://creativecommons.org/licenses/by/4.0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >CC BY 4.0</a
+        ></span
+      >
     </p>
   </div>
 </footer>

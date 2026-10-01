@@ -23,11 +23,12 @@
 .footer__legal {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 var(--space-2);
+  gap: 0 var(--space-4);
 }
 a {
   color: inherit;
-  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  /* Solid, not translucent: a 50% underline only reaches about 2:1 against the page. */
+  text-decoration-color: currentColor;
   overflow-wrap: anywhere;
 }
 a:hover {
