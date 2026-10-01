@@ -36,7 +36,7 @@ export class HomeComponent {
       icon: 'chest',
       title: 'Loot Generator',
       blurb:
-        'Pick a challenge rating and roll a hoard straight from the DMG tables — coin, gems, art objects and magic items.',
+        'Pick a challenge rating and roll for treasure straight from the DMG tables — coin, gems, art objects and magic items.',
     },
     {
       path: '/loot-splitter',
