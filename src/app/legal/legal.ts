@@ -15,7 +15,7 @@ import { BUILD_INFO, formatBuildInfo } from '../core/build-info/build-info';
   styleUrl: './legal.scss',
 })
 export class Legal implements AfterViewInit {
-  protected readonly buildInfo = formatBuildInfo(inject(BUILD_INFO));
+  protected readonly buildInfo = formatBuildInfo(inject(BUILD_INFO)) || 'unavailable';
   private readonly heading = viewChild.required<ElementRef<HTMLElement>>('heading');
 
   // The footer link that leads here sits at the bottom of the previous page, so move focus to

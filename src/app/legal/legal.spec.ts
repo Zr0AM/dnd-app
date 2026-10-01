@@ -21,7 +21,7 @@ function render(attach = false) {
     providers: [
       {
         provide: BUILD_INFO,
-        useValue: { version: '0.1.0', commit: 'a1b2c3d', date: '2026-09-30' },
+        useValue: { build: '2026-09-30_042', commit: 'a1b2c3d' },
       },
     ],
   });
@@ -80,10 +80,13 @@ describe('Legal page', () => {
     expect(text).not.toMatch(/Hasbro|affiliat|compatible|fifth edition/i);
   });
 
+  it('no longer carries the item-description label sentence', () => {
+    const text = collapse(render());
+    expect(text).not.toMatch(/Item descriptions|labelled|come from that document/i);
+  });
+
   it('shows the injected build info', () => {
-    expect(collapse(render().querySelector('.legal-build')!)).toBe(
-      'v0.1.0 · a1b2c3d · built 2026-09-30',
-    );
+    expect(collapse(render().querySelector('.legal-build')!)).toBe('2026-09-30_042 · a1b2c3d');
   });
 });
 
