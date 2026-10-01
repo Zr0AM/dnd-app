@@ -6,6 +6,11 @@
 .legal-head {
   margin-bottom: var(--space-5);
 }
+.legal-head h1 {
+  /* Hugs the text so the focus ring set on arrival is not a full-width box. */
+  width: fit-content;
+  max-width: 100%;
+}
 
 .legal-section {
   padding: var(--space-5);
