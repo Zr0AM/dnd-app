@@ -21,6 +21,9 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     itemUrl: 'https://example.com/item',
     itemVisualDesc: 'Shiny.',
     itemShopkeeperDesc: 'A fine piece of work, this one.',
+    active: 1,
+    itemDescription: null,
+    itemDescriptionSource: null,
     ...overrides,
   };
 }
@@ -279,6 +282,138 @@ describe('MarketComponent', () => {
     expand.click();
     harness.detectChanges();
     expect(el.querySelector('.market-table__details')).toBeNull();
+  });
+
+  it('expands a row to show the rules description and its source', async () => {
+    await render([
+      makeItem({
+        itemID: 8,
+        itemShopkeeperDesc: '',
+        itemVisualDesc: '',
+        itemDescription: 'While wearing this ring you have advantage on Dexterity saves.',
+        itemDescriptionSource: 'SRD 5.2.1, CC-BY-4.0',
+      }),
+    ]);
+
+    const expand: HTMLButtonElement = el.querySelector('.market-table__expand')!;
+    expect(expand.getAttribute('aria-expanded')).toBe('false');
+    expand.click();
+    harness.detectChanges();
+
+    const details = el.querySelector('.market-table__details')!;
+    expect(details.textContent).toContain('advantage on Dexterity saves');
+    expect(details.querySelector('.provenance')).toBeNull();
+    expect(details.querySelector('a')).toBeNull();
+    // Cost/type/source stay in the row; the description is not suppressed by that.
+    expect(details.querySelector('dl')).toBeNull();
+    // The toggle stays the focus target and points at the panel it controls.
+    expect(expand.getAttribute('aria-expanded')).toBe('true');
+    expect(expand.getAttribute('aria-controls')).toBe(details.querySelector('td')!.id);
+  });
+
+  it('never leaves an expanded row empty, even with no text at all', async () => {
+    await render([
+      makeItem({
+        itemID: 9,
+        itemShopkeeperDesc: '',
+        itemVisualDesc: '',
+        itemRestrictions: null,
+      }),
+    ]);
+
+    (el.querySelector('.market-table__expand') as HTMLButtonElement).click();
+    harness.detectChanges();
+
+    const details = el.querySelector('.market-table__details')!;
+    expect(details.textContent).toContain('No description available for this item yet.');
+    // The name already links to the item, so the panel adds no second link.
+    expect(details.querySelector('a')).toBeNull();
+  });
+
+  describe('D&D Beyond links', () => {
+    const BEYOND = 'https://www.dndbeyond.com/magic-items/test-item';
+    const beyondLinks = (root: ParentNode) => root.querySelectorAll(`a[href*="dndbeyond.com"]`);
+    const variants = [
+      ['with a description', { itemDescription: 'Rules.', itemDescriptionSource: 'D&D Beyond' }],
+      ['with only flavour text', {}],
+      [
+        'with nothing to show',
+        { itemShopkeeperDesc: '', itemVisualDesc: '', itemRestrictions: null },
+      ],
+    ] as const;
+
+    it.each(variants)('table row: the name is the only link %s', async (_label, overrides) => {
+      await render([makeItem({ itemID: 30, itemUrl: BEYOND, ...overrides })]);
+      (el.querySelector('.market-table__expand') as HTMLButtonElement).click();
+      harness.detectChanges();
+
+      const row = el.querySelector('.market-table__row')!;
+      const details = el.querySelector('.market-table__details')!;
+      expect(beyondLinks(row)).toHaveLength(1);
+      expect(row.querySelector('.market-table__name a')).toBe(beyondLinks(row)[0]);
+      expect(beyondLinks(details)).toHaveLength(0);
+    });
+
+    it.each(variants)('mobile card: exactly one link %s', async (_label, overrides) => {
+      await render([makeItem({ itemID: 31, itemUrl: BEYOND, ...overrides })]);
+      const card = el.querySelector('.market-card')!;
+      expect(beyondLinks(card)).toHaveLength(0);
+
+      (el.querySelector('.market-card__head') as HTMLButtonElement).click();
+      harness.detectChanges();
+      expect(beyondLinks(card)).toHaveLength(1);
+      expect(beyondLinks(el.querySelector('.market-card__body')!)).toHaveLength(1);
+    });
+  });
+
+  it('expands a mobile card to show the same description', async () => {
+    await render([
+      makeItem({
+        itemID: 10,
+        itemShopkeeperDesc: '',
+        itemVisualDesc: '',
+        itemDescription: 'First paragraph.\nSecond paragraph.',
+        itemDescriptionSource: 'D&D Beyond',
+      }),
+    ]);
+    expect(el.querySelector('.market-card__body')).toBeNull();
+
+    const head: HTMLButtonElement = el.querySelector('.market-card__head')!;
+    head.click();
+    harness.detectChanges();
+
+    const body = el.querySelector('.market-card__body')!;
+    expect(body.querySelector('.description__text')!.textContent).toBe(
+      'First paragraph.\nSecond paragraph.',
+    );
+    expect(body.querySelector('.provenance')!.textContent).toMatch(/Description:\s+D&D Beyond/);
+    expect(body.textContent).toContain('Attunement');
+    expect(head.getAttribute('aria-expanded')).toBe('true');
+    expect(head.getAttribute('aria-controls')).toBe(body.id);
+
+    head.click();
+    harness.detectChanges();
+    expect(el.querySelector('.market-card__body')).toBeNull();
+  });
+
+  it('expands a mobile card with nothing to show to a fallback, not an empty body', async () => {
+    await render([
+      makeItem({ itemID: 11, itemShopkeeperDesc: '', itemVisualDesc: '', itemRestrictions: null }),
+    ]);
+    (el.querySelector('.market-card__head') as HTMLButtonElement).click();
+    harness.detectChanges();
+    expect(el.querySelector('.market-card__body')!.textContent).toContain(
+      'No description available for this item yet.',
+    );
+  });
+
+  it('never lists rows the API marks inactive', async () => {
+    await render([
+      makeItem({ itemID: 1, itemName: 'Live Item', active: 1 }),
+      makeItem({ itemID: 2, itemName: 'Retired Item', active: 0 }),
+    ]);
+    expect(rowNames()).toEqual(['Live Item']);
+    expect(el.textContent).toContain('Showing 1–1 of 1 items');
   });
 
   it('shows an error state and retries on demand', async () => {
