@@ -6,6 +6,15 @@
     dragon’s hoard, and divide the loot without a single argument.
   </p>
 
+  <div class="hero__actions">
+    <a class="btn btn--primary" routerLink="/market">
+      <app-icon name="scroll" [size]="18" /> Browse the Market
+    </a>
+    <a class="btn" routerLink="/loot-splitter">
+      <app-icon name="coins" [size]="18" /> Split some loot
+    </a>
+  </div>
+
   @if (!catalog.error() && catalog.value().length) {
     <p class="hero__stat">
       <strong>{{ catalog.value().length | number }}</strong> magic items in the Market and counting.
