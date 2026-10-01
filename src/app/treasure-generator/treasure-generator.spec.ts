@@ -144,6 +144,28 @@ describe('TreasureGenerator', () => {
     expect(el.querySelector('app-item-details')).toBeNull();
   });
 
+  it.each([
+    ['flavour text only', 11],
+    ['an SRD description', 15],
+    ['a D&D Beyond description', 16],
+    ['nothing to show', 17],
+  ])('a dropped item with %s has exactly one D&D Beyond link', async (_label, id) => {
+    const item = items.find((i) => i.itemID === id)!;
+    await render();
+    setHoard({
+      ...KNOWN_HOARD,
+      magic: [{ key: 'item-link', table: 'A', rarity: 'Rare', item, count: 1 }],
+    });
+    const row = el.querySelector('.hoard-magic')!;
+    expect(row.querySelectorAll('a[href*="dndbeyond.com"]')).toHaveLength(0);
+
+    (el.querySelector('.hoard-magic__toggle') as HTMLButtonElement).click();
+    harness.detectChanges();
+    const links = row.querySelectorAll('a[href*="dndbeyond.com"]');
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute('href')).toBe(item.itemUrl);
+  });
+
   it('shows the rules description and provenance for a dropped item', async () => {
     const described = items.find(
       (i) => i.itemDescription && i.itemDescriptionSource === 'D&D Beyond',

@@ -302,7 +302,8 @@ describe('MarketComponent', () => {
 
     const details = el.querySelector('.market-table__details')!;
     expect(details.textContent).toContain('advantage on Dexterity saves');
-    expect(details.querySelector('a[href="/legal"]')).not.toBeNull();
+    expect(details.querySelector('.provenance')).toBeNull();
+    expect(details.querySelector('a')).toBeNull();
     // Cost/type/source stay in the row; the description is not suppressed by that.
     expect(details.querySelector('dl')).toBeNull();
     // The toggle stays the focus target and points at the panel it controls.
@@ -325,7 +326,44 @@ describe('MarketComponent', () => {
 
     const details = el.querySelector('.market-table__details')!;
     expect(details.textContent).toContain('No description available for this item yet.');
-    expect(details.querySelector('a')!.getAttribute('href')).toBe('https://example.com/item');
+    // The name already links to the item, so the panel adds no second link.
+    expect(details.querySelector('a')).toBeNull();
+  });
+
+  describe('D&D Beyond links', () => {
+    const BEYOND = 'https://www.dndbeyond.com/magic-items/test-item';
+    const beyondLinks = (root: ParentNode) => root.querySelectorAll(`a[href*="dndbeyond.com"]`);
+    const variants = [
+      ['with a description', { itemDescription: 'Rules.', itemDescriptionSource: 'D&D Beyond' }],
+      ['with only flavour text', {}],
+      [
+        'with nothing to show',
+        { itemShopkeeperDesc: '', itemVisualDesc: '', itemRestrictions: null },
+      ],
+    ] as const;
+
+    it.each(variants)('table row: the name is the only link %s', async (_label, overrides) => {
+      await render([makeItem({ itemID: 30, itemUrl: BEYOND, ...overrides })]);
+      (el.querySelector('.market-table__expand') as HTMLButtonElement).click();
+      harness.detectChanges();
+
+      const row = el.querySelector('.market-table__row')!;
+      const details = el.querySelector('.market-table__details')!;
+      expect(beyondLinks(row)).toHaveLength(1);
+      expect(row.querySelector('.market-table__name a')).toBe(beyondLinks(row)[0]);
+      expect(beyondLinks(details)).toHaveLength(0);
+    });
+
+    it.each(variants)('mobile card: exactly one link %s', async (_label, overrides) => {
+      await render([makeItem({ itemID: 31, itemUrl: BEYOND, ...overrides })]);
+      const card = el.querySelector('.market-card')!;
+      expect(beyondLinks(card)).toHaveLength(0);
+
+      (el.querySelector('.market-card__head') as HTMLButtonElement).click();
+      harness.detectChanges();
+      expect(beyondLinks(card)).toHaveLength(1);
+      expect(beyondLinks(el.querySelector('.market-card__body')!)).toHaveLength(1);
+    });
   });
 
   it('expands a mobile card to show the same description', async () => {
