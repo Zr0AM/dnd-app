@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Item } from '../../core/items/items.service';
 import { formatCostGp } from '../../core/items/item-cost';
 import { Icon } from '../icon/icon';
@@ -8,9 +7,8 @@ export type ItemDetailField = 'type' | 'cost' | 'attunement' | 'source';
 
 const ALL_FIELDS: readonly ItemDetailField[] = ['type', 'cost', 'attunement', 'source'];
 
-// `itemDescriptionSource` values the API emits; anything else is shown verbatim.
+// `itemDescriptionSource` the API emits for SRD text; it is credited site-wide, not per item.
 const SRD_SOURCE = 'SRD 5.2.1, CC-BY-4.0';
-const BEYOND_SOURCE = 'D&D Beyond';
 
 // The catalog uses placeholder strings rather than leaving fields empty.
 function present(value: string | null | undefined, placeholder: string): value is string {
@@ -20,7 +18,7 @@ function present(value: string | null | undefined, placeholder: string): value i
 @Component({
   selector: 'app-item-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, RouterLink],
+  imports: [Icon],
   template: `
     @if (fields().length) {
       <dl>
@@ -51,21 +49,8 @@ function present(value: string | null | undefined, placeholder: string): value i
     @if (description(); as text) {
       <div class="description">
         <p class="description__text">{{ text }}</p>
-        @if (item().itemDescriptionSource) {
-          <p class="provenance">
-            Description:
-            @switch (itemSource()) {
-              @case ('srd') {
-                <a routerLink="/legal">SRD 5.2.1 (CC BY 4.0)</a>
-              }
-              @case ('beyond') {
-                D&amp;D Beyond
-              }
-              @default {
-                {{ item().itemDescriptionSource }}
-              }
-            }
-          </p>
+        @if (provenance(); as label) {
+          <p class="provenance">Description: {{ label }}</p>
         }
       </div>
     }
@@ -81,10 +66,9 @@ function present(value: string | null | undefined, placeholder: string): value i
     @if (isEmpty()) {
       <p class="empty">No description available for this item yet.</p>
     }
-    @if (isEmpty() ? item().itemUrl : showLink()) {
+    @if (showLink() && item().itemUrl) {
       <a class="link" [href]="item().itemUrl" target="_blank" rel="noopener noreferrer">
-        {{ isEmpty() ? 'View on D&amp;D Beyond' : 'View full entry' }}
-        <app-icon name="external" [size]="14" />
+        View full entry <app-icon name="external" [size]="14" />
       </a>
     }
   `,
@@ -166,10 +150,12 @@ export class ItemDetails {
     const text = this.item().itemDescription;
     return text?.trim() ? text : '';
   });
-  protected readonly itemSource = computed(() => {
-    const source = this.item().itemDescriptionSource;
-    if (source === SRD_SOURCE) return 'srd';
-    return source === BEYOND_SOURCE ? 'beyond' : 'other';
+  // Provenance label under the description. SRD text is credited in the footer
+  // and on /legal, so it gets no per-item line; D&D Beyond is labelled, and any
+  // other non-empty source is shown verbatim.
+  protected readonly provenance = computed(() => {
+    const source = this.item().itemDescriptionSource?.trim() ?? '';
+    return source === SRD_SOURCE ? '' : source;
   });
   // Nothing at all to read: show a placeholder instead of an empty panel.
   protected readonly isEmpty = computed(

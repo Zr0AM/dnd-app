@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Item } from '../../core/items/items.service';
 import { ItemDetails } from './item-details';
@@ -50,7 +49,6 @@ describe('ItemDetails', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     fixture = TestBed.createComponent(ItemDetails);
     fixture.componentRef.setInput('item', ITEM);
     fixture.detectChanges();
@@ -105,16 +103,13 @@ describe('ItemDetails', () => {
   });
 
   describe('rules description', () => {
-    it('shows the SRD description with a provenance link to /legal', () => {
+    it('shows the SRD description with no provenance line and no /legal link', () => {
       render({ itemDescription: 'Grants a +1 bonus to AC.', itemDescriptionSource: SRD });
       expect(el('.description__text')!.textContent).toBe('Grants a +1 bonus to AC.');
-      const provenance = el('.provenance')!;
-      expect(provenance.textContent!.replace(/\s+/g, ' ').trim()).toBe(
-        'Description: SRD 5.2.1 (CC BY 4.0)',
-      );
-      const anchor = provenance.querySelector('a')!;
-      expect(anchor.textContent).toBe('SRD 5.2.1 (CC BY 4.0)');
-      expect(anchor.getAttribute('href')).toBe('/legal');
+      expect(el('.provenance')).toBeNull();
+      expect(el('a[href="/legal"]')).toBeNull();
+      expect(text()).not.toContain('Description:');
+      expect(text()).not.toContain('SRD 5.2.1');
     });
 
     it('labels a D&D Beyond description without a link', () => {
@@ -195,12 +190,19 @@ describe('ItemDetails', () => {
   });
 
   describe('fallback when there is nothing to show', () => {
-    it('shows a muted note and a View on D&D Beyond link instead of an empty panel', () => {
+    it('shows only a muted note instead of an empty panel, with no extra D&D Beyond link', () => {
+      fixture.componentRef.setInput('showLink', false);
       render(BARE);
-      expect(text()).toContain('No description available for this item yet.');
+      expect(el('.empty')!.textContent).toBe('No description available for this item yet.');
+      expect(el('.empty')).not.toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('a')).toHaveLength(0);
+    });
+
+    it('keeps the single full-entry link when the surface has no name link', () => {
+      render(BARE);
       const anchors = fixture.nativeElement.querySelectorAll('a');
       expect(anchors).toHaveLength(1);
-      expect(anchors[0].textContent).toContain('View on D&D Beyond');
+      expect(anchors[0].textContent).toContain('View full entry');
       expect(anchors[0].getAttribute('href')).toBe(ITEM.itemUrl);
       expect(anchors[0].getAttribute('target')).toBe('_blank');
       expect(anchors[0].getAttribute('rel')).toBe('noopener noreferrer');
@@ -216,12 +218,12 @@ describe('ItemDetails', () => {
       expect(text()).toContain('No description available for this item yet.');
     });
 
-    it('still links out when the detail link is suppressed, as the table row does', () => {
+    it('renders no link at all when the surface suppresses it, as the table row does', () => {
       fixture.componentRef.setInput('fields', []);
       fixture.componentRef.setInput('showLink', false);
       render(BARE);
       expect(text()).toContain('No description available');
-      expect(el('a')!.getAttribute('href')).toBe(ITEM.itemUrl);
+      expect(el('a')).toBeNull();
     });
 
     it('omits the link when the item has no URL', () => {
