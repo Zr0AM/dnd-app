@@ -104,7 +104,7 @@ describe('TreasureGenerator', () => {
     // CR 17+ always yields gold and platinum.
     expect(el.querySelector('.coin--gold')).not.toBeNull();
     expect(el.querySelector('.coin--platinum')).not.toBeNull();
-    expect(rollButton().textContent).toContain('Roll again');
+    expect(rollButton().textContent).toContain('Test your luck');
   });
 
   it('totals coin, gems and art but lists magic items separately', async () => {
