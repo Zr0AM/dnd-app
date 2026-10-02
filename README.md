@@ -65,9 +65,9 @@ npm run test:ci   # single run with coverage
 
 Every push to `main` deploys to Cloudflare Pages from the **Build** workflow: once lint, type
 checks, the build and the tests pass, the `deploy` job uploads that same build with
-`wrangler pages deploy`, so the live footer shows that run's number. It needs two repository
-secrets, `CLOUDFLARE_PAGES_TOKEN` (a Cloudflare API token with Pages edit permission) and
-`CLOUDFLARE_ACCT_ID`. Running the workflow manually on `main` redeploys the latest commit.
+`wrangler pages deploy`, so the live footer shows that run's number. It needs two secrets in
+the `production` environment, `CLOUDFLARE_DEPLOY_TOKEN` (a Cloudflare API token with Pages edit
+permission) and `CLOUDFLARE_ACCT_ID`. Running the workflow manually on `main` redeploys the latest commit.
 Re-running an older run fails instead of putting its older build back over a newer one, so roll
 back from the Cloudflare Pages dashboard. Cloudflare's own Git builds are switched off for the
 project, so nothing else deploys.
