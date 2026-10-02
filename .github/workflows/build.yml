@@ -117,11 +117,11 @@ jobs:
 
       - name: Deploy
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Set the CLOUDFLARE_PAGES_TOKEN and CLOUDFLARE_ACCT_ID secrets to deploy."
+            echo "::error::Set the CLOUDFLARE_DEPLOY_TOKEN and CLOUDFLARE_ACCT_ID secrets to deploy."
             exit 1
           fi
           # --no-install: use the lockfile's wrangler, never one fetched at deploy time
