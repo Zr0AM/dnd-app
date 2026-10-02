@@ -69,6 +69,7 @@ jobs:
           path: dist/dnd-app/browser
           retention-days: 1
           if-no-files-found: error
+          include-hidden-files: true
 
   deploy:
     name: Deploy to Cloudflare Pages
@@ -81,6 +82,19 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
+      # First attempts on main run in push order (workflow concurrency), but re-running an old
+      # run would put its older build back over a newer one; roll back in Cloudflare instead.
+      - name: Refuse to redeploy an old commit
+        if: github.run_attempt != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::error::main is now at ${tip:0:7}; re-running this run would deploy the older ${GITHUB_SHA:0:7} over it. Roll back from the Cloudflare Pages dashboard instead."
+            exit 1
+          fi
+
       # wrangler.toml and functions/ come from the checkout; wrangler bundles the Pages Functions
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -105,6 +119,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCT_ID }}
-        run: >-
-          npx wrangler pages deploy dist/dnd-app/browser
-          --project-name=dnd-app --branch=main --commit-hash="$GITHUB_SHA"
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Set the CLOUDFLARE_PAGES_TOKEN and CLOUDFLARE_ACCT_ID secrets to deploy."
+            exit 1
+          fi
+          # --no-install: use the lockfile's wrangler, never one fetched at deploy time
+          npx --no-install wrangler pages deploy dist/dnd-app/browser \
+            --project-name=dnd-app --branch=main --commit-hash="$GITHUB_SHA"

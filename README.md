@@ -67,8 +67,10 @@ Every push to `main` deploys to Cloudflare Pages from the **Build** workflow: on
 checks, the build and the tests pass, the `deploy` job uploads that same build with
 `wrangler pages deploy`, so the live footer shows that run's number. It needs two repository
 secrets, `CLOUDFLARE_PAGES_TOKEN` (a Cloudflare API token with Pages edit permission) and
-`CLOUDFLARE_ACCT_ID`. Re-running the workflow on `main` (`workflow_dispatch`) redeploys.
-Cloudflare's own Git builds are switched off for the project, so nothing else deploys.
+`CLOUDFLARE_ACCT_ID`. Running the workflow manually on `main` redeploys the latest commit.
+Re-running an older run fails instead of putting its older build back over a newer one, so roll
+back from the Cloudflare Pages dashboard. Cloudflare's own Git builds are switched off for the
+project, so nothing else deploys.
 
 `npm run pages:deploy` still deploys from your machine, but that build's footer shows `_dev`.
 
