@@ -155,9 +155,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
 3. **Walking skeleton** — _done._ level-3 Fighter, Barbarian and Rogue (compiled from the seeds) vs.
    goblins, with martial features (Rage, Sneak Attack, Extra Attack), the shared tactical AI, and a
    minimal GA.
-4. **Casters and effects** — _not started._ slots, concentration, AoE and control spells, healing and
-   buffs, at levels 3 and 5. The gating item for breadth: casters, the control/support metric axes,
-   the reference parties and the caster roles all depend on it.
+4. **Casters and effects** — _in progress._ Done: the spellcasting core (slots, save DC, spell attack,
+   concentration marker), authored damage spells (cantrips, Burning Hands, Scorching Ray, Guiding Bolt,
+   Fireball), the AI casting them by expected value, and Wizard/Cleric builds in the optimizer — a
+   damage caster now competes on the Pareto front. Remaining: healing, buffs and control spells; the
+   control/support metric axes; the reference parties (R6/R4/R3 with role-slot substitution); and the
+   caster roles. Healing/buffs/support are party-dependent, so they come with the reference parties.
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done for what martials exercise._ The scenario library (maps + XP-validated level-3 encounters),
    confidence intervals, the four live metric axes, reference-anchor normalization and the martial
