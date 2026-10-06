@@ -6,7 +6,7 @@ export interface BuildInfo {
   readonly commit: string;
   /**
    * Build number "<UTC date>_<GitHub Actions run>", e.g. "2026-10-01_042" ("_dev" suffix for a
-   * local build, "_000" if the run number could not be determined), or 'unknown'.
+   * build outside GitHub Actions), or 'unknown'.
    */
   readonly build: string;
 }

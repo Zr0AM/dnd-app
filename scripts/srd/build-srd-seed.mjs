@@ -1,0 +1,1350 @@
+// Builds seed SQL for the draft game-data schema (docs/db/schema-draft.sql) from the
+// 2024 SRD ("5.5e") JSON in 5e-bits/5e-srd-api (packages/5e-database/src/2024/en).
+//
+//   git clone https://github.com/5e-bits/5e-srd-api <dir>
+//   git -C <dir> checkout <PINNED_COMMIT>
+//   node scripts/srd/build-srd-seed.mjs <dir> [outDir]      (outDir: docs/db/seed)
+//
+// Every file is idempotent: parent rows are upserted on their slug or natural key, so
+// their IDs survive a re-run, and child rows are deleted and re-inserted. Foreign keys
+// are written as sub-selects on slugs, so the output never depends on generated IDs.
+// Magic items only backfill the existing Item table (matched by name), since Item
+// rows carry Market data (prices, shopkeeper text) the SRD does not have.
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const PINNED_COMMIT = '05c109ea1f6b5445960b645ded48ad9c6a8df7b0';
+const DATA_SUBDIR = 'packages/5e-database/src/2024/en';
+const SRD = 'SRD 5.2.1';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const [checkout, outArg] = process.argv.slice(2);
+if (!checkout) {
+  console.error('usage: node scripts/srd/build-srd-seed.mjs <5e-srd-api checkout> [outDir]');
+  process.exit(1);
+}
+const dataDir = join(checkout, DATA_SUBDIR);
+const outDir = resolve(outArg ?? join(root, 'docs/db/seed'));
+
+let commit = 'unknown';
+try {
+  commit = execFileSync('git', ['-C', checkout, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+} catch {
+  // Not a git checkout (e.g. a tarball); the header just says "unknown".
+}
+if (commit !== PINNED_COMMIT) {
+  console.warn(`warning: data is at ${commit}, the script was checked against ${PINNED_COMMIT}`);
+}
+
+// Every record must be a 2024 (SRD 5.2.x, "5.5e") record; the same repo also ships
+// the 2014 SRD 5.1 data, which must never be mixed in.
+function load(name) {
+  const rows = JSON.parse(readFileSync(join(dataDir, `5e-SRD-${name}.json`), 'utf8'));
+  const stray = rows.find((r) => typeof r.url === 'string' && !r.url.startsWith('/api/2024/'));
+  if (stray) throw new Error(`${name}: ${stray.url} is not a 2024 SRD record`);
+  return rows;
+}
+const warnings = [];
+const warn = (msg) => warnings.push(msg);
+
+// ---------------------------------------------------------------------------
+// SQL helpers
+
+class Raw {
+  constructor(sql) {
+    this.sql = sql;
+  }
+}
+const raw = (sql) => new Raw(sql);
+
+function lit(v) {
+  if (v instanceof Raw) return v.sql;
+  if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) {
+    return 'NULL';
+  }
+  if (typeof v === 'boolean') return v ? '1' : '0';
+  if (typeof v === 'number') return String(v);
+  return `'${String(v).replace(/'/g, "''")}'`;
+}
+
+// Sub-select for a key, e.g. ref('Spell', 'spellID', 'spellSlug', 'fireball'). Yields
+// NULL when no row matches, so NOT NULL columns fail loudly on a bad reference.
+const ref = (table, idCol, keyCol, key) =>
+  raw(`(SELECT ${idCol} FROM ${table} WHERE ${keyCol} = ${lit(key)})`);
+const refNoCase = (table, idCol, keyCol, key) =>
+  raw(`(SELECT ${idCol} FROM ${table} WHERE ${keyCol} = ${lit(key)} COLLATE NOCASE)`);
+
+const srcRef = ref('Source', 'sourceID', 'sourceAbbrev', SRD);
+
+function insert(table, row) {
+  const cols = Object.keys(row);
+  return `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map((c) => lit(row[c])).join(', ')});`;
+}
+
+function upsert(table, row, conflict) {
+  const keys = conflict.split(',').map((k) => k.trim());
+  const sets = Object.keys(row)
+    .filter((c) => !keys.includes(c))
+    .map((c) => `${c} = excluded.${c}`);
+  const action = sets.length ? `DO UPDATE SET ${sets.join(', ')}` : 'DO NOTHING';
+  return `${insert(table, row).slice(0, -1)}\n  ON CONFLICT (${conflict}) ${action};`;
+}
+
+const text = (v) => (Array.isArray(v) ? v.join('\n') : (v ?? null));
+const titleCase = (s) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+const intOf = (s) => {
+  const m = /-?\d+/.exec(String(s ?? ''));
+  return m ? Number(m[0]) : null;
+};
+
+// "2d4+4", "2d4 + 4", "14d6", "1" → { count, sides, bonus, avg }
+function parseDice(s) {
+  const m = /^\s*(\d+)(?:\s*d\s*(\d+))?\s*(?:([+-])\s*(\d+))?\s*$/.exec(String(s ?? ''));
+  if (!m) return null;
+  const bonus = m[4] ? Number(m[4]) * (m[3] === '-' ? -1 : 1) : 0;
+  if (!m[2])
+    return { count: null, sides: null, bonus: null, flat: Number(m[1]), avg: Number(m[1]) };
+  const count = Number(m[1]);
+  const sides = Number(m[2]);
+  return { count, sides, bonus, flat: null, avg: Math.floor((count * (sides + 1)) / 2) + bonus };
+}
+
+const COST_CP = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 };
+const costCp = (cost) => (cost ? cost.quantity * (COST_CP[cost.unit] ?? NaN) : null);
+
+function header(title) {
+  return [
+    `-- ${title}`,
+    `-- Generated by scripts/srd/build-srd-seed.mjs from 5e-bits/5e-srd-api @ ${commit}`,
+    `-- (${DATA_SUBDIR}). Do not edit by hand; re-run the script instead.`,
+    '--',
+    '-- This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by',
+    '-- Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is',
+    '-- licensed under the Creative Commons Attribution 4.0 International License, available at',
+    '-- https://creativecommons.org/licenses/by/4.0/legalcode.',
+    '',
+  ];
+}
+
+const files = [];
+function emit(name, title, lines) {
+  files.push({ name, body: [...header(title), ...lines, ''].join('\n') });
+}
+
+// ---------------------------------------------------------------------------
+// Data
+
+const abilities = load('Ability-Scores');
+const skills = load('Skills');
+const damageTypes = load('Damage-Types');
+const conditions = load('Conditions');
+const alignments = load('Alignments');
+const languages = load('Languages');
+const schools = load('Magic-Schools');
+const weaponProps = load('Weapon-Properties');
+const masteries = load('Weapon-Mastery-Properties');
+const equipment = load('Equipment');
+const classes = load('Classes');
+const levels = load('Levels');
+const features = load('Features');
+const subclasses = load('Subclasses');
+const spells = load('Spells');
+const feats = load('Feats');
+const species = load('Species');
+const subspecies = load('Subspecies');
+const traits = load('Traits');
+const backgrounds = load('Backgrounds');
+const monsters = load('Monsters');
+const magicItems = load('Magic-Items');
+const poisons = load('Poisons');
+
+const abilityCode = (index) => index.toUpperCase(); // 'dex' → 'DEX'
+const abilityRef = (index) => ref('Ability', 'abilityID', 'abilityCode', abilityCode(index));
+const damageRef = (name) => refNoCase('DamageType', 'damageTypeID', 'damageTypeName', name);
+const equipmentSlugs = new Set(equipment.map((e) => e.index));
+const spellSlugs = new Set(spells.map((s) => s.index));
+const damageNames = damageTypes.map((d) => d.name);
+
+// ---------------------------------------------------------------------------
+// 01 Reference tables
+
+const SIZES = [
+  ['Tiny', 2.5, 4],
+  ['Small', 5, 6],
+  ['Medium', 5, 8],
+  ['Large', 10, 10],
+  ['Huge', 15, 12],
+  ['Gargantuan', 20, 20],
+];
+const CREATURE_TYPES = [
+  'Aberration',
+  'Beast',
+  'Celestial',
+  'Construct',
+  'Dragon',
+  'Elemental',
+  'Fey',
+  'Fiend',
+  'Giant',
+  'Humanoid',
+  'Monstrosity',
+  'Ooze',
+  'Plant',
+  'Undead',
+];
+// Same values as DENOMS in src/app/core/coins/coins.ts, plus electrum.
+const DENOMS = [
+  ['pp', 'platinum', 'Platinum', 1000],
+  ['gp', 'gold', 'Gold', 100],
+  ['ep', 'electrum', 'Electrum', 50],
+  ['sp', 'silver', 'Silver', 10],
+  ['cp', 'copper', 'Copper', 1],
+];
+// SRD 5.2.1 p. 205–206: Magic Item Rarities and Values; Crafting Time and Cost.
+const RARITIES = [
+  ['Common', 100, 5, 50],
+  ['Uncommon', 400, 10, 200],
+  ['Rare', 4000, 50, 2000],
+  ['Very Rare', 40000, 125, 20000],
+  ['Legendary', 200000, 250, 100000],
+  ['Artifact', null, null, null],
+];
+const CATEGORIES = [
+  'Armor',
+  'Potion',
+  'Ring',
+  'Rod',
+  'Scroll',
+  'Staff',
+  'Wand',
+  'Weapon',
+  'Wondrous Item',
+];
+// SRD 5.2.1 p. 254–255 (XP by CR). CR 0 is "0 or 10"; 10 is stored.
+const CR_XP = {
+  0: 10,
+  0.125: 25,
+  0.25: 50,
+  0.5: 100,
+  1: 200,
+  2: 450,
+  3: 700,
+  4: 1100,
+  5: 1800,
+  6: 2300,
+  7: 2900,
+  8: 3900,
+  9: 5000,
+  10: 5900,
+  11: 7200,
+  12: 8400,
+  13: 10000,
+  14: 11500,
+  15: 13000,
+  16: 15000,
+  17: 18000,
+  18: 20000,
+  19: 22000,
+  20: 25000,
+  21: 33000,
+  22: 41000,
+  23: 50000,
+  24: 62000,
+  25: 75000,
+  26: 90000,
+  27: 105000,
+  28: 120000,
+  29: 135000,
+  30: 155000,
+};
+// The SRD itself prints these XP values; Monster rows don't store XP, so nothing changes.
+const KNOWN_XP_QUIRKS = new Set(['archmage']); // CR 12 printed as XP 8,000 (table: 8,400)
+const crPb = (cr) => (cr < 5 ? 2 : Math.min(9, Math.floor((cr - 1) / 4) + 2));
+const crLabel = (cr) => ({ 0.125: '1/8', 0.25: '1/4', 0.5: '1/2' })[cr] ?? String(cr);
+// SRD 5.2.1 p. 23: Character Advancement.
+const LEVEL_XP = [
+  0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000,
+  195000, 225000, 265000, 305000, 355000,
+];
+
+for (const m of monsters) {
+  const cr = m.challenge_rating;
+  if (!(cr in CR_XP)) warn(`monster ${m.index}: unknown CR ${cr}`);
+  else if (m.xp !== CR_XP[cr] && !(cr === 0 && m.xp === 0) && !KNOWN_XP_QUIRKS.has(m.index)) {
+    warn(`monster ${m.index}: XP ${m.xp} differs from the CR ${cr} table (${CR_XP[cr]})`);
+  }
+  if (m.proficiency_bonus !== crPb(cr)) warn(`monster ${m.index}: PB differs from CR table`);
+}
+
+{
+  const L = [];
+  L.push(
+    upsert(
+      'Source',
+      {
+        sourceName: 'System Reference Document 5.2.1',
+        sourceAbbrev: SRD,
+        sourceLicense: 'CC-BY-4.0',
+        sourceLicenseUrl: 'https://creativecommons.org/licenses/by/4.0/legalcode',
+        sourceAttribution:
+          'This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.',
+        sourceUrl: 'https://www.dndbeyond.com/srd',
+      },
+      'sourceAbbrev',
+    ),
+  );
+  abilities.forEach((a, i) =>
+    L.push(
+      upsert(
+        'Ability',
+        { abilityCode: abilityCode(a.index), abilityName: a.full_name, sortOrder: i + 1 },
+        'abilityCode',
+      ),
+    ),
+  );
+  for (const s of skills) {
+    L.push(
+      upsert(
+        'Skill',
+        {
+          skillName: s.name,
+          skillSlug: s.index,
+          abilityID: abilityRef(s.ability_score.index),
+          skillDescription: text(s.description),
+        },
+        'skillSlug',
+      ),
+    );
+  }
+  for (const d of damageTypes) {
+    L.push(
+      upsert(
+        'DamageType',
+        { damageTypeName: d.name, damageTypeDescription: text(d.description) },
+        'damageTypeName',
+      ),
+    );
+  }
+  for (const c of conditions) {
+    L.push(
+      upsert(
+        'Condition',
+        {
+          conditionName: c.name,
+          conditionSlug: c.index,
+          conditionDescription: text(c.description),
+          sourceID: srcRef,
+        },
+        'conditionSlug',
+      ),
+    );
+  }
+  SIZES.forEach(([name, space, hitDie], i) =>
+    L.push(
+      upsert(
+        'CreatureSize',
+        { sizeName: name, sizeSpaceFt: space, sizeHitDie: hitDie, sortOrder: i + 1 },
+        'sizeName',
+      ),
+    ),
+  );
+  for (const t of CREATURE_TYPES) {
+    L.push(upsert('CreatureType', { creatureTypeName: t }, 'creatureTypeName'));
+  }
+  const alignmentRows = alignments.map((a) => [a.name, a.abbreviation]);
+  if (!alignmentRows.some(([n]) => n.toLowerCase() === 'unaligned')) {
+    alignmentRows.push(['Unaligned', 'U']);
+  }
+  for (const [name, abbrev] of alignmentRows) {
+    L.push(upsert('Alignment', { alignmentName: name, alignmentAbbrev: abbrev }, 'alignmentName'));
+  }
+  for (const l of languages) {
+    L.push(
+      upsert(
+        'Language',
+        {
+          languageName: l.name,
+          languageKind: l.is_rare ? 'rare' : 'standard',
+          languageOrigin: l.note || null,
+          sourceID: srcRef,
+        },
+        'languageName',
+      ),
+    );
+  }
+  DENOMS.forEach(([key, name, label, valueCp], i) =>
+    L.push(
+      upsert(
+        'Denomination',
+        {
+          denomKey: key,
+          denomName: name,
+          denomLabel: label,
+          valueCp,
+          sortOrder: i + 1,
+          active: key === 'ep' ? 0 : 1, // the app doesn't handle electrum yet
+        },
+        'denomKey',
+      ),
+    ),
+  );
+  RARITIES.forEach(([name, valueGp, craftDays, craftCostGp], i) =>
+    L.push(
+      upsert(
+        'Rarity',
+        {
+          rarityName: name,
+          raritySlug: name.toLowerCase().replace(/\s+/g, '-'),
+          sortOrder: i + 1,
+          valueGp,
+          craftDays,
+          craftCostGp,
+        },
+        'rarityName',
+      ),
+    ),
+  );
+  for (const name of CATEGORIES) {
+    L.push(
+      upsert(
+        'ItemCategory',
+        { categoryName: name, categorySlug: name.toLowerCase().replace(/\s+/g, '-') },
+        'categoryName',
+      ),
+    );
+  }
+  for (const s of schools) {
+    L.push(upsert('MagicSchool', { schoolName: s.name }, 'schoolName'));
+  }
+  for (const [cr, xp] of Object.entries(CR_XP)) {
+    const v = Number(cr);
+    L.push(
+      upsert(
+        'ChallengeRating',
+        { crValue: v, crLabel: crLabel(v), xp, proficiencyBonus: crPb(v) },
+        'crValue',
+      ),
+    );
+  }
+  LEVEL_XP.forEach((xp, i) =>
+    L.push(
+      upsert(
+        'CharacterLevel',
+        { level: i + 1, xpRequired: xp, proficiencyBonus: Math.floor(i / 4) + 2 },
+        'level',
+      ),
+    ),
+  );
+  for (const p of weaponProps) {
+    L.push(
+      upsert(
+        'WeaponProperty',
+        { weaponPropertyName: p.name, weaponPropertyDescription: text(p.description) },
+        'weaponPropertyName',
+      ),
+    );
+  }
+  for (const m of masteries) {
+    L.push(
+      upsert(
+        'WeaponMastery',
+        { masteryName: m.name, masteryDescription: text(m.description) },
+        'masteryName',
+      ),
+    );
+  }
+  for (const p of poisons) {
+    L.push(
+      upsert(
+        'Poison',
+        {
+          poisonName: p.name,
+          poisonType: p.type.toLowerCase(),
+          costCp: costCp(p.cost),
+          poisonDescription: text(p.description),
+          sourceID: srcRef,
+        },
+        'poisonName',
+      ),
+    );
+  }
+  emit('01-reference.sql', 'Reference tables, weapon properties, masteries and poisons', L);
+}
+
+// ---------------------------------------------------------------------------
+// 02 Equipment
+
+{
+  const L = [];
+  const eqRef = (slug) => ref('Equipment', 'equipmentID', 'equipmentSlug', slug);
+  const srdEquipment = `SELECT equipmentID FROM Equipment WHERE sourceID = ${srcRef.sql}`;
+  for (const t of ['EquipmentContent', 'Weapon', 'Armor', 'Tool']) {
+    const col = t === 'EquipmentContent' ? 'containerID' : 'equipmentID';
+    L.push(`DELETE FROM ${t} WHERE ${col} IN (${srdEquipment});`);
+  }
+
+  const cats = (e) => new Set(e.equipment_categories.map((c) => c.index));
+  function kind(c) {
+    if (c.has('weapons')) return 'weapon';
+    if (c.has('armor')) return 'armor';
+    if (c.has('tools')) return 'tool';
+    if (c.has('ammunition')) return 'ammunition';
+    if (c.has('equipment-packs')) return 'pack';
+    if (c.has('arcane-foci') || c.has('druidic-foci') || c.has('holy-symbols')) return 'focus';
+    return 'gear';
+  }
+
+  for (const e of equipment) {
+    L.push(
+      upsert(
+        'Equipment',
+        {
+          equipmentName: e.name,
+          equipmentSlug: e.index,
+          equipmentKind: kind(cats(e)),
+          costCp: costCp(e.cost),
+          weightLb: e.weight ?? null,
+          equipmentDescription: text(e.description) ?? text(e.notes),
+          sourceID: srcRef,
+        },
+        'equipmentSlug',
+      ),
+    );
+  }
+
+  for (const e of equipment) {
+    const c = cats(e);
+    if (e.damage) {
+      const d = parseDice(e.damage.damage_dice);
+      const v = e.two_handed_damage ? parseDice(e.two_handed_damage.damage_dice) : null;
+      const ranged = c.has('ranged-weapons');
+      const range = ranged ? e.range : e.throw_range;
+      L.push(
+        insert('Weapon', {
+          equipmentID: eqRef(e.index),
+          weaponCategory: c.has('martial-weapons') ? 'martial' : 'simple',
+          weaponRange: ranged ? 'ranged' : 'melee',
+          damageDiceCount: d.count,
+          damageDiceSides: d.sides,
+          damageFlat: d.flat,
+          damageTypeID: damageRef(e.damage.damage_type.name),
+          versatileDiceCount: v?.count,
+          versatileDiceSides: v?.sides,
+          rangeNormalFt: range?.normal ?? null,
+          rangeLongFt: range?.long ?? null,
+          ammunitionID: e.ammunition ? eqRef(e.ammunition.index) : null,
+          masteryID: ref('WeaponMastery', 'masteryID', 'masteryName', e.mastery.name),
+        }),
+      );
+      for (const p of e.properties ?? []) {
+        L.push(
+          insert('WeaponPropertyLink', {
+            equipmentID: eqRef(e.index),
+            weaponPropertyID: ref(
+              'WeaponProperty',
+              'weaponPropertyID',
+              'weaponPropertyName',
+              p.name,
+            ),
+          }),
+        );
+      }
+    }
+    if (e.armor_class) {
+      const category = ['light', 'medium', 'heavy'].find((k) => c.has(`${k}-armor`)) ?? 'shield';
+      L.push(
+        insert('Armor', {
+          equipmentID: eqRef(e.index),
+          armorCategory: category,
+          armorBaseAc: e.armor_class.base,
+          armorAddsDex: Boolean(e.armor_class.dex_bonus),
+          armorDexCap: e.armor_class.max_bonus ?? null,
+          armorStrengthReq: e.str_minimum || null,
+          armorStealthDisadv: Boolean(e.stealth_disadvantage),
+          // Shields take an Action to don or doff, stored as 0 minutes.
+          armorDonMinutes: e.don_time ? intOf(e.don_time) : 0,
+          armorDoffMinutes: e.doff_time ? intOf(e.doff_time) : 0,
+        }),
+      );
+    }
+    if (c.has('tools') && e.ability) {
+      const toolCategory = c.has('artisans-tools')
+        ? 'artisan'
+        : c.has('gaming-sets')
+          ? 'gaming'
+          : c.has('musical-instruments')
+            ? 'musical'
+            : 'other';
+      L.push(
+        insert('Tool', {
+          equipmentID: eqRef(e.index),
+          toolCategory,
+          abilityID: abilityRef(e.ability.index),
+          toolUtilize:
+            (e.utilize ?? [])
+              .map((u) => (u.dc ? `${u.name} (DC ${u.dc.dc_value})` : u.name))
+              .join('; ') || null,
+          toolCraft: (e.craft ?? []).map((x) => x.name).join(', ') || null,
+        }),
+      );
+    }
+    for (const item of e.contents ?? []) {
+      if (!equipmentSlugs.has(item.item.index)) {
+        warn(`pack ${e.index}: no equipment ${item.item.index}`);
+        continue;
+      }
+      L.push(
+        insert('EquipmentContent', {
+          containerID: eqRef(e.index),
+          contentID: eqRef(item.item.index),
+          quantity: item.quantity ?? 1,
+        }),
+      );
+    }
+  }
+  emit('02-equipment.sql', 'Equipment, weapons, armor, tools and pack contents', L);
+}
+
+// ---------------------------------------------------------------------------
+// 03 Classes
+
+const classRef = (slug) => ref('Class', 'classID', 'classSlug', slug);
+const CASTER = { paladin: 'half', ranger: 'half', warlock: 'pact' };
+
+{
+  const L = [];
+  const srdClasses = `SELECT classID FROM Class WHERE sourceID = ${srcRef.sql}`;
+  for (const t of [
+    'ClassPrimaryAbility',
+    'ClassSavingThrow',
+    'ClassSkillOption',
+    'ClassProficiency',
+    'ClassLevelValue',
+    'ClassSpellSlot',
+  ]) {
+    L.push(`DELETE FROM ${t} WHERE classID IN (${srdClasses});`);
+  }
+
+  for (const c of classes) {
+    const skillChoice = c.proficiency_choices.find((p) =>
+      p.from?.options?.some((o) => o.item?.index?.startsWith('skill-')),
+    );
+    L.push(
+      upsert(
+        'Class',
+        {
+          className: c.name,
+          classSlug: c.index,
+          classHitDieSides: c.hit_die,
+          classPrimaryMode: / or /i.test(c.primary_ability.desc) ? 'any' : 'all',
+          classSkillChoices: skillChoice?.choose ?? 0,
+          classCasterType: c.spellcasting ? (CASTER[c.index] ?? 'full') : 'none',
+          spellcastingAbilityID: c.spellcasting
+            ? abilityRef(c.spellcasting.spellcasting_ability.index)
+            : null,
+          classStartingEquipmentText: c.starting_equipment_options?.[0]?.desc ?? null,
+          sourceID: srcRef,
+        },
+        'classSlug',
+      ),
+    );
+    // Fighter's "Strength or Dexterity" is an option set instead of a list.
+    const primary =
+      c.primary_ability.ability_scores ??
+      c.primary_ability.ability_score_options.from.options.map((o) => o.item);
+    for (const a of primary) {
+      L.push(
+        insert('ClassPrimaryAbility', {
+          classID: classRef(c.index),
+          abilityID: abilityRef(a.index),
+        }),
+      );
+    }
+    for (const a of c.saving_throws) {
+      L.push(
+        insert('ClassSavingThrow', { classID: classRef(c.index), abilityID: abilityRef(a.index) }),
+      );
+    }
+    for (const o of skillChoice?.from.options ?? []) {
+      L.push(
+        insert('ClassSkillOption', {
+          classID: classRef(c.index),
+          skillID: ref('Skill', 'skillID', 'skillSlug', o.item.index.replace(/^skill-/, '')),
+        }),
+      );
+    }
+    const multiclass = new Set((c.multi_classing?.proficiencies ?? []).map((p) => p.index));
+    for (const p of c.proficiencies) {
+      if (p.index.startsWith('saving-throw-') || p.index.startsWith('skill-')) continue;
+      const kind = /armor|shields/.test(p.index)
+        ? 'armor'
+        : /weapons$/.test(p.index) || equipment.some((e) => e.index === p.index && e.damage)
+          ? 'weapon'
+          : 'tool';
+      const slug = p.index.replace(/^tool-/, '');
+      L.push(
+        insert('ClassProficiency', {
+          classID: classRef(c.index),
+          proficiencyKind: kind,
+          proficiencyText: p.name.replace(/^Tool: /, ''),
+          equipmentID: equipmentSlugs.has(slug)
+            ? ref('Equipment', 'equipmentID', 'equipmentSlug', slug)
+            : null,
+          grantedOnMulticlass: multiclass.has(p.index),
+        }),
+      );
+    }
+  }
+
+  // Class level tables. Subclass levels only list features.
+  for (const lv of levels.filter((x) => !x.subclass)) {
+    const classID = classRef(lv.class.index);
+    const columns = { ...(lv.class_specific ?? {}) };
+    if (lv.spellcasting) {
+      if (lv.spellcasting.cantrips_known) columns.cantrips_known = lv.spellcasting.cantrips_known;
+      if (lv.spellcasting.prepared_spells) {
+        columns.prepared_spells = lv.spellcasting.prepared_spells;
+      }
+    }
+    Object.entries(columns).forEach(([key, value], i) => {
+      const shown =
+        value && typeof value === 'object'
+          ? 'dice_count' in value
+            ? `${value.dice_count}d${value.dice_value}`
+            : JSON.stringify(value)
+          : key.endsWith('_die')
+            ? `d${value}` // martial_arts_die: 6 → 'd6'
+            : String(value);
+      L.push(
+        insert('ClassLevelValue', {
+          classID,
+          level: lv.level,
+          columnKey: key.replace(/_([a-z])/g, (_, ch) => ch.toUpperCase()),
+          columnLabel: titleCase(key.replace(/_/g, ' ')),
+          columnValue: shown,
+          sortOrder: i + 1,
+        }),
+      );
+    });
+    for (let s = 1; s <= 9; s++) {
+      const slots = lv.spellcasting?.[`spell_slots_level_${s}`];
+      if (slots) {
+        L.push(insert('ClassSpellSlot', { classID, level: lv.level, spellLevel: s, slots }));
+      }
+    }
+  }
+
+  for (const s of subclasses) {
+    L.push(
+      upsert(
+        'Subclass',
+        {
+          classID: classRef(s.class.index),
+          subclassName: s.name,
+          subclassSlug: s.index,
+          subclassDescription: text(s.description) ?? text(s.summary),
+          sourceID: srcRef,
+        },
+        'subclassSlug',
+      ),
+    );
+  }
+
+  // Order features as the level tables list them.
+  const order = new Map();
+  for (const lv of levels) lv.features.forEach((f, i) => order.set(f.index, i + 1));
+  for (const f of features) {
+    const level = intOf(/(\d+)$/.exec(f.level?.index ?? f.level?.name ?? '')?.[1] ?? f.level);
+    L.push(
+      upsert(
+        'ClassFeature',
+        {
+          featureSlug: f.index,
+          classID: classRef(f.class.index),
+          subclassID: f.subclass
+            ? ref('Subclass', 'subclassID', 'subclassSlug', f.subclass.index)
+            : null,
+          level,
+          featureName: f.name,
+          featureDescription: text(f.description) ?? '',
+          sortOrder: order.get(f.index) ?? 99,
+        },
+        'featureSlug',
+      ),
+    );
+  }
+  emit('03-classes.sql', 'Classes, level tables, spell slots, subclasses and features', L);
+}
+
+// ---------------------------------------------------------------------------
+// 04 Spells
+
+{
+  const L = [];
+  L.push(
+    `DELETE FROM SpellClass WHERE spellID IN (SELECT spellID FROM Spell WHERE sourceID = ${srcRef.sql});`,
+  );
+  for (const s of spells) {
+    const material = s.material ?? null;
+    const cost = material ? /worth\s+(?:at least\s+)?([\d,]+)\+?\s*GP/i.exec(material) : null;
+    L.push(
+      upsert(
+        'Spell',
+        {
+          spellName: s.name,
+          spellSlug: s.index,
+          spellLevel: s.level,
+          schoolID: ref('MagicSchool', 'schoolID', 'schoolName', s.school.name),
+          spellCastingTime: s.casting_time,
+          spellIsRitual: Boolean(s.ritual),
+          spellRange: s.range,
+          spellVerbal: s.components.includes('V'),
+          spellSomatic: s.components.includes('S'),
+          spellMaterial: s.components.includes('M') ? (material ?? '') : null,
+          spellMaterialCostGp: cost ? Number(cost[1].replace(/,/g, '')) : null,
+          spellMaterialConsumed: Boolean(material && /consume/i.test(material)),
+          spellDuration: s.duration,
+          spellConcentration: Boolean(s.concentration),
+          spellDescription: text(s.description),
+          spellHigherLevel: text(s.higher_level),
+          sourceID: srcRef,
+        },
+        'spellSlug',
+      ),
+    );
+    for (const c of s.classes) {
+      L.push(
+        insert('SpellClass', {
+          spellID: ref('Spell', 'spellID', 'spellSlug', s.index),
+          classID: classRef(c.index),
+        }),
+      );
+    }
+  }
+  emit('04-spells.sql', 'Spells and class spell lists', L);
+}
+
+// ---------------------------------------------------------------------------
+// 05 Origins
+
+{
+  const L = [];
+  const speciesRef = (slug) => ref('Species', 'speciesID', 'speciesSlug', slug);
+  const srdSpecies = `SELECT speciesID FROM Species WHERE sourceID = ${srcRef.sql}`;
+  const srdBackgrounds = `SELECT backgroundID FROM Background WHERE sourceID = ${srcRef.sql}`;
+  L.push(`DELETE FROM SpeciesSize WHERE speciesID IN (${srdSpecies});`);
+  L.push(`DELETE FROM SpeciesTrait WHERE speciesID IN (${srdSpecies});`);
+  L.push(`DELETE FROM BackgroundAbility WHERE backgroundID IN (${srdBackgrounds});`);
+  L.push(`DELETE FROM BackgroundSkill WHERE backgroundID IN (${srdBackgrounds});`);
+
+  const FEAT_CATEGORY = {
+    origin: 'origin',
+    general: 'general',
+    'fighting-style': 'fighting_style',
+    'epic-boon': 'epic_boon',
+  };
+  for (const f of feats) {
+    const minLevel = f.prerequisites?.minimum_level ?? null;
+    const prereq = [minLevel ? `Level ${minLevel}+` : null, f.prerequisite_options?.desc]
+      .filter(Boolean)
+      .join(', ');
+    L.push(
+      upsert(
+        'Feat',
+        {
+          featName: f.name,
+          featSlug: f.index,
+          featCategory: FEAT_CATEGORY[f.type],
+          featPrereq: prereq || null,
+          featMinLevel: minLevel,
+          featRepeatable: Boolean(f.repeatable),
+          featDescription: text(f.description),
+          sourceID: srcRef,
+        },
+        'featSlug',
+      ),
+    );
+  }
+
+  const sizeNames = SIZES.map(([n]) => n);
+  const sizesIn = (s) => sizeNames.filter((n) => new RegExp(`\\b${n}\\b`, 'i').test(s));
+  // The dataset lists Human as Medium only; SRD 5.2.1 p. 86 says "Medium … or Small".
+  const SIZE_OVERRIDES = { human: 'Small Medium' };
+  for (const s of species) {
+    L.push(
+      upsert(
+        'Species',
+        {
+          speciesName: s.name,
+          speciesSlug: s.index,
+          creatureTypeID: refNoCase('CreatureType', 'creatureTypeID', 'creatureTypeName', s.type),
+          speciesSpeedFt: intOf(s.speed),
+          sourceID: srcRef,
+        },
+        'speciesSlug',
+      ),
+    );
+    // Human has an option set ("Small or Medium") instead of a single size.
+    const sizeText =
+      SIZE_OVERRIDES[s.index] ?? JSON.stringify([s.size ?? null, s.size_options ?? null]);
+    for (const size of sizesIn(sizeText)) {
+      L.push(
+        insert('SpeciesSize', {
+          speciesID: speciesRef(s.index),
+          sizeID: ref('CreatureSize', 'sizeID', 'sizeName', size),
+        }),
+      );
+    }
+  }
+
+  // Traits that belong to a subspecies are folded into its SpeciesOption row.
+  const traitByIndex = new Map(traits.map((t) => [t.index, t]));
+  for (const t of traits.filter((t) => !t.subspecies)) {
+    t.species.forEach((sp) =>
+      L.push(
+        insert('SpeciesTrait', {
+          speciesID: speciesRef(sp.index),
+          speciesTraitName: t.name,
+          speciesTraitDescription: text(t.description),
+          sortOrder: traits.indexOf(t) + 1,
+        }),
+      ),
+    );
+  }
+  for (const o of subspecies) {
+    const [group, name] = o.name.includes(': ') ? o.name.split(': ') : ['Lineage', o.name];
+    const optionTraits = o.traits.map((r) => ({ ...r, trait: traitByIndex.get(r.index) }));
+    L.push(
+      upsert(
+        'SpeciesOption',
+        {
+          speciesOptionSlug: o.index,
+          speciesID: speciesRef(o.species.index),
+          speciesOptionGroup: group,
+          speciesOptionName: name,
+          damageTypeID: o.damage_type ? damageRef(o.damage_type.name) : null,
+          speciesOptionDescription: optionTraits
+            .map(
+              (r) =>
+                `${r.name}${r.level > 1 ? ` (level ${r.level})` : ''}. ${text(r.trait?.description) ?? ''}`,
+            )
+            .join('\n'),
+          speciesOptionDetails: JSON.stringify({
+            traits: optionTraits.map((r) => ({ slug: r.index, level: r.level ?? 1 })),
+          }),
+        },
+        'speciesOptionSlug',
+      ),
+    );
+  }
+
+  for (const b of backgrounds) {
+    const tool = b.proficiencies.find((p) => p.index.startsWith('tool-'));
+    const toolSlug = tool?.index.replace(/^tool-/, '');
+    const toolChoice = (b.proficiency_choices ?? [])[0]?.desc;
+    L.push(
+      upsert(
+        'Background',
+        {
+          backgroundName: b.name,
+          backgroundSlug: b.index,
+          featID: ref('Feat', 'featID', 'featSlug', b.feat.index),
+          backgroundFeatNote: b.feat.note || null,
+          backgroundToolText: tool ? tool.name.replace(/^Tool: /, '') : (toolChoice ?? null),
+          toolEquipmentID:
+            toolSlug && equipmentSlugs.has(toolSlug)
+              ? ref('Equipment', 'equipmentID', 'equipmentSlug', toolSlug)
+              : null,
+          backgroundEquipmentText: b.equipment_options?.[0]?.desc ?? null,
+          sourceID: srcRef,
+        },
+        'backgroundSlug',
+      ),
+    );
+    const bRef = ref('Background', 'backgroundID', 'backgroundSlug', b.index);
+    for (const a of b.ability_scores) {
+      L.push(insert('BackgroundAbility', { backgroundID: bRef, abilityID: abilityRef(a.index) }));
+    }
+    for (const p of b.proficiencies.filter((p) => p.index.startsWith('skill-'))) {
+      L.push(
+        insert('BackgroundSkill', {
+          backgroundID: bRef,
+          skillID: ref('Skill', 'skillID', 'skillSlug', p.index.replace(/^skill-/, '')),
+        }),
+      );
+    }
+  }
+  emit('05-origins.sql', 'Feats, species, species options and backgrounds', L);
+}
+
+// ---------------------------------------------------------------------------
+// 06 Monsters
+
+{
+  const L = [];
+  const srdMonsters = `SELECT monsterID FROM Monster WHERE sourceID = ${srcRef.sql}`;
+  for (const t of [
+    'MonsterSize',
+    'MonsterSpeed',
+    'MonsterSave',
+    'MonsterSkill',
+    'MonsterSense',
+    'MonsterDefense',
+    'MonsterLanguage',
+    'MonsterGear',
+    'MonsterAction', // cascades to MonsterActionDamage and MonsterSpell
+  ]) {
+    L.push(`DELETE FROM ${t} WHERE monsterID IN (${srdMonsters});`);
+  }
+
+  // Match names ignoring case, curly apostrophes and hyphens ("Half Plate" = "Half-Plate").
+  const norm = (s) => s.toLowerCase().replace(/[’‘]/g, "'").replace(/-/g, ' ');
+  const languageNames = new Map(languages.map((l) => [norm(l.name), l.name]));
+  const languageByLength = [...languageNames.keys()].sort((a, b) => b.length - a.length);
+  const equipmentByName = new Map(equipment.map((e) => [norm(e.name), e.index]));
+  const sizeNames = SIZES.map(([n]) => n);
+  const SECTIONS = [
+    ['special_abilities', 'trait'],
+    ['actions', 'action'],
+    ['bonus_actions', 'bonus_action'],
+    ['reactions', 'reaction'],
+    ['legendary_actions', 'legendary_action'],
+  ];
+
+  function gearSlug(name) {
+    const n = norm(name);
+    for (const candidate of [n, n.replace(/es$/, ''), n.replace(/s$/, '')]) {
+      if (equipmentByName.has(candidate)) return equipmentByName.get(candidate);
+    }
+    return null;
+  }
+
+  for (const m of monsters) {
+    const mRef = ref('Monster', 'monsterID', 'monsterSlug', m.index);
+    const type = CREATURE_TYPES.find((t) => new RegExp(`\\b${t}`, 'i').test(m.type));
+    if (!type) warn(`monster ${m.index}: unknown type "${m.type}"`);
+    const hp = parseDice(m.hit_points_roll);
+    const ac = m.armor_class[0];
+    const telepathy = /telepathy (\d+) ft/i.exec(m.languages ?? '');
+    L.push(
+      upsert(
+        'Monster',
+        {
+          monsterName: m.name,
+          monsterSlug: m.index,
+          creatureTypeID: ref('CreatureType', 'creatureTypeID', 'creatureTypeName', type),
+          monsterTypeTags: type && m.type.toLowerCase() !== type.toLowerCase() ? m.type : null,
+          monsterAlignment: titleCase(m.alignment),
+          alignmentID: refNoCase('Alignment', 'alignmentID', 'alignmentName', m.alignment),
+          monsterAc: ac.value,
+          monsterAcNote: ac.armor ? ac.armor.map((a) => a.name).join(', ') : (ac.desc ?? null),
+          monsterHpAvg: m.hit_points,
+          monsterHpDiceCount: hp?.count,
+          monsterHpDiceSides: hp?.sides,
+          monsterHpBonus: hp?.bonus,
+          monsterInitBonus: null,
+          monsterStr: m.strength,
+          monsterDex: m.dexterity,
+          monsterCon: m.constitution,
+          monsterInt: m.intelligence,
+          monsterWis: m.wisdom,
+          monsterCha: m.charisma,
+          monsterPassivePerception: m.senses.passive_perception,
+          monsterLanguages: m.languages ?? null,
+          monsterTelepathyFt: telepathy ? Number(telepathy[1]) : null,
+          crValue: m.challenge_rating,
+          monsterXpInLair: m.xp_in_lair ?? null,
+          sourceID: srcRef,
+        },
+        'monsterSlug',
+      ),
+    );
+
+    for (const size of sizeNames.filter((n) => new RegExp(`\\b${n}\\b`, 'i').test(m.size))) {
+      L.push(
+        insert('MonsterSize', {
+          monsterID: mRef,
+          sizeID: ref('CreatureSize', 'sizeID', 'sizeName', size),
+        }),
+      );
+    }
+    for (const [mode, value] of Object.entries(m.speed)) {
+      if (mode === 'hover') continue;
+      L.push(
+        insert('MonsterSpeed', {
+          monsterID: mRef,
+          speedMode: mode,
+          speedFt: intOf(value),
+          speedHover: mode === 'fly' && Boolean(m.speed.hover),
+        }),
+      );
+    }
+    for (const p of m.proficiencies) {
+      const save = /^saving-throw-(\w+)$/.exec(p.proficiency.index);
+      const skill = /^skill-(.+)$/.exec(p.proficiency.index);
+      if (save) {
+        L.push(
+          insert('MonsterSave', {
+            monsterID: mRef,
+            abilityID: abilityRef(save[1]),
+            saveBonus: p.value,
+          }),
+        );
+      } else if (skill) {
+        L.push(
+          insert('MonsterSkill', {
+            monsterID: mRef,
+            skillID: ref('Skill', 'skillID', 'skillSlug', skill[1]),
+            skillBonus: p.value,
+          }),
+        );
+      }
+    }
+    for (const [sense, value] of Object.entries(m.senses)) {
+      if (sense === 'passive_perception') continue;
+      const note = /\(([^)]*)\)/.exec(String(value));
+      L.push(
+        insert('MonsterSense', {
+          monsterID: mRef,
+          senseKind: sense,
+          senseRangeFt: intOf(value),
+          senseNote: note ? note[1] : null,
+        }),
+      );
+    }
+    for (const [key, kind] of [
+      ['damage_resistances', 'resistance'],
+      ['damage_vulnerabilities', 'vulnerability'],
+      ['damage_immunities', 'immunity'],
+    ]) {
+      for (const entry of m[key]) {
+        const name = damageNames.find((d) => new RegExp(`^${d}\\b`, 'i').test(entry));
+        L.push(
+          insert('MonsterDefense', {
+            monsterID: mRef,
+            defenseKind: kind,
+            damageTypeID: name ? damageRef(name) : null,
+            defenseNote: name && entry.toLowerCase() === name.toLowerCase() ? null : entry,
+          }),
+        );
+      }
+    }
+    for (const c of m.condition_immunities) {
+      L.push(
+        insert('MonsterDefense', {
+          monsterID: mRef,
+          defenseKind: 'immunity',
+          conditionID: ref('Condition', 'conditionID', 'conditionSlug', c.index),
+        }),
+      );
+    }
+    // The Languages line is prose ("Understands Common but can't speak"), so it is kept
+    // whole on Monster and only the languages it names are linked. Longer names are
+    // matched first and consumed, so "Common" isn't also found inside a longer name.
+    let rest = norm(m.languages ?? '');
+    for (const name of languageByLength) {
+      const re = new RegExp(
+        `\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b(?:\\s*\\(([^)]*)\\))?`,
+      );
+      const hit = re.exec(rest);
+      if (!hit) continue;
+      rest =
+        rest.slice(0, hit.index) +
+        ' '.repeat(hit[0].length) +
+        rest.slice(hit.index + hit[0].length);
+      const dialect = hit[1] && !/^can'?t|^works/.test(hit[1]) ? hit[1] : null;
+      L.push(
+        insert('MonsterLanguage', {
+          monsterID: mRef,
+          languageID: ref('Language', 'languageID', 'languageName', languageNames.get(name)),
+          languageNote: dialect ? titleCase(dialect) : null,
+        }),
+      );
+    }
+    if (m.gear) {
+      for (const part of m.gear.split(/,\s*/)) {
+        const g = /^(.*?)(?:\s*\((\d+)\))?$/.exec(part.trim());
+        const slug = gearSlug(g[1]);
+        L.push(
+          insert('MonsterGear', {
+            monsterID: mRef,
+            equipmentID: slug ? ref('Equipment', 'equipmentID', 'equipmentSlug', slug) : null,
+            gearText: part.trim(),
+            quantity: g[2] ? Number(g[2]) : 1,
+          }),
+        );
+      }
+    }
+
+    for (const [key, section] of SECTIONS) {
+      (m[key] ?? []).forEach((a, i) => {
+        const desc = text(a.desc) ?? '';
+        const actionRef = raw(
+          `(SELECT monsterActionID FROM MonsterAction WHERE monsterID = ${mRef.sql} AND actionSection = '${section}' AND sortOrder = ${i + 1})`,
+        );
+        const usage = a.usage;
+        let usageText = null;
+        if (usage?.type === 'recharge on roll') usageText = `Recharge ${usage.min_value}–6`;
+        else if (usage?.type === 'per day') usageText = `${usage.times}/Day`;
+        else if (usage?.type) usageText = titleCase(usage.type);
+        const attack =
+          /^(Melee or Ranged|Melee|Ranged) (?:Attack Roll|Weapon Attack|Spell Attack)/i.exec(desc);
+        const reach = /reach (\d+) ft/i.exec(desc);
+        const range = /range (\d+)(?:\/(\d+))? ft/i.exec(desc);
+        const cast = a.spellcasting;
+        L.push(
+          insert('MonsterAction', {
+            monsterID: mRef,
+            actionSection: section,
+            actionName: a.name,
+            actionUsage: usageText,
+            actionRechargeMin: usage?.type === 'recharge on roll' ? usage.min_value : null,
+            actionUsesPerDay: usage?.type === 'per day' ? usage.times : null,
+            attackKind: attack ? attack[1].toLowerCase().replace(/ /g, '_') : null,
+            attackBonus: a.attack_bonus ?? cast?.modifier ?? null,
+            attackReachFt: reach ? Number(reach[1]) : null,
+            attackRangeFt: range ? Number(range[1]) : null,
+            attackRangeLongFt: range?.[2] ? Number(range[2]) : null,
+            saveAbilityID: a.dc ? abilityRef(a.dc.dc_type.index) : null,
+            saveDc: a.dc?.dc_value ?? cast?.dc ?? null,
+            actionDescription: desc,
+            sortOrder: i + 1,
+          }),
+        );
+        (a.damage ?? []).forEach((d, di) => {
+          const dice = d.damage_type ? parseDice(d.damage_dice) : null;
+          if (!dice) return; // choice-shaped damage ("choose one of …") stays in the text
+          L.push(
+            insert('MonsterActionDamage', {
+              monsterActionID: actionRef,
+              damageIndex: di,
+              damageAvg: dice.avg,
+              damageDiceCount: dice.count,
+              damageDiceSides: dice.sides,
+              damageBonus: dice.flat ?? dice.bonus,
+              damageTypeID: damageRef(d.damage_type.name),
+            }),
+          );
+        });
+        for (const s of cast?.spells ?? []) {
+          if (!spellSlugs.has(s.index)) {
+            warn(`monster ${m.index}: spell ${s.index} is not in the spell list`);
+            continue;
+          }
+          L.push(
+            insert('MonsterSpell', {
+              monsterActionID: actionRef,
+              spellID: ref('Spell', 'spellID', 'spellSlug', s.index),
+              spellFrequency:
+                s.usage?.type === 'per day'
+                  ? `${s.usage.times}/day`
+                  : (s.usage?.type ?? 'at will').replace(/ /g, '_'),
+            }),
+          );
+        }
+      });
+    }
+  }
+  emit('06-monsters.sql', 'Monsters and their stat-block details', L);
+}
+
+// ---------------------------------------------------------------------------
+// 07 Magic items → backfill of the existing Item table
+
+{
+  const L = [];
+  const CATEGORY = {
+    'Wondrous Items': 'Wondrous Item',
+    Weapons: 'Weapon',
+    Armor: 'Armor',
+    Rings: 'Ring',
+    Potions: 'Potion',
+    Wands: 'Wand',
+    Staffs: 'Staff',
+    Rods: 'Rod',
+    Scrolls: 'Scroll',
+  };
+  const rarityNames = RARITIES.map(([n]) => n);
+  // 'Very Rare' must win over 'Rare', so try longer names first.
+  const byLength = [...rarityNames].sort((a, b) => b.length - a.length);
+  const leadingRarity = (s) => byLength.find((r) => new RegExp(`^${r}\\b`, 'i').test(s.trim()));
+  const classNames = new Map(classes.map((c) => [c.name.toLowerCase(), c.index]));
+  const speciesNames = new Map(species.map((s) => [s.name.toLowerCase(), s.index]));
+  const variantChildren = new Set(magicItems.flatMap((i) => i.variants.map((v) => v.index)));
+
+  L.push(
+    '-- Run after schema-draft.sql has added the new Item columns. Rows are matched by',
+    '-- name (case-insensitive) and only rows with no itemSlug yet are claimed, so manual',
+    '-- links are never overwritten. Items with no matching Item row are skipped.',
+    `DELETE FROM ItemVariant WHERE itemID IN (SELECT itemID FROM Item WHERE itemSlug IN (${magicItems.map((i) => lit(i.index)).join(', ')}));`,
+    `DELETE FROM ItemAttunementReq WHERE itemID IN (SELECT itemID FROM Item WHERE itemSlug IN (${magicItems.map((i) => lit(i.index)).join(', ')}));`,
+  );
+
+  for (const it of magicItems) {
+    if (variantChildren.has(it.index)) continue; // the parent row carries its variants
+    const rarity = rarityNames.find((r) => r.toLowerCase() === it.rarity.name.toLowerCase());
+    const category = CATEGORY[it.equipment_category.name];
+    if (!category) warn(`item ${it.index}: unknown category ${it.equipment_category.name}`);
+    const firstLine = String(text(it.desc) ?? '')
+      .split('\n')[0]
+      .trim();
+    const base = /\(([^)]*)\)/.exec(firstLine);
+    const limited = it['limited-to'];
+    const attunement = it.attunement
+      ? limited
+        ? ` (Requires Attunement by a ${limited})`
+        : ' (Requires Attunement)'
+      : '';
+    L.push(
+      `UPDATE Item SET itemSlug = ${lit(it.index)}, ` +
+        `rarityID = COALESCE(${rarity ? ref('Rarity', 'rarityID', 'rarityName', rarity).sql : 'NULL'}, rarityID), ` +
+        `categoryID = ${ref('ItemCategory', 'categoryID', 'categoryName', category).sql}, ` +
+        `itemRequiresAttunement = ${lit(Boolean(it.attunement))}, ` +
+        `itemHeader = ${lit(`${firstLine.split('(')[0].trim() || category}, ${it.rarity.name}${attunement}`)}, ` +
+        `itemBaseRequirement = ${lit(base ? base[1] : null)}, ` +
+        `sourceID = CASE WHEN itemDescriptionSource LIKE 'SRD%' THEN ${srcRef.sql} ELSE sourceID END ` +
+        `WHERE itemName = ${lit(it.name)} COLLATE NOCASE AND itemSlug IS NULL;`,
+    );
+
+    it.variants.forEach((v, i) => {
+      const child = magicItems.find((x) => x.index === v.index);
+      const vRarity = child ? leadingRarity(child.rarity.name) : null;
+      if (!vRarity) {
+        warn(`item ${v.index}: no rarity for variant`);
+        return;
+      }
+      const name = v.name.startsWith(`${it.name}, `) ? v.name.slice(it.name.length + 2) : v.name;
+      L.push(
+        `INSERT INTO ItemVariant (itemID, variantName, rarityID, sortOrder) ` +
+          `SELECT itemID, ${lit(name)}, ${ref('Rarity', 'rarityID', 'rarityName', vRarity).sql}, ${i + 1} ` +
+          `FROM Item WHERE itemSlug = ${lit(it.index)};`,
+      );
+    });
+
+    if (limited) {
+      for (const part of limited.split(/,\s*(?:or\s+)?|\s+or\s+/)) {
+        const p = part.trim().replace(/^an?\s+/i, '');
+        const cls = classNames.get(p.toLowerCase());
+        const sp = speciesNames.get(p.toLowerCase());
+        const caster = /^spellcaster$/i.test(p);
+        L.push(
+          `INSERT INTO ItemAttunementReq (itemID, classID, speciesID, requiresSpellcaster, reqNote) ` +
+            `SELECT itemID, ${cls ? classRef(cls).sql : 'NULL'}, ` +
+            `${sp ? ref('Species', 'speciesID', 'speciesSlug', sp).sql : 'NULL'}, ` +
+            `${lit(caster)}, ${lit(cls || sp || caster ? null : p)} ` +
+            `FROM Item WHERE itemSlug = ${lit(it.index)};`,
+        );
+      }
+    }
+  }
+  emit('07-items-backfill.sql', 'Magic items: backfill of the existing Item table', L);
+}
+
+// ---------------------------------------------------------------------------
+
+mkdirSync(outDir, { recursive: true });
+for (const f of files) writeFileSync(join(outDir, f.name), f.body);
+console.log(`wrote ${files.length} files to ${outDir}`);
+for (const w of warnings) console.warn(`warning: ${w}`);

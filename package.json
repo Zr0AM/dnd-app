@@ -20,7 +20,9 @@
     "pages:deploy": "npm run build && wrangler pages deploy dist/dnd-app/browser --project-name=dnd-app",
     "pages:dev": "wrangler pages dev dist/dnd-app/browser",
     "sonar": "sonar-scanner",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "srd:seed": "node scripts/srd/build-srd-seed.mjs",
+    "srd:check": "node --no-warnings scripts/srd/check-srd-seed.mjs"
   },
   "prettier": {
     "printWidth": 100,
@@ -58,11 +60,11 @@
     "@angular/compiler-cli": "^22.2.0",
     "@cloudflare/workers-types": "^5.20260925.1",
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "angular-eslint": "22.5.0",
     "eslint": "^10.9.1",
     "jsdom": "^30.1.1",
-    "prettier": "3.9.8",
+    "prettier": "3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "8.70.1",
     "vitest": "^5.0.1"

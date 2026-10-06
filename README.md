@@ -47,28 +47,12 @@ first (or use the npm scripts). Type-checking, linting and the tests do not need
 ### Build number
 
 The build number is `<UTC date>_<run>`, where `<run>` is the run number of the GitHub
-Actions **Build** workflow (`.github/workflows/build.yml`) for the commit, zero-padded to at
+Actions **Build** workflow (`.github/workflows/build.yml`) that built the site, zero-padded to at
 least three digits (`2026-10-01_042`; `2026-10-01_1042` past 999). `package.json`'s version stays
 the semantic version but is not displayed. `scripts/generate-build-info.mjs` picks the run
-number from, in order:
-
-1. `GITHUB_RUN_NUMBER`, when the build runs inside GitHub Actions.
-2. On a Cloudflare Pages build (`CF_PAGES_COMMIT_SHA` set), a lookup in the public GitHub API
-   for that commit's Build run (`GET /repos/Zr0AM/dnd-app/actions/workflows/build.yml/runs`).
-   Pages builds through its own Git integration, outside Actions, so it has no run number of
-   its own. The lookup tries up to 4 times, 8 s timeout each and about 3 s apart, because the
-   run is created at about the same time as the Pages build. If `GITHUB_TOKEN` is set it is
-   sent as a bearer token. If the lookup fails, the build prints a warning and uses `000`
-   (for example `2026-10-01_000`); it never fails the build.
-3. Otherwise (a local build) the suffix `dev`, for example `2026-10-01_dev`.
-
-Limitations of the Pages lookup: unauthenticated requests share GitHub's rate limit of
-60 per hour per IP address, and Pages builds may run from shared addresses, so some builds
-can fall back to `000`; a build that starts before the Actions run exists falls back too once
-the retries run out; and a commit that never triggers the Build workflow has no run number.
-Set `GITHUB_TOKEN` (a token with no scopes is enough for this public repository) as a Pages
-build variable to avoid the rate limit. `SOURCE_DATE_EPOCH` overrides the date for
-reproducible builds.
+number from `GITHUB_RUN_NUMBER`, which only exists inside GitHub Actions. A build anywhere else
+(for example on your machine) gets the suffix `dev`, for example `2026-10-01_dev`.
+`SOURCE_DATE_EPOCH` overrides the date for reproducible builds.
 
 ## Testing
 
@@ -79,9 +63,16 @@ npm run test:ci   # single run with coverage
 
 ## Deploying
 
-```bash
-npm run pages:deploy
-```
+Every push to `main` deploys to Cloudflare Pages from the **Build** workflow: once lint, type
+checks, the build and the tests pass, the `deploy` job uploads that same build with
+`wrangler pages deploy`, so the live footer shows that run's number. It needs two secrets in
+the `production` environment, `CLOUDFLARE_DEPLOY_TOKEN` (a Cloudflare API token with Pages edit
+permission) and `CLOUDFLARE_ACCT_ID`. Running the workflow manually on `main` redeploys the latest commit.
+Re-running an older run fails instead of putting its older build back over a newer one, so roll
+back from the Cloudflare Pages dashboard. Cloudflare's own Git builds are switched off for the
+project, so nothing else deploys.
+
+`npm run pages:deploy` still deploys from your machine, but that build's footer shows `_dev`.
 
 The `functions/api/items.ts` Pages Function proxies `GET /api/items` to the
 `dnd-db-rest` Worker over a service binding, attaching the bearer token server-side so
