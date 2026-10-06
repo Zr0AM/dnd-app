@@ -246,6 +246,32 @@ rows carry Market data (price, shopkeeper text) that the SRD lacks. The
 backfill only claims rows with no `itemSlug`, and only sets `sourceID` to the
 SRD on rows whose description already came from the SRD.
 
+### Confirmed 2024 (5.5e), not 2014 (5e)
+
+The repo ships both editions. The script reads only `src/2024/en`, and it
+refuses any record whose URL isn't `/api/2024/…`. The content itself is also
+2024:
+
+- **2024-only features are present.** Every weapon has a mastery property, and
+  the 2014 data has none. The data has species (Goliath and Orc instead of
+  Half-Elf and Half-Orc), backgrounds that grant origin feats, Monk Focus Points
+  instead of Ki, and 339 spells (the 2014 SRD has 319).
+- **The text matches your SRD 5.2.1 artifact.** It matches for 339/339 spells,
+  341/341 monsters, 232/232 class features, 17/17 feats, 15/15 conditions,
+  8/8 masteries and 14/14 poisons, and for 258/262 magic items. The other four
+  are 2024 text with table or spacing differences. Every spell, monster,
+  equipment, species, background, feat and subclass name appears in the SRD
+  5.2.1 text.
+- **Nothing duplicates 2014 text.** No spell or magic item description is the
+  same as in the 2014 data. One monster's actions (Vampire, Mist Form) are the
+  same, because that stat block didn't change, and they match SRD 5.2.1.
+- **Hard-coded values come from SRD 5.2.1.** These are the rarity values and
+  crafting costs (p. 205–206) and the XP tables.
+
+One dataset error was found: the description of Potion of Gaseous Form holds
+another potion's text. The seeds don't use magic item descriptions, so nothing
+is affected.
+
 ### Checked against the SRD 5.2.1 text
 
 Spot checks matched:

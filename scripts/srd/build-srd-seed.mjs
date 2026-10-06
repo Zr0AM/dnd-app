@@ -38,7 +38,14 @@ if (commit !== PINNED_COMMIT) {
   console.warn(`warning: data is at ${commit}, the script was checked against ${PINNED_COMMIT}`);
 }
 
-const load = (name) => JSON.parse(readFileSync(join(dataDir, `5e-SRD-${name}.json`), 'utf8'));
+// Every record must be a 2024 (SRD 5.2.x, "5.5e") record; the same repo also ships
+// the 2014 SRD 5.1 data, which must never be mixed in.
+function load(name) {
+  const rows = JSON.parse(readFileSync(join(dataDir, `5e-SRD-${name}.json`), 'utf8'));
+  const stray = rows.find((r) => typeof r.url === 'string' && !r.url.startsWith('/api/2024/'));
+  if (stray) throw new Error(`${name}: ${stray.url} is not a 2024 SRD record`);
+  return rows;
+}
 const warnings = [];
 const warn = (msg) => warnings.push(msg);
 
