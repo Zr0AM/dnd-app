@@ -10,11 +10,23 @@
 import type { Ability } from '../core/types';
 import type { Random } from '../rng/rng';
 import { compileBuild, type BuildProgression, type FightingStyle } from '../content/character';
+import { compileCaster } from '../content/caster';
 import type { Combatant } from '../combat/actor';
 import type { MartialCatalog } from './catalog';
 
 export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue'] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
+
+export const CASTER_CLASSES = ['wizard', 'cleric'] as const;
+export type CasterClass = (typeof CASTER_CLASSES)[number];
+
+/** All classes the genome can pick. */
+export const BUILD_CLASSES = [...MARTIAL_CLASSES, ...CASTER_CLASSES] as const;
+export type BuildClass = MartialClass | CasterClass;
+
+export function isCasterClass(slug: BuildClass): slug is CasterClass {
+  return (CASTER_CLASSES as readonly string[]).includes(slug);
+}
 
 /** The 2024 standard array, assigned to the six abilities by a permutation. */
 export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
@@ -27,7 +39,7 @@ const FIGHTING_STYLES: readonly FightingStyle[] = [
 ];
 
 export interface MartialGenome {
-  readonly classSlug: MartialClass;
+  readonly classSlug: BuildClass;
   /** A permutation of [0..5]: which standard-array value each ability gets. */
   readonly abilityAssignment: readonly number[];
   readonly weaponName: string;
@@ -66,7 +78,7 @@ export function randomGenome(
   label: string,
 ): MartialGenome {
   const rng = random.stream(label);
-  const classSlug = pick(MARTIAL_CLASSES, rng);
+  const classSlug = pick(BUILD_CLASSES, rng);
   const assignment = shuffle([0, 1, 2, 3, 4, 5], rng);
   const weapon = pick(catalog.weapons, rng);
   const g: MartialGenome = {
@@ -87,6 +99,10 @@ export function randomGenome(
  * versatile weapon only counts as two-handed when there is no shield.
  */
 export function repair(g: MartialGenome, catalog: MartialCatalog): MartialGenome {
+  // Casters use a fixed gear/spell package (buildFromGenome handles them); their
+  // martial gear fields are left as-is and ignored.
+  if (isCasterClass(g.classSlug)) return g;
+
   const weapon = catalog.weaponByName(g.weaponName);
   const isTwoHandedWeapon = weapon.properties.includes('two-handed');
   const isVersatile = weapon.versatileDiceCount != null;
@@ -97,7 +113,7 @@ export function repair(g: MartialGenome, catalog: MartialCatalog): MartialGenome
 
   if (g.classSlug === 'barbarian')
     armorName = null; // Unarmored Defense
-  else if (armorName === null) armorName = catalog.defaultArmorFor(g.classSlug);
+  else if (armorName === null) armorName = catalog.defaultArmorFor(g.classSlug as MartialClass);
 
   if (isTwoHandedWeapon) {
     shield = false;
@@ -125,7 +141,7 @@ export function mutate(
   let next: MartialGenome = g;
   switch (choice) {
     case 0:
-      next = { ...g, classSlug: pick(MARTIAL_CLASSES, rng) };
+      next = { ...g, classSlug: pick(BUILD_CLASSES, rng) };
       break;
     case 1: {
       // Swap two ability assignments.
@@ -177,16 +193,38 @@ export function crossover(
 
 /** Compile a genome into a Combatant on the party side. */
 export function buildFromGenome(g: MartialGenome, catalog: MartialCatalog, id = 'hero'): Combatant {
+  const abilities = abilitiesFrom(g.abilityAssignment);
+
+  if (isCasterClass(g.classSlug)) {
+    const pkg = catalog.casterPackageFor(g.classSlug);
+    const cls = catalog.classByName(g.classSlug);
+    return compileCaster({
+      id,
+      name: `${g.classSlug} hero`,
+      class: cls,
+      subclass: catalog.subclassFor(g.classSlug),
+      level: catalog.level,
+      abilities,
+      weapon: pkg.weapon,
+      armor: pkg.armor,
+      shield: pkg.shield,
+      spellAbility: pkg.spellAbility,
+      cantrips: pkg.cantrips,
+      spells: pkg.spells,
+      slots: pkg.slots,
+    });
+  }
+
   const weapon = catalog.weaponByName(g.weaponName);
   const cls = catalog.classByName(g.classSlug);
-  const progression: BuildProgression = catalog.progressionFor(g.classSlug);
+  const progression: BuildProgression = catalog.progressionFor(g.classSlug as MartialClass);
   return compileBuild({
     id,
     name: `${g.classSlug} hero`,
     class: cls,
     subclass: catalog.subclassFor(g.classSlug),
     level: catalog.level,
-    abilities: abilitiesFrom(g.abilityAssignment),
+    abilities,
     weapon,
     twoHanded: g.twoHanded,
     armor: g.armorName ? catalog.armorByName(g.armorName) : null,
@@ -199,6 +237,10 @@ export function buildFromGenome(g: MartialGenome, catalog: MartialCatalog, id = 
 
 /** A stable string key for a genome (for caching / de-duplication). */
 export function genomeKey(g: MartialGenome): string {
+  // Casters use a fixed gear/spell package, so only class and abilities vary.
+  if (isCasterClass(g.classSlug)) {
+    return [g.classSlug, g.abilityAssignment.join('')].join('|');
+  }
   return [
     g.classSlug,
     g.abilityAssignment.join(''),

@@ -12,15 +12,68 @@ import {
   loadClass,
   loadMonsterSources,
   loadProgression,
+  loadSpellSlots,
   loadWeapon,
 } from '../content/load-db';
-import type { MartialClass } from './genome';
+import type { Ability } from '../core/types';
+import type { Spell } from '../combat/spell';
+import {
+  burningHands,
+  fireBolt,
+  fireball,
+  guidingBolt,
+  rayOfFrost,
+  sacredFlame,
+  scorchingRay,
+} from '../content/spells';
+import type { BuildClass, CasterClass, MartialClass } from './genome';
 
 /** The SRD subclass each class takes at level 3. */
-const SUBCLASS: Readonly<Record<MartialClass, string>> = {
+const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   fighter: 'champion',
   barbarian: 'path-of-the-berserker',
   rogue: 'thief',
+  wizard: 'evoker',
+  cleric: 'life-domain',
+};
+
+/** A caster's fixed spell/gear package (spell selection is not evolved in v1). */
+export interface CasterPackage {
+  readonly spellAbility: Ability;
+  readonly cantrips: readonly Spell[];
+  readonly spells: readonly Spell[];
+  readonly weapon: WeaponInfo;
+  readonly armor: ArmorInfo | null;
+  readonly shield: boolean;
+  readonly slots: readonly { readonly level: number; readonly count: number }[];
+}
+
+interface CasterSpec {
+  readonly ability: Ability;
+  readonly cantrips: readonly Spell[];
+  readonly spells: readonly Spell[];
+  readonly weaponName: string;
+  readonly armorName: string | null;
+  readonly shield: boolean;
+}
+
+const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
+  wizard: {
+    ability: 'int',
+    cantrips: [fireBolt, rayOfFrost],
+    spells: [burningHands, scorchingRay, fireball],
+    weaponName: 'Dagger',
+    armorName: null, // no armor proficiency
+    shield: false,
+  },
+  cleric: {
+    ability: 'wis',
+    cantrips: [sacredFlame],
+    spells: [guidingBolt],
+    weaponName: 'Mace',
+    armorName: 'Scale Mail', // medium armor + shield
+    shield: true,
+  },
 };
 
 /** A sensible default armor for a non-barbarian martial. */
@@ -36,10 +89,11 @@ export interface MartialCatalog {
   readonly armors: readonly ArmorInfo[];
   weaponByName(name: string): WeaponInfo;
   armorByName(name: string): ArmorInfo;
-  classByName(slug: MartialClass): ClassInfo;
-  subclassFor(slug: MartialClass): string;
+  classByName(slug: BuildClass): ClassInfo;
+  subclassFor(slug: BuildClass): string;
   defaultArmorFor(slug: MartialClass): string;
   progressionFor(slug: MartialClass): BuildProgression;
+  casterPackageFor(slug: CasterClass): CasterPackage;
   /** The opposition for the simple legacy evaluation scenario. */
   readonly goblin: MonsterTemplate;
   /** The scenario library a build is evaluated against. */
@@ -62,11 +116,27 @@ const ARMOR_NAMES = ['Studded Leather Armor', 'Chain Shirt', 'Breastplate', 'Cha
 export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog {
   const weapons = WEAPON_NAMES.map((n) => loadWeapon(db, n));
   const armors = ARMOR_NAMES.map((n) => loadArmor(db, n));
-  const classes = new Map<MartialClass, ClassInfo>();
+  const classes = new Map<BuildClass, ClassInfo>();
   const progression = new Map<MartialClass, BuildProgression>();
   for (const slug of ['fighter', 'barbarian', 'rogue'] as const) {
     classes.set(slug, loadClass(db, slug));
     progression.set(slug, loadProgression(db, slug, level));
+  }
+
+  // Caster classes, slots and resolved spell/gear packages.
+  const casterPackages = new Map<CasterClass, CasterPackage>();
+  for (const slug of ['wizard', 'cleric'] as const) {
+    classes.set(slug, loadClass(db, slug));
+    const spec = CASTER_SPECS[slug];
+    casterPackages.set(slug, {
+      spellAbility: spec.ability,
+      cantrips: spec.cantrips,
+      spells: spec.spells,
+      weapon: loadWeapon(db, spec.weaponName),
+      armor: spec.armorName ? loadArmor(db, spec.armorName) : null,
+      shield: spec.shield,
+      slots: loadSpellSlots(db, slug, level),
+    });
   }
   const goblinSrc = loadMonsterSources(db).find((s) => s.monster.monsterSlug === 'goblin-warrior');
   if (!goblinSrc) throw new Error('goblin-warrior not found in seeds');
@@ -104,5 +174,10 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
     subclassFor: (slug) => SUBCLASS[slug],
     defaultArmorFor: (slug) => DEFAULT_ARMOR[slug],
     progressionFor: (slug) => progression.get(slug) ?? {},
+    casterPackageFor: (slug) => {
+      const p = casterPackages.get(slug);
+      if (!p) throw new Error(`caster package not in catalog: ${slug}`);
+      return p;
+    },
   };
 }

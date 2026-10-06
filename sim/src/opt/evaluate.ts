@@ -122,6 +122,7 @@ function heroDamageDealt(log: readonly CombatEvent[], id: string): number {
   for (const ev of log) {
     if (ev.kind === 'attack' && ev.attacker === id) total += ev.damage;
     else if (ev.kind === 'opportunity' && ev.attacker === id) total += ev.damage;
+    else if (ev.kind === 'spell' && ev.caster === id) total += ev.damage;
   }
   return total;
 }

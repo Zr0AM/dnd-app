@@ -128,6 +128,23 @@ describe('random/mutate/crossover produce legal, buildable genomes', () => {
     expect(() => buildFromGenome(child, catalog)).not.toThrow();
   });
 
+  it('compiles caster genomes to spellcasting combatants', () => {
+    const wizard = buildFromGenome(
+      {
+        classSlug: 'wizard',
+        abilityAssignment: [5, 1, 2, 0, 3, 4],
+        weaponName: 'Dagger',
+        armorName: null,
+        shield: false,
+        twoHanded: false,
+      },
+      catalog,
+    );
+    expect(wizard.spellAbility).toBe('int');
+    expect(wizard.spells.length).toBeGreaterThan(0);
+    expect(wizard.slotCount(1)).toBeGreaterThan(0);
+  });
+
   it('genomeKey is stable and distinguishes genomes', () => {
     const rng = new Random(4);
     const a = randomGenome(catalog, rng, 'a');

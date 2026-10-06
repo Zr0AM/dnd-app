@@ -247,3 +247,19 @@ export function loadProgression(db: DatabaseSync, slug: string, level: number): 
   }
   return progression;
 }
+
+/** Spell slots by spell level for a class at a given character level. */
+export function loadSpellSlots(
+  db: DatabaseSync,
+  slug: string,
+  level: number,
+): { level: number; count: number }[] {
+  const rows = db
+    .prepare(
+      `SELECT spellLevel, slots FROM ClassSpellSlot
+       WHERE classID = (SELECT classID FROM Class WHERE classSlug = ?) AND level = ? AND slots > 0
+       ORDER BY spellLevel`,
+    )
+    .all(slug, level) as unknown as { spellLevel: number; slots: number }[];
+  return rows.map((r) => ({ level: r.spellLevel, count: r.slots }));
+}
