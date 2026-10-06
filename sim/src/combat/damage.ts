@@ -27,10 +27,12 @@ export function mitigate(
   responses: DamageResponses,
   flatReduction = 0,
 ): number {
-  if (amount <= 0) return 0;
-  const response = responses[type] ?? 'normal';
-  if (response === 'immune') return 0;
+  return applyResponse(amount, responses[type] ?? 'normal', flatReduction);
+}
 
+/** As `mitigate`, but with the response already resolved for the type. */
+export function applyResponse(amount: number, response: DamageResponse, flatReduction = 0): number {
+  if (amount <= 0 || response === 'immune') return 0;
   let dmg = Math.max(0, amount - flatReduction);
   if (response === 'resistant') dmg = Math.floor(dmg / 2);
   if (response === 'vulnerable') dmg = dmg * 2;

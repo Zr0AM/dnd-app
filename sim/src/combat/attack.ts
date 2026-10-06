@@ -29,6 +29,8 @@ export interface AttackProfile {
   readonly extraDamage?: readonly ExtraDamage[];
   /** Lowest die face that crits (default 20). */
   readonly critRange?: number;
+  /** True for a Finesse weapon (matters for Sneak Attack eligibility). */
+  readonly finesse?: boolean;
 }
 
 /** An additional damage component on an attack, of its own type. */

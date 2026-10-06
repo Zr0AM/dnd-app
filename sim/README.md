@@ -67,5 +67,32 @@ fights three Goblin Warriors spawned from the database, resolving deterministica
 (identical replay logs across runs). This is the full pipeline: seeds → compilers
 → combatants → combat.
 
-Still to come: the effect layer for spells and class features (starting with the
-martial features Rage / Sneak Attack / Extra Attack), the shared AI, then the GA.
+## Feature runtime
+
+`src/combat/feature.ts` defines the `Feature` hooks a class feature, feat, or item
+uses to influence combat — start of turn, outgoing-attack modifiers, on-hit damage
+riders, granting attackers advantage, and dynamic damage resistance. This is the
+interface the declarative effect format compiles to. The combatant carries
+features, resource pools (with short/long-rest recharge), and an extra-attack
+count; attack resolution consults all of them.
+
+`src/content/martial-features.ts` implements the first features against it:
+
+- **Rage** — resistance to B/P/S and a melee damage bonus while raging; spends a
+  Rage use (auto-activates on the owner's first turn for now; the AI will decide
+  later).
+- **Reckless Attack** — advantage on the owner's melee attacks, and advantage to
+  attackers until its next turn.
+- **Sneak Attack** — once per turn, extra d6s on a finesse/ranged hit made with
+  advantage or next to an ally (and not at disadvantage). Exact.
+- **Extra Attack** — a combatant field the turn loop honors (one Attack action =
+  1 + extraAttacks attacks).
+
+The character compiler attaches these from the class progression (rage uses/damage,
+sneak dice, extra attacks), loaded from the seeds. The walking-skeleton test now
+also compiles a Barbarian from the seeds and confirms Rage activates and resists in
+a real fight.
+
+Still to come: the shared tactical AI, then the GA to close the Phase 3 loop
+(optimize a level-3 martial for a role against the seeded encounters); after that,
+casters and the spell effect layer.

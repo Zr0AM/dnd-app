@@ -13,8 +13,11 @@ import {
   type Size,
 } from '../core/types';
 import type { Cell } from '../grid/grid';
+import type { DamageResponse } from '../core/types';
+import type { DamageType } from '../core/types';
 import type { DamageResponses } from './damage';
 import type { AttackProfile } from './attack';
+import type { Feature } from './feature';
 
 export type Side = 'party' | 'enemy';
 
@@ -34,6 +37,25 @@ export interface CombatantSpec {
   readonly damageResponses?: DamageResponses;
   readonly position?: Cell;
   readonly attacks?: readonly AttackProfile[];
+  readonly features?: readonly Feature[];
+  /** Extra weapon attacks granted by Extra Attack (0 below level 5 for martials). */
+  readonly extraAttacks?: number;
+  /** Starting resource pools (id -> max + recharge), e.g. Rage uses. */
+  readonly resources?: readonly ResourceSpec[];
+}
+
+export interface ResourceSpec {
+  readonly id: string;
+  readonly max: number;
+  readonly rechargeShort?: number | 'all';
+  readonly rechargeLong?: number | 'all';
+}
+
+interface ResourcePool {
+  current: number;
+  readonly max: number;
+  readonly rechargeShort: number | 'all';
+  readonly rechargeLong: number | 'all';
 }
 
 /** What happened when a creature took damage, for events and metrics. */
@@ -73,6 +95,9 @@ export class Combatant {
   private readonly saveOverride: Partial<Record<Ability, number>>;
   readonly damageResponses: DamageResponses;
   readonly attacks: readonly AttackProfile[];
+  readonly features: readonly Feature[];
+  readonly extraAttacks: number;
+  private readonly pools = new Map<string, ResourcePool>();
 
   hp: number;
   tempHp = 0;
@@ -105,6 +130,61 @@ export class Combatant {
     this.damageResponses = { ...spec.damageResponses };
     this.position = spec.position ?? { x: 0, y: 0 };
     this.attacks = spec.attacks ? [...spec.attacks] : [];
+    this.features = spec.features ? [...spec.features] : [];
+    this.extraAttacks = spec.extraAttacks ?? 0;
+    for (const r of spec.resources ?? []) {
+      this.pools.set(r.id, {
+        current: r.max,
+        max: r.max,
+        rechargeShort: r.rechargeShort ?? 0,
+        rechargeLong: r.rechargeLong ?? 'all',
+      });
+    }
+  }
+
+  /** How many uses of a resource remain (0 if the pool is undefined). */
+  resourceCount(id: string): number {
+    return this.pools.get(id)?.current ?? 0;
+  }
+
+  /** Spend `n` of a resource if available; returns whether it was spent. */
+  spendResource(id: string, n = 1): boolean {
+    const pool = this.pools.get(id);
+    if (!pool || pool.current < n) return false;
+    pool.current -= n;
+    return true;
+  }
+
+  private recharge(which: 'rechargeShort' | 'rechargeLong'): void {
+    for (const pool of this.pools.values()) {
+      const amount = pool[which];
+      pool.current = amount === 'all' ? pool.max : Math.min(pool.max, pool.current + amount);
+    }
+  }
+
+  /** Restore short-rest resources. */
+  shortRest(): void {
+    this.recharge('rechargeShort');
+  }
+
+  /** Restore long-rest (and short-rest) resources, and reset exhaustion by one step is not done here. */
+  longRest(): void {
+    this.recharge('rechargeShort');
+    this.recharge('rechargeLong');
+  }
+
+  /**
+   * The effective response to a damage type, combining static defenses with any
+   * feature-granted resistance (e.g. Rage). Static immunity or vulnerability wins;
+   * otherwise a feature resistance upgrades a normal response to resistant.
+   */
+  damageResponseFor(type: DamageType): DamageResponse {
+    const base = this.damageResponses[type] ?? 'normal';
+    if (base === 'immune' || base === 'vulnerable' || base === 'resistant') return base;
+    for (const f of this.features) {
+      if (f.resistsDamage?.(this, type)) return 'resistant';
+    }
+    return 'normal';
   }
 
   abilityMod(ability: Ability): number {

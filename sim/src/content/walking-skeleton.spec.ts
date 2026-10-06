@@ -10,7 +10,15 @@ import { Grid, cell, distanceFt, type Cell } from '../grid/grid';
 import { Encounter, idlePolicy, type TurnPolicy } from '../combat/encounter';
 import { compileMonster, spawnMonster, type MonsterTemplate } from './monster';
 import { compileBuild, type ClassInfo, type WeaponInfo, type ArmorInfo } from './character';
-import { buildSeedDatabase, loadArmor, loadClass, loadMonsterSources, loadWeapon } from './load-db';
+import { RageFeature } from './martial-features';
+import {
+  buildSeedDatabase,
+  loadArmor,
+  loadClass,
+  loadMonsterSources,
+  loadProgression,
+  loadWeapon,
+} from './load-db';
 
 // A melee policy: close to the nearest enemy, then attack if in reach.
 function meleeAggressor(): TurnPolicy {
@@ -124,5 +132,74 @@ describe('walking skeleton: Fighter vs. goblins from the seeds', () => {
     expect(['party', 'enemy', null]).toContain(a.winner);
     expect(a.log).toEqual(b.log); // common random numbers: identical replay
     expect(a.rounds).toBe(b.rounds);
+  });
+});
+
+describe('walking skeleton: a Barbarian compiled from the seeds rages', () => {
+  it('loads rage progression and the feature activates and resists in combat', () => {
+    const db = buildSeedDatabase();
+    let barbarianClass: ClassInfo;
+    let greataxe: WeaponInfo;
+    let progression;
+    try {
+      barbarianClass = loadClass(db, 'barbarian');
+      greataxe = loadWeapon(db, 'Greataxe');
+      progression = loadProgression(db, 'barbarian', 3);
+    } finally {
+      db.close();
+    }
+
+    // Level-3 barbarian from the seed progression: 3 rage uses, +2 rage damage.
+    expect(progression.rageUses).toBe(3);
+    expect(progression.rageDamageBonus).toBe(2);
+    expect(progression.extraAttacks).toBe(0); // no Extra Attack until level 5
+
+    const barb = compileBuild({
+      id: 'barbarian',
+      name: 'Barbarian',
+      class: barbarianClass,
+      level: 3,
+      abilities: { str: 16, dex: 14, con: 16, int: 8, wis: 10, cha: 8 },
+      weapon: greataxe,
+      twoHanded: true,
+      unarmoredDefense: 'barbarian',
+      progression,
+      position: cell(0, 0),
+    });
+    expect(barb.ac).toBe(15); // 10 + Dex 2 + Con 3
+    expect(barb.hp).toBe(35);
+    expect(barb.resourceCount('rage')).toBe(3);
+
+    // A hard-hitting slashing foe; Rage's resistance should roughly halve it.
+    const foe = compileBuild({
+      id: 'foe',
+      name: 'Foe',
+      side: 'enemy',
+      class: barbarianClass,
+      level: 3,
+      abilities: { str: 20, dex: 10, con: 14, int: 8, wis: 10, cha: 8 },
+      weapon: greataxe,
+      twoHanded: true,
+      unarmoredDefense: 'barbarian',
+      position: cell(1, 0),
+    });
+
+    const attack: TurnPolicy = (api) => {
+      const t = api.enemies()[0];
+      const w = api.self.attacks[0];
+      if (t && w) api.attack(t, w);
+    };
+    const e = new Encounter({
+      grid: new Grid(10, 10),
+      combatants: [barb, foe],
+      rng: new Random(2024),
+      policyFor: () => attack,
+    });
+    e.run(30);
+
+    // The barbarian activated Rage (a use was spent) and is resisting B/P/S.
+    expect(barb.resourceCount('rage')).toBeLessThan(3);
+    expect((barb.features.find((f) => f.id === 'rage') as RageFeature).isRaging).toBe(true);
+    expect(barb.damageResponseFor('slashing')).toBe('resistant');
   });
 });

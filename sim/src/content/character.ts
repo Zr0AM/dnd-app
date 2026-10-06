@@ -13,9 +13,11 @@
 
 import { dice, type Dice } from '../dice/dice';
 import { abilityModifier, proficiencyBonus, type Ability, type DamageType } from '../core/types';
-import { Combatant, type Side } from '../combat/actor';
+import { Combatant, type ResourceSpec, type Side } from '../combat/actor';
 import type { AttackProfile } from '../combat/attack';
+import type { Feature } from '../combat/feature';
 import type { Cell } from '../grid/grid';
+import { RageFeature, RecklessAttackFeature, SneakAttackFeature } from './martial-features';
 
 export type FightingStyle = 'archery' | 'defense' | 'great-weapon' | 'two-weapon';
 export type UnarmoredDefense = 'barbarian' | 'monk';
@@ -79,6 +81,16 @@ export interface BuildSpec {
   /** Proficient with the chosen weapon (default true for these martial classes). */
   readonly weaponProficient?: boolean;
   readonly position?: Cell;
+  /** Level-dependent feature values, resolved from the class progression tables. */
+  readonly progression?: BuildProgression;
+}
+
+/** Numeric feature values pulled from ClassLevelValue / the class tables. */
+export interface BuildProgression {
+  readonly rageUses?: number;
+  readonly rageDamageBonus?: number;
+  readonly sneakAttackDice?: number;
+  readonly extraAttacks?: number;
 }
 
 const mod = abilityModifier;
@@ -158,12 +170,33 @@ export function weaponAttack(spec: BuildSpec): AttackProfile {
     damage,
     damageType: spec.weapon.damageType,
     critRange,
+    finesse: spec.weapon.properties.includes('finesse'),
   };
+}
+
+/** Attach the class/subclass/level features this build has. */
+export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources: ResourceSpec[] } {
+  const features: Feature[] = [];
+  const resources: ResourceSpec[] = [];
+  const p = spec.progression ?? {};
+
+  if (spec.class.slug === 'barbarian') {
+    if (p.rageUses && p.rageUses > 0) {
+      resources.push({ id: 'rage', max: p.rageUses, rechargeShort: 1, rechargeLong: 'all' });
+      features.push(new RageFeature(p.rageDamageBonus ?? 0));
+    }
+    if (spec.level >= 2) features.push(new RecklessAttackFeature()); // Reckless Attack at level 2
+  }
+  if (spec.class.slug === 'rogue' && p.sneakAttackDice && p.sneakAttackDice > 0) {
+    features.push(new SneakAttackFeature(p.sneakAttackDice));
+  }
+  return { features, resources };
 }
 
 /** Compile a build into a Combatant placed on the board. */
 export function compileBuild(spec: BuildSpec): Combatant {
   const conMod = mod(spec.abilities.con);
+  const { features, resources } = buildFeatures(spec);
   return new Combatant({
     id: spec.id ?? spec.class.slug,
     name: spec.name,
@@ -174,6 +207,9 @@ export function compileBuild(spec: BuildSpec): Combatant {
     maxHp: maxHitPoints(spec.class.hitDieSides, spec.level, conMod),
     saveProficiencies: spec.class.saveProficiencies,
     attacks: [weaponAttack(spec)],
+    features,
+    resources,
+    extraAttacks: spec.progression?.extraAttacks ?? 0,
     position: spec.position,
   });
 }

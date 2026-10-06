@@ -11,7 +11,7 @@
 import { rollD20, roll as rollDiceTerm, type Advantage } from '../dice/dice';
 import { Random } from '../rng/rng';
 import { Grid, distanceFt, stepDistance, type Cell } from '../grid/grid';
-import { mitigate } from './damage';
+import { applyResponse } from './damage';
 import { resolveAttack, type AttackProfile } from './attack';
 import {
   attackAdvantage,
@@ -49,6 +49,8 @@ export interface TurnResources {
   action: boolean;
   bonus: boolean;
   movementFt: number;
+  /** Remaining attacks in the current Attack action (set when the action is spent). */
+  attacksRemaining: number;
 }
 
 /** The restricted interface a policy uses to act on its turn. */
@@ -169,11 +171,15 @@ export class Encounter {
 
       if (!canAct(c)) continue;
 
+      // Start-of-turn feature hooks (reset per-turn state, auto-activate Rage, ...).
+      for (const f of c.features) f.onTurnStart?.(c);
+
       this.log.push({ kind: 'turn', id: c.id, round: this.round });
       const resources: TurnResources = {
         action: true,
         bonus: true,
         movementFt: effectiveSpeedFt(c),
+        attacksRemaining: 0,
       };
       this.policyFor(c)(this.makeApi(c, resources));
     }
@@ -239,6 +245,18 @@ export class Encounter {
     return true;
   }
 
+  /** An ally of `attacker` (not itself, not incapacitated) is within 5 ft of `target`. */
+  private hasAllyAdjacentTo(attacker: Combatant, target: Combatant): boolean {
+    return this.combatants.some(
+      (c) =>
+        c !== attacker &&
+        c.side === attacker.side &&
+        c.isConscious &&
+        !c.hasCondition('incapacitated') &&
+        distanceFt(c.position, target.position, this.grid.cellFt) <= 5,
+    );
+  }
+
   private hasMeleeReach(attacker: Combatant, targetCell: Cell): boolean {
     const reach = attacker.attacks.find((a) => a.kind === 'melee')?.reachFt ?? 5;
     const d = distanceFt(attacker.position, targetCell, this.grid.cellFt);
@@ -264,11 +282,21 @@ export class Encounter {
     profile: AttackProfile,
     resources: TurnResources,
   ): number | null {
-    if (!resources.action) return null;
     if (!target.isConscious) return null;
+    // The first attack spends the Attack action and grants the Extra Attack(s);
+    // further attacks in the same action draw from attacksRemaining.
+    const usingAction = resources.action;
+    if (!usingAction && resources.attacksRemaining <= 0) return null;
+
     const dmg = this.resolveWeaponAttack(self, target, profile, 'action');
     if (dmg === null) return null;
-    resources.action = false;
+
+    if (usingAction) {
+      resources.action = false;
+      resources.attacksRemaining = self.extraAttacks;
+    } else {
+      resources.attacksRemaining -= 1;
+    }
     return dmg;
   }
 
@@ -297,11 +325,31 @@ export class Encounter {
 
     const within5 = dist <= 5;
     const condAdv = attackAdvantage(self, target, within5);
-    const adv = combineAdvantage(condAdv, rangePenalty);
+
+    // Feature-driven modifiers: the attacker's own features (Reckless Attack),
+    // the target's features that expose it (Reckless grants attackers advantage),
+    // and any flat to-hit bonus.
+    let featAdv = false;
+    let featDis = false;
+    let toHitBonus = 0;
+    for (const f of self.features) {
+      const mods = f.outgoingAttack?.(self, target, profile);
+      if (mods?.advantage) featAdv = true;
+      if (mods?.disadvantage) featDis = true;
+      if (mods?.toHit) toHitBonus += mods.toHit;
+    }
+    for (const f of target.features) {
+      if (f.grantsAttackersAdvantage?.(target)) featAdv = true;
+    }
+    const featureAdv = combineAdvantage(
+      featAdv ? 'advantage' : 'normal',
+      featDis ? 'disadvantage' : 'normal',
+    );
+    const adv = combineAdvantage(combineAdvantage(condAdv, rangePenalty), featureAdv);
 
     const stream = this.rng.stream(`${self.id}:${profile.name}:${target.id}`);
     const result = resolveAttack(stream, {
-      attackBonus: profile.attackBonus,
+      attackBonus: profile.attackBonus + toHitBonus,
       targetAc: target.ac,
       advantage: adv,
       critRange: profile.critRange,
@@ -328,13 +376,27 @@ export class Encounter {
 
     // Primary damage, then each extra rider, each mitigated by its own type. A
     // crit doubles the dice of every component but never the flat bonuses.
+    const components = [...(profile.extraDamage ?? [])];
+    // Feature damage riders (Rage bonus, Sneak Attack dice) on a hit.
+    const onHitCtx = {
+      self,
+      target,
+      weapon: profile,
+      crit,
+      rollAdvantage: adv,
+      allyAdjacentToTarget: this.hasAllyAdjacentTo(self, target),
+    };
+    for (const f of self.features) {
+      for (const extra of f.onHit?.(onHitCtx) ?? []) components.push(extra);
+    }
+
     let raw = rollDiceTerm(dmgStream, profile.damage);
     if (crit) raw += rollDiceTerm(dmgStream, { ...profile.damage, bonus: 0 });
-    let dealt = mitigate(raw, profile.damageType, target.damageResponses);
-    for (const extra of profile.extraDamage ?? []) {
+    let dealt = applyResponse(raw, target.damageResponseFor(profile.damageType));
+    for (const extra of components) {
       let r = rollDiceTerm(dmgStream, extra.damage);
       if (crit) r += rollDiceTerm(dmgStream, { ...extra.damage, bonus: 0 });
-      dealt += mitigate(r, extra.type, target.damageResponses);
+      dealt += applyResponse(r, target.damageResponseFor(extra.type));
     }
 
     const before = target.isConscious;

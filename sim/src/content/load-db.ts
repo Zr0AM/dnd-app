@@ -8,7 +8,13 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { MonsterSource, MonsterActionRow, MonsterDamageRow, MonsterRow } from './monster';
-import type { ArmorInfo, ClassInfo, WeaponInfo, WeaponProperty } from './character';
+import type {
+  ArmorInfo,
+  BuildProgression,
+  ClassInfo,
+  WeaponInfo,
+  WeaponProperty,
+} from './character';
 import { abilityById } from './ids';
 import type { Ability, DamageType } from '../core/types';
 import { DAMAGE_TYPE_BY_ID } from './ids';
@@ -186,4 +192,58 @@ export function loadClass(db: DatabaseSync, slug: string): ClassInfo {
     hitDieSides: c.h,
     saveProficiencies: saves.map((s) => abilityById(s.abilityID)) as Ability[],
   };
+}
+
+/** Extra Attack count by class and level (SRD): martials get one at 5, Fighter more. */
+function extraAttacksFor(slug: string, level: number): number {
+  const martial = ['fighter', 'barbarian', 'monk', 'paladin', 'ranger'];
+  if (!martial.includes(slug)) return 0;
+  if (slug === 'fighter') {
+    if (level >= 20) return 3;
+    if (level >= 11) return 2;
+    if (level >= 5) return 1;
+    return 0;
+  }
+  return level >= 5 ? 1 : 0;
+}
+
+/** Read one ClassLevelValue cell as a number, or undefined. */
+function classValue(
+  db: DatabaseSync,
+  slug: string,
+  level: number,
+  key: string,
+): string | undefined {
+  const row = db
+    .prepare(
+      `SELECT columnValue v FROM ClassLevelValue
+       WHERE classID = (SELECT classID FROM Class WHERE classSlug = ?) AND level = ? AND columnKey = ?`,
+    )
+    .get(slug, level, key) as unknown as { v: string } | undefined;
+  return row?.v;
+}
+
+/** Resolve the level-dependent feature values for a build from the class tables. */
+export function loadProgression(db: DatabaseSync, slug: string, level: number): BuildProgression {
+  const progression: {
+    rageUses?: number;
+    rageDamageBonus?: number;
+    sneakAttackDice?: number;
+    extraAttacks?: number;
+  } = { extraAttacks: extraAttacksFor(slug, level) };
+
+  if (slug === 'barbarian') {
+    const uses = classValue(db, slug, level, 'rageCount');
+    const dmg = classValue(db, slug, level, 'rageDamageBonus');
+    if (uses) progression.rageUses = Number(uses);
+    if (dmg) progression.rageDamageBonus = Number(dmg);
+  }
+  if (slug === 'rogue') {
+    const sa = classValue(db, slug, level, 'sneakAttack'); // e.g. "2d6"
+    if (sa) {
+      const count = Number(sa.split('d')[0]);
+      if (Number.isFinite(count)) progression.sneakAttackDice = count;
+    }
+  }
+  return progression;
 }
