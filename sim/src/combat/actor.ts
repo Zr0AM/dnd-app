@@ -29,6 +29,8 @@ export interface CombatantSpec {
   readonly maxHp: number;
   readonly speedFt?: number;
   readonly saveProficiencies?: readonly Ability[];
+  /** Explicit save bonuses (e.g. monster stat-block saves), overriding the computed value. */
+  readonly saveBonuses?: Partial<Record<Ability, number>>;
   readonly damageResponses?: DamageResponses;
   readonly position?: Cell;
   readonly attacks?: readonly AttackProfile[];
@@ -68,6 +70,7 @@ export class Combatant {
   readonly speedFt: number;
   readonly proficiencyBonus: number;
   private readonly saveProf: ReadonlySet<Ability>;
+  private readonly saveOverride: Partial<Record<Ability, number>>;
   readonly damageResponses: DamageResponses;
   readonly attacks: readonly AttackProfile[];
 
@@ -98,6 +101,7 @@ export class Combatant {
     this.speedFt = spec.speedFt ?? 30;
     this.proficiencyBonus = proficiencyBonus(spec.level);
     this.saveProf = new Set(spec.saveProficiencies ?? []);
+    this.saveOverride = { ...spec.saveBonuses };
     this.damageResponses = { ...spec.damageResponses };
     this.position = spec.position ?? { x: 0, y: 0 };
     this.attacks = spec.attacks ? [...spec.attacks] : [];
@@ -108,6 +112,8 @@ export class Combatant {
   }
 
   saveBonus(ability: Ability): number {
+    const override = this.saveOverride[ability];
+    if (override !== undefined) return override;
     return this.abilityMod(ability) + (this.saveProf.has(ability) ? this.proficiencyBonus : 0);
   }
 

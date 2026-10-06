@@ -25,8 +25,16 @@ export interface AttackProfile {
   readonly attackBonus: number;
   readonly damage: Dice;
   readonly damageType: DamageType;
+  /** Extra damage riders of other types ("plus 2d6 fire"), applied on a hit. */
+  readonly extraDamage?: readonly ExtraDamage[];
   /** Lowest die face that crits (default 20). */
   readonly critRange?: number;
+}
+
+/** An additional damage component on an attack, of its own type. */
+export interface ExtraDamage {
+  readonly damage: Dice;
+  readonly type: DamageType;
 }
 
 export interface AttackParams {

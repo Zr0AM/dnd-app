@@ -325,9 +325,18 @@ export class Encounter {
 
     const crit = result.crit || isAutoCritTarget(target, within5);
     const dmgStream = this.rng.stream(`${self.id}:${profile.name}:${target.id}:dmg`);
+
+    // Primary damage, then each extra rider, each mitigated by its own type. A
+    // crit doubles the dice of every component but never the flat bonuses.
     let raw = rollDiceTerm(dmgStream, profile.damage);
-    if (crit) raw += rollDiceTerm(dmgStream, { ...profile.damage, bonus: 0 }); // double the dice, not the bonus
-    const dealt = mitigate(raw, profile.damageType, target.damageResponses);
+    if (crit) raw += rollDiceTerm(dmgStream, { ...profile.damage, bonus: 0 });
+    let dealt = mitigate(raw, profile.damageType, target.damageResponses);
+    for (const extra of profile.extraDamage ?? []) {
+      let r = rollDiceTerm(dmgStream, extra.damage);
+      if (crit) r += rollDiceTerm(dmgStream, { ...extra.damage, bonus: 0 });
+      dealt += mitigate(r, extra.type, target.damageResponses);
+    }
+
     const before = target.isConscious;
     const outcome = target.takeDamage(dealt, { critical: crit });
 

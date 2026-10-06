@@ -41,5 +41,20 @@ npm run typecheck:sim    # type-check the package
   full AI (which arrives in a later phase). Fights are deterministic under a seed:
   two runs produce identical event logs.
 
-Still to come: the content compiler (DB rows + effect layer → combat data) and
-the walking skeleton (Phase 3), then casters and the full AI.
+`src/content/` holds the content compiler:
+
+- **monster** — a pure translator from seed-database rows to an engine
+  `MonsterTemplate` (AC, HP, abilities, saves, damage defenses, speed, and attack
+  actions with multi-type damage), and `spawnMonster` to place one. Traits,
+  recharge effects and multiattack counts are hand-authored overrides, not parsed
+  from text.
+- **load-db** — the Node-only loader that builds the seed database in memory
+  (exactly as `npm run srd:check` does) and reads monster rows for the compiler.
+- **ids** — stable seed-ID → engine-code maps (abilities, damage types, conditions).
+
+A test compiles all 341 SRD monsters from the committed seeds: 321 (94%) produce
+a usable attack; the rest are swarms, non-combatants, or save-only attackers that
+await the effect layer.
+
+Still to come: the effect layer for spells/features, character-build compilation,
+and the walking skeleton (Phase 3), then casters and the full AI.
