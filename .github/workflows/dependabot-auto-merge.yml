@@ -32,7 +32,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN || github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr review --approve --bypass "$PR_URL"
+        run: gh pr review --approve "$PR_URL"
 
       - name: Enable auto-merge for patch and minor updates
         if: >-
