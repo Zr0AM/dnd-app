@@ -52,9 +52,20 @@ npm run typecheck:sim    # type-check the package
   (exactly as `npm run srd:check` does) and reads monster rows for the compiler.
 - **ids** — stable seed-ID → engine-code maps (abilities, damage types, conditions).
 
-A test compiles all 341 SRD monsters from the committed seeds: 321 (94%) produce
-a usable attack; the rest are swarms, non-combatants, or save-only attackers that
-await the effect layer.
+- **character** — compiles a single-class martial build (Fighter, Barbarian,
+  Rogue) into a Combatant: Hit Points (fixed-value rule), Armor Class (armor,
+  Unarmored Defense, shield, Defense style), saving throws, and one weapon attack
+  (Str/Dex/finesse ability, proficiency, Archery, versatile two-handing, Champion
+  crit range). Conditional/triggered features (Rage, Sneak Attack, Extra Attack)
+  belong to the effect layer and layer on top.
 
-Still to come: the effect layer for spells/features, character-build compilation,
-and the walking skeleton (Phase 3), then casters and the full AI.
+Two tests exercise real data end to end: one compiles all 341 SRD monsters from
+the committed seeds (321, 94%, produce a usable attack; the rest are swarms,
+non-combatants, or save-only attackers awaiting the effect layer); the other is
+the **walking skeleton** — a level-3 Champion fighter compiled from the database
+fights three Goblin Warriors spawned from the database, resolving deterministically
+(identical replay logs across runs). This is the full pipeline: seeds → compilers
+→ combatants → combat.
+
+Still to come: the effect layer for spells and class features (starting with the
+martial features Rage / Sneak Attack / Extra Attack), the shared AI, then the GA.

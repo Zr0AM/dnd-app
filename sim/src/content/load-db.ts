@@ -8,6 +8,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { MonsterSource, MonsterActionRow, MonsterDamageRow, MonsterRow } from './monster';
+import type { ArmorInfo, ClassInfo, WeaponInfo, WeaponProperty } from './character';
+import { abilityById } from './ids';
+import type { Ability, DamageType } from '../core/types';
+import { DAMAGE_TYPE_BY_ID } from './ids';
 
 /** The repository's docs/db directory, relative to this file. */
 function dbDir(): string {
@@ -76,4 +80,110 @@ export function loadMonsterSources(db: DatabaseSync): MonsterSource[] {
       .all(id) as unknown as MonsterSource['speeds'];
     return { monster: m, actions, damage, saves, defenses, speeds };
   });
+}
+
+/** The engine property names for the weapon-property names in the seeds. */
+const WEAPON_PROPERTY_BY_NAME: Readonly<Record<string, WeaponProperty>> = {
+  Finesse: 'finesse',
+  Heavy: 'heavy',
+  Light: 'light',
+  'Two-Handed': 'two-handed',
+  Versatile: 'versatile',
+  Thrown: 'thrown',
+  Ammunition: 'ammunition',
+  Loading: 'loading',
+  Reach: 'reach',
+  Range: 'range',
+};
+
+interface WeaponRow {
+  n: string;
+  c: 'simple' | 'martial';
+  r: 'melee' | 'ranged';
+  dc: number;
+  ds: number;
+  dt: number;
+  vc: number | null;
+  vs: number | null;
+  rn: number | null;
+  rl: number | null;
+}
+
+/** Read one weapon's stats and properties by equipment name. */
+export function loadWeapon(db: DatabaseSync, name: string): WeaponInfo {
+  const w = db
+    .prepare(
+      `SELECT e.equipmentName n, w.weaponCategory c, w.weaponRange r, w.damageDiceCount dc,
+              w.damageDiceSides ds, w.damageTypeID dt, w.versatileDiceCount vc,
+              w.versatileDiceSides vs, w.rangeNormalFt rn, w.rangeLongFt rl
+       FROM Weapon w JOIN Equipment e USING (equipmentID) WHERE e.equipmentName = ?`,
+    )
+    .get(name) as unknown as WeaponRow | undefined;
+  if (!w) throw new Error(`weapon not found: ${name}`);
+  const propRows = db
+    .prepare(
+      `SELECT p.weaponPropertyName n FROM WeaponPropertyLink l
+       JOIN WeaponProperty p USING (weaponPropertyID)
+       JOIN Equipment e ON e.equipmentID = l.equipmentID WHERE e.equipmentName = ?`,
+    )
+    .all(name) as unknown as { n: string }[];
+  const properties = propRows
+    .map((r) => WEAPON_PROPERTY_BY_NAME[r.n])
+    .filter((p): p is WeaponProperty => p !== undefined);
+  return {
+    name: w.n,
+    category: w.c,
+    range: w.r,
+    diceCount: w.dc,
+    diceSides: w.ds,
+    damageType: DAMAGE_TYPE_BY_ID[w.dt] as DamageType,
+    properties,
+    versatileDiceCount: w.vc,
+    versatileDiceSides: w.vs,
+    rangeNormalFt: w.rn,
+    rangeLongFt: w.rl,
+  };
+}
+
+interface ArmorRow {
+  n: string;
+  c: 'light' | 'medium' | 'heavy';
+  b: number;
+  ad: number;
+  dc: number | null;
+}
+
+/** Read one armor's stats by equipment name. */
+export function loadArmor(db: DatabaseSync, name: string): ArmorInfo {
+  const a = db
+    .prepare(
+      `SELECT e.equipmentName n, ar.armorCategory c, ar.armorBaseAc b, ar.armorAddsDex ad,
+              ar.armorDexCap dc
+       FROM Armor ar JOIN Equipment e USING (equipmentID) WHERE e.equipmentName = ?`,
+    )
+    .get(name) as unknown as ArmorRow | undefined;
+  if (!a) throw new Error(`armor not found: ${name}`);
+  return {
+    name: a.n,
+    category: a.c,
+    baseAc: a.b,
+    addsDex: a.ad === 1,
+    dexCap: a.dc,
+  };
+}
+
+/** Read a class's hit die and saving-throw proficiencies by slug. */
+export function loadClass(db: DatabaseSync, slug: string): ClassInfo {
+  const c = db
+    .prepare(`SELECT classID, classHitDieSides h FROM Class WHERE classSlug = ?`)
+    .get(slug) as unknown as { classID: number; h: number } | undefined;
+  if (!c) throw new Error(`class not found: ${slug}`);
+  const saves = db
+    .prepare(`SELECT abilityID FROM ClassSavingThrow WHERE classID = ?`)
+    .all(c.classID) as unknown as { abilityID: number }[];
+  return {
+    slug,
+    hitDieSides: c.h,
+    saveProficiencies: saves.map((s) => abilityById(s.abilityID)) as Ability[],
+  };
 }
