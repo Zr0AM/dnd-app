@@ -268,6 +268,7 @@ CREATE TABLE Class (
   classCasterType      TEXT NOT NULL CHECK (classCasterType IN ('none', 'full', 'half', 'pact')),
   spellcastingAbilityID INTEGER REFERENCES Ability(abilityID),
   classDescription     TEXT,
+  classStartingEquipmentText TEXT,             -- "(A) Greataxe, 4 Handaxes … or (B) 75 GP"
   sourceID             INTEGER NOT NULL REFERENCES Source(sourceID),
   sourcePage           INTEGER,
   active               INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
@@ -351,6 +352,7 @@ CREATE TABLE Subclass (
 -- Class and subclass features ("Level 2: Danger Sense").
 CREATE TABLE ClassFeature (
   featureID          INTEGER PRIMARY KEY,
+  featureSlug        TEXT NOT NULL UNIQUE,
   classID            INTEGER NOT NULL REFERENCES Class(classID) ON DELETE CASCADE,
   subclassID         INTEGER REFERENCES Subclass(subclassID) ON DELETE CASCADE,
   level              INTEGER NOT NULL REFERENCES CharacterLevel(level),
@@ -454,16 +456,18 @@ CREATE TABLE SpeciesTrait (
   UNIQUE (speciesID, speciesTraitName)
 );
 
--- Choices inside a trait: Draconic Ancestors, Elven Lineages, Gnomish
+-- Choices a species offers: Draconic Ancestors, Elven Lineages, Gnomish
 -- Lineages, Giant Ancestry, Fiendish Legacies.
 CREATE TABLE SpeciesOption (
   speciesOptionID          INTEGER PRIMARY KEY,
-  speciesTraitID           INTEGER NOT NULL REFERENCES SpeciesTrait(speciesTraitID) ON DELETE CASCADE,
+  speciesOptionSlug        TEXT NOT NULL UNIQUE,
+  speciesID                INTEGER NOT NULL REFERENCES Species(speciesID) ON DELETE CASCADE,
+  speciesOptionGroup       TEXT NOT NULL,      -- 'Draconic Ancestor'
   speciesOptionName        TEXT NOT NULL,      -- 'Red'
   damageTypeID             INTEGER REFERENCES DamageType(damageTypeID),
-  speciesOptionDescription TEXT,
+  speciesOptionDescription TEXT,              -- the option's traits, as text
   speciesOptionDetails     TEXT CHECK (speciesOptionDetails IS NULL OR json_valid(speciesOptionDetails)),
-  UNIQUE (speciesTraitID, speciesOptionName)
+  UNIQUE (speciesID, speciesOptionGroup, speciesOptionName)
 );
 
 CREATE TABLE Background (
@@ -471,9 +475,11 @@ CREATE TABLE Background (
   backgroundName        TEXT NOT NULL UNIQUE,
   backgroundSlug        TEXT NOT NULL UNIQUE,
   featID                INTEGER NOT NULL REFERENCES Feat(featID),   -- origin feat
+  backgroundFeatNote    TEXT,                  -- 'Cleric' for Magic Initiate (Cleric)
   backgroundToolText    TEXT,                  -- 'Choose one kind of Gaming Set'
   toolEquipmentID       INTEGER REFERENCES Equipment(equipmentID),
   backgroundDescription TEXT,
+  backgroundEquipmentText TEXT,                -- "(A) … or (B) 50 GP"
   sourceID              INTEGER NOT NULL REFERENCES Source(sourceID),
   sourcePage            INTEGER,
   active                INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
@@ -573,7 +579,7 @@ CREATE TABLE Monster (
   monsterHpDiceCount   INTEGER,
   monsterHpDiceSides   INTEGER,
   monsterHpBonus       INTEGER,
-  monsterInitBonus     INTEGER NOT NULL,
+  monsterInitBonus     INTEGER,                -- NULL until sourced (5e-srd-api omits it)
   monsterStr           INTEGER NOT NULL,
   monsterDex           INTEGER NOT NULL,
   monsterCon           INTEGER NOT NULL,
@@ -581,6 +587,7 @@ CREATE TABLE Monster (
   monsterWis           INTEGER NOT NULL,
   monsterCha           INTEGER NOT NULL,
   monsterPassivePerception INTEGER NOT NULL,
+  monsterLanguages     TEXT,                   -- the Languages line as printed
   monsterTelepathyFt   INTEGER,
   crValue              REAL NOT NULL REFERENCES ChallengeRating(crValue),
   monsterXpInLair      INTEGER,                -- 'XP 5,900, or 7,200 in lair'
@@ -639,23 +646,29 @@ CREATE TABLE MonsterDefense (
   defenseKind      TEXT NOT NULL CHECK (defenseKind IN ('resistance', 'vulnerability', 'immunity')),
   damageTypeID     INTEGER REFERENCES DamageType(damageTypeID),
   conditionID      INTEGER REFERENCES Condition(conditionID),
-  defenseNote      TEXT,                       -- 'from nonmagical attacks'
-  CHECK ((damageTypeID IS NULL) <> (conditionID IS NULL))
+  defenseNote      TEXT,                       -- qualifier, or the whole entry when it names no type
+  CHECK (damageTypeID IS NULL OR conditionID IS NULL),
+  CHECK (damageTypeID IS NOT NULL OR conditionID IS NOT NULL OR defenseNote IS NOT NULL)
 );
 
+-- Languages named on the Languages line, for filtering. The line itself (with
+-- "understands … but can't speak", "plus two other languages") is Monster.monsterLanguages.
 CREATE TABLE MonsterLanguage (
   monsterLanguageID INTEGER PRIMARY KEY,
   monsterID         INTEGER NOT NULL REFERENCES Monster(monsterID) ON DELETE CASCADE,
-  languageID        INTEGER REFERENCES Language(languageID),
-  languageNote      TEXT,                      -- 'understands Common but can''t speak'
-  CHECK (languageID IS NOT NULL OR languageNote IS NOT NULL)
+  languageID        INTEGER NOT NULL REFERENCES Language(languageID),
+  languageNote      TEXT,                      -- dialect: 'Aquan, Terran'
+  UNIQUE (monsterID, languageID)
 );
 
+-- "Gear Light Crossbow, Shortsword, Javelins (6)". gearText is kept for
+-- entries that match no Equipment row (e.g. 'Wand').
 CREATE TABLE MonsterGear (
-  monsterID   INTEGER NOT NULL REFERENCES Monster(monsterID) ON DELETE CASCADE,
-  equipmentID INTEGER NOT NULL REFERENCES Equipment(equipmentID),
-  quantity    INTEGER NOT NULL DEFAULT 1,
-  PRIMARY KEY (monsterID, equipmentID)
+  monsterGearID INTEGER PRIMARY KEY,
+  monsterID     INTEGER NOT NULL REFERENCES Monster(monsterID) ON DELETE CASCADE,
+  equipmentID   INTEGER REFERENCES Equipment(equipmentID),
+  gearText      TEXT NOT NULL,
+  quantity      INTEGER NOT NULL DEFAULT 1
 );
 
 -- Every entry under Traits, Actions, Bonus Actions, Reactions, Legendary Actions.
@@ -676,10 +689,9 @@ CREATE TABLE MonsterAction (
   saveAbilityID     INTEGER REFERENCES Ability(abilityID),
   saveDc            INTEGER,
   actionDescription TEXT NOT NULL,             -- full text, always kept
-  sortOrder         INTEGER NOT NULL
+  sortOrder         INTEGER NOT NULL,
+  UNIQUE (monsterID, actionSection, sortOrder)   -- also how seeds address a row
 );
-
-CREATE INDEX MonsterActionMonsterIdx ON MonsterAction(monsterID, actionSection, sortOrder);
 
 -- Structured damage for attacks: "7 (1d6 + 4) Piercing plus 17 (5d6) Poison".
 CREATE TABLE MonsterActionDamage (

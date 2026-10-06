@@ -1,8 +1,12 @@
 # Game data schema plan
 
-Status: **draft for discussion**. Nothing here is deployed. The companion DDL is
-[`schema-draft.sql`](./schema-draft.sql). It loads cleanly into SQLite 3.45 with
-`PRAGMA foreign_keys=ON`, on top of a stub of today's `Item` table.
+Status: **draft for discussion**. Nothing here is deployed.
+
+- The draft DDL is [`schema-draft.sql`](./schema-draft.sql).
+- Seed data for most tables is in [`seed/`](./seed). It is generated from the
+  2024 SRD JSON, as described under "Data source" below.
+- `npm run srd:check` loads both into SQLite with foreign keys on, on top of a
+  stub of today's `Item` table.
 
 ## What was analyzed
 
@@ -202,33 +206,99 @@ erDiagram
   MagicItemTable }o--|| Rarity : samples
 ```
 
+## Data source: the 2024 SRD ("5.5e") as JSON
+
+Most tables don't need to be parsed out of the PDF. [5e-bits/5e-srd-api](https://github.com/5e-bits/5e-srd-api)
+publishes the 2024 SRD as structured JSON in `packages/5e-database/src/2024/en`.
+The repo's code is MIT-licensed and the content is the SRD under CC-BY-4.0.
+`5e-bits/5e-database` used to hold this data but is now archived and points to
+5e-srd-api.
+
+`scripts/srd/build-srd-seed.mjs` turns a checkout pinned to `05c109e` into seven
+seed files in [`seed/`](./seed). `scripts/srd/check-srd-seed.mjs` loads the
+schema and the seeds into SQLite with foreign keys on, runs the seeds twice, and
+fails on any error, foreign-key violation or row-count change.
+
+```bash
+git clone https://github.com/5e-bits/5e-srd-api ../5e-srd-api
+git -C ../5e-srd-api checkout 05c109ea1f6b5445960b645ded48ad9c6a8df7b0
+npm run srd:seed -- ../5e-srd-api   # rewrites docs/db/seed/*.sql
+npm run srd:check                   # schema + seeds load cleanly, twice
+```
+
+The seeds are idempotent. Parent rows are upserted on their slug or natural
+key, so their IDs stay stable. Child rows are deleted and re-inserted. Every
+foreign key is written as a sub-select on a slug, so no file depends on
+generated IDs.
+
+| File                    | Loads                                                                                                                                                                                                                                       | Rows (main tables)                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `01-reference.sql`      | Source, abilities, skills, damage types, conditions, sizes, creature types, alignments, languages, coins, rarity (with SRD values and crafting), item categories, schools, CR → XP/PB, level → XP/PB, weapon properties, masteries, poisons | 15 conditions, 13 damage types, 34 CRs, 14 poisons        |
+| `02-equipment.sql`      | `Equipment`, `Weapon`, `Armor`, `Tool`, pack contents                                                                                                                                                                                       | 182 items, 38 weapons, 13 armor, 36 tools                 |
+| `03-classes.sql`        | Classes, saves, skill options, proficiencies, class table columns, spell slots, subclasses, features                                                                                                                                        | 12 classes, 600 level values, 680 slot rows, 232 features |
+| `04-spells.sql`         | `Spell`, `SpellClass`                                                                                                                                                                                                                       | 339 spells, 879 class links                               |
+| `05-origins.sql`        | Feats, species (+ sizes, traits, lineage/ancestry options), backgrounds                                                                                                                                                                     | 17 feats, 9 species, 24 options, 4 backgrounds            |
+| `06-monsters.sql`       | `Monster` and all stat-block child tables                                                                                                                                                                                                   | 341 monsters, 1,392 actions, 733 damage rolls, 379 spells |
+| `07-items-backfill.sql` | Fills the new `Item` columns, `ItemVariant` and `ItemAttunementReq` for existing `Item` rows whose name matches one of the 262 SRD items                                                                                                    | depends on the live catalog                               |
+
+The magic items only **backfill** `Item`; they never insert rows into it. `Item`
+rows carry Market data (price, shopkeeper text) that the SRD lacks. The
+backfill only claims rows with no `itemSlug`, and only sets `sourceID` to the
+SRD on rows whose description already came from the SRD.
+
+### Checked against the SRD 5.2.1 text
+
+Spot checks matched:
+
+- Weapons: Longsword, Longbow, Dagger, Blowgun
+- Armor: Half-Plate, Plate, Shield
+- Spells: Revivify's 300 GP diamond (consumed); Identify (ritual)
+- Class tables: Barbarian and Monk class columns, Rogue Sneak Attack, all spell-slot tables at level 5
+- Monsters: the Assassin's attacks and damage, the Lich's spell frequencies
+
+Three differences from the SRD text are handled in the script:
+
+- **Human size.** The dataset says Medium. The SRD says "Medium … or Small",
+  so an override seeds both.
+- **Archmage XP.** The dataset copies the SRD's printed "XP 8,000" for a CR 12
+  creature (the table says 8,400). `Monster` takes XP from `ChallengeRating`,
+  so it is listed as a known quirk.
+- **Monk Martial Arts die.** The dataset stores a bare `6`, which is seeded as
+  `d6`.
+
+### What the dataset does not cover
+
+These still need the SRD text, or hand entry:
+
+| Missing                                                                                                                | Tables left empty                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Monster initiative, legendary-action uses, type tags such as "(Wizard)"                                                | `Monster.monsterInitBonus` and related columns stay NULL                                     |
+| Starting equipment as structured rows (the text is kept in `classStartingEquipmentText` and `backgroundEquipmentText`) | `ClassStartingEquipment`, `BackgroundEquipment`                                              |
+| Metamagic options, Eldritch Invocations                                                                                | `FeatureOption`                                                                              |
+| Mounts, vehicles, lifestyle/food/lodging/hirelings, trinkets                                                           | `Mount`, `Vehicle`, `Service`, `Trinket`                                                     |
+| Rules Glossary, Gameplay Toolbox (travel pace, traps, curses, encounter XP budget)                                     | `RuleEntry`, `TravelPace`, `EncounterXpBudget`                                               |
+| Spells cast by magic items, page numbers                                                                               | `ItemSpell`, every `sourcePage`                                                              |
+| Treasure tables (2014 DMG, not SRD)                                                                                    | the `Treasure*`, `MagicItemTable` and `Valuable` tables, to be seeded from `hoard-tables.ts` |
+
 ## Suggested rollout
 
 Each phase can ship on its own, and the app keeps working at every step.
 
-1. **Reference + Item normalization + treasure config.** Create the reference
-   tables. Backfill `Item.rarityID`, `categoryID`, `sourceID`,
-   `itemRequiresAttunement` and `itemHeader` from the current text columns and
-   the SRD JSON (`header` gives rarity, attunement and the base requirement).
-   Load `ItemVariant` for the 13 "Rarity Varies" items. Move `DENOMS` and
-   `hoard-tables.ts` into the treasure tables, behind a `/api/treasure-config`
-   endpoint, and keep the TS constants as the offline/dev fixture.
-2. **Equipment.** Parse the Equipment chapter tables (p. 89–103). This unlocks
-   mundane goods in the Market and base items for magic weapons and armor.
-3. **Spells.** These are regular in the text: name, then a "Level N School
-   (Classes)" line, then a "Casting Time … Range … Components … Duration"
-   line. Link `ItemSpell` and the Spell Scroll variants.
-4. **Monsters.** Parse the stat blocks (p. 258–364). This lets the Loot
-   Generator pick a monster instead of a bare CR, and enables an encounter
-   builder with `EncounterXpBudget`.
-5. **Character options.** Classes, subclasses, species, backgrounds and feats.
-   This part is the most hand-curated, because the class tables span columns
-   in the text export.
-6. **Rules reference.** Glossary, conditions, toolbox.
-
-For each phase the import should be a **checked-in script** that reads the SRD
-text/JSON and writes idempotent seed SQL keyed on slugs, so a re-run updates
-rows instead of duplicating them. Spot-check its output against the PDF.
+1. **Reference tables, `Item` backfill and treasure config.** Apply the schema
+   and `01-reference.sql`, then `07-items-backfill.sql` against the live
+   catalog. Move `DENOMS` and `hoard-tables.ts` into the treasure tables behind
+   a `/api/treasure-config` endpoint. Keep the TS constants as the offline/dev
+   fixture.
+2. **Equipment** (`02`). This unlocks mundane goods in the Market, and base
+   items for magic weapons and armor.
+3. **Spells** (`04`, which needs `03` for class lists). Then link `ItemSpell`
+   and the Spell Scroll variants.
+4. **Monsters** (`06`). This lets the Loot Generator pick a monster instead of
+   a bare CR, and enables an encounter builder once `EncounterXpBudget` is
+   filled.
+5. **Character options** (`03`, `05`).
+6. **Text-only gaps.** Parse the SRD text for the tables in "What the dataset
+   does not cover".
 
 ## Open decisions
 
