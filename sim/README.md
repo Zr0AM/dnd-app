@@ -144,9 +144,30 @@ rounds). NSGA-II also caught a metric gap the scalar GA hid: raw-rounds efficien
 rewarded dying fast, so losers polluted the front; the effective-rounds fix (losses
 count the cap) removed them. That is the "GA exploits modelling gaps" guard working.
 
+### Scenario library, metrics and roles (Phase 5)
+
+- **scenario/** — maps (open field, corridor chokepoint) and a curated set of
+  seeded level-3 encounters (pair, single foe, swarm, mixed, chokepoint pack),
+  XP-validated. Builds are evaluated across the whole library, so they can't
+  overfit one encounter.
+- **opt/stats.ts** — Wilson and normal-approximation confidence intervals; every
+  evaluation reports 95% CIs for win rate, damage and HP retained.
+- **opt/anchor.ts** — reference-anchor normalization (ratio to a frozen benchmark
+  build, the metrics-spec method), so a score of 1.0 means "as good as the
+  benchmark."
+- **opt/roles.ts** — the roles as weight presets; a report re-ranks for a role
+  (`rescore`) without re-simulating.
+
+What is caster-gated (Phase 4), and why it is not done here: the control and
+support metric axes have no signal from a martial, and the reference _parties_
+(R6/R4/R3 with role-slot substitution) need caster fillers and a party context.
+So those two axes and party-anchored normalization wait for the spell layer; the
+four live axes, anchor normalization and the martial roles are complete.
+
 Deferred (needs push access to dnd-db-rest and the environment's network/credential
 setup): the D1 results migration + the export/upload step, and the display-only
 Angular UI that reads these reports (see docs/sim/ui-integration.md).
 
-Still to come: the spell effect layer and caster builds; the full reference-party
-normalization and the six-axis metric catalog; levels 11/17; item/loot allocation.
+Still to come: the spell effect layer and caster builds (Phase 4), which unlocks
+the control/support axes, the reference parties and the caster roles; then levels
+11/17; then item/loot allocation.

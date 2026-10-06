@@ -150,17 +150,27 @@ one subclass per class, so the hero's subclass choice is that one or none.
    format and coverage tiers. All four drafted: [effect format](./effect-format.md),
    [genome and legality](./genome.md), [metrics and normalization](./metrics.md),
    [scenario and map format](./scenarios.md).
-2. **Engine skeleton**: dice, seeded streams, grid, attacks, saves and damage, conditions, combat
-   loop. Tested against hand-computed damage per round and the DMG's CR benchmarks.
-3. **Walking skeleton**: level-3 Fighter, Barbarian and Rogue against goblins and bandits, through a
-   minimal GA, into a local result file.
-4. **Casters and effects**: slots, concentration, AoE and control spells, healing and buffs, at
-   levels 3 and 5.
-5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers.
-6. **D1 results store and reports**, then the NSGA-II optimizer with the legality validator.
-7. **Levels 11 and 17**: legendary actions, lair actions (check how the SRD handles them), high-level
-   spells, and campaign-path scoring.
-8. **Item and loot allocation.**
+2. **Engine skeleton** — _done._ dice, seeded streams, grid, attacks, saves and damage, conditions,
+   combat loop. Code in `sim/`.
+3. **Walking skeleton** — _done._ level-3 Fighter, Barbarian and Rogue (compiled from the seeds) vs.
+   goblins, with martial features (Rage, Sneak Attack, Extra Attack), the shared tactical AI, and a
+   minimal GA.
+4. **Casters and effects** — _not started._ slots, concentration, AoE and control spells, healing and
+   buffs, at levels 3 and 5. The gating item for breadth: casters, the control/support metric axes,
+   the reference parties and the caster roles all depend on it.
+5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
+   _done for what martials exercise._ The scenario library (maps + XP-validated level-3 encounters),
+   confidence intervals, the four live metric axes, reference-anchor normalization and the martial
+   role presets are built. The control/support axes and the reference _parties_ (R6/R4/R3 with
+   role-slot substitution) are deferred to Phase 4, since a solo martial has no control/support signal
+   and no party.
+6. **D1 results store and reports**, then the NSGA-II optimizer with the legality validator — _optimizer
+   done, store deferred._ NSGA-II (non-dominated sort + crowding), the legality validator (genome
+   repair), and the serializable run reports with client-side reweighting are built. The D1 migration
+   and upload need push access to `dnd-db-rest` (see [ui-integration](./ui-integration.md)).
+7. **Levels 11 and 17** — _not started._ legendary actions, lair actions (check how the SRD handles
+   them), high-level spells, and campaign-path scoring.
+8. **Item and loot allocation** — _not started._
 
 ## Validation
 
