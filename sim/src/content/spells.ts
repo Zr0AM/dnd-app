@@ -113,3 +113,28 @@ export const fireball: Spell = {
 /** The damage spells available to author-driven caster builds. */
 export const DAMAGE_CANTRIPS: readonly Spell[] = [fireBolt, rayOfFrost, sacredFlame];
 export const DAMAGE_SPELLS: readonly Spell[] = [guidingBolt, burningHands, scorchingRay, fireball];
+
+// --- Healing (level 1) ---
+
+export const cureWounds: Spell = {
+  id: 'cure-wounds',
+  name: 'Cure Wounds',
+  level: 1,
+  action: 'action',
+  rangeFt: 5, // Touch
+  concentration: false,
+  kind: { type: 'heal', dice: upcastDice(1, 2, 8, 2), addSpellMod: true },
+};
+
+export const healingWord: Spell = {
+  id: 'healing-word',
+  name: 'Healing Word',
+  level: 1,
+  action: 'bonus',
+  rangeFt: 60,
+  concentration: false,
+  kind: { type: 'heal', dice: () => ({ count: 2, sides: 4, bonus: 0 }), addSpellMod: true },
+};
+
+/** Healing spells available to support casters. */
+export const HEALING_SPELLS: readonly Spell[] = [cureWounds, healingWord];

@@ -38,7 +38,19 @@ export type SpellKind =
       readonly aoeRadiusFt?: number;
       /** The area is centered on the caster rather than a chosen point (e.g. Burning Hands). */
       readonly selfOrigin?: boolean;
+    }
+  | {
+      readonly type: 'heal';
+      /** Healing dice (scaling by slot level). */
+      readonly dice: DamageScaling;
+      /** Add the caster's spellcasting modifier to the healing (Cure Wounds, Healing Word). */
+      readonly addSpellMod: boolean;
     };
+
+/** Which side a spell is cast at. */
+export function spellTargetsAllies(spell: Spell): boolean {
+  return spell.kind.type === 'heal';
+}
 
 export interface Spell {
   readonly id: string;

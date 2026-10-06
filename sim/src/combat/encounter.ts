@@ -47,6 +47,7 @@ export type CombatEvent =
       slotLevel: number;
       targets: number;
       damage: number;
+      healing: number;
     }
   | { kind: 'down'; id: string }
   | { kind: 'death'; id: string }
@@ -68,6 +69,8 @@ export interface TurnApi {
   readonly resources: TurnResources;
   enemies(): Combatant[];
   allies(): Combatant[];
+  /** Allies including downed-but-alive ones (for healing), excluding self. */
+  allAllies(): Combatant[];
   /** Straight-line move to `dest`, spending movement and provoking OAs. Returns success. */
   moveTo(dest: Cell): boolean;
   /** Make a weapon attack with an action. Returns the damage dealt, or null if illegal. */
@@ -218,6 +221,8 @@ export class Encounter {
       enemies: () => this.combatants.filter((c) => c.side !== self.side && c.isConscious),
       allies: () =>
         this.combatants.filter((c) => c.side === self.side && c.isConscious && c !== self),
+      allAllies: () =>
+        this.combatants.filter((c) => c.side === self.side && c.isAlive && c !== self),
       moveTo: (dest) => this.moveTo(self, dest, resources),
       attack: (target, profile) => this.attack(self, target, profile, resources),
       castSpell: (spell, target, slotLevel) =>
@@ -256,9 +261,18 @@ export class Encounter {
 
     const dmgStream = this.rng.stream(`${self.id}:${spell.id}:dmg`);
     let totalDamage = 0;
+    let totalHealing = 0;
     let targetsHit = 0;
 
-    if (spell.kind.type === 'attack-damage') {
+    if (spell.kind.type === 'heal') {
+      // Target is an ally; restore HP (reviving if at 0).
+      const mod = self.spellAbility ? self.abilityMod(self.spellAbility) : 0;
+      const amount =
+        rollDiceTerm(dmgStream, spell.kind.dice(slotLevel, self.level)) +
+        (spell.kind.addSpellMod ? mod : 0);
+      totalHealing = target.heal(amount);
+      targetsHit = 1;
+    } else if (spell.kind.type === 'attack-damage') {
       const rays = raysAt(spell.kind, slotLevel, Math.max(1, spell.level));
       const damage = spell.kind.damage(slotLevel, self.level);
       for (let r = 0; r < rays; r++) {
@@ -325,6 +339,7 @@ export class Encounter {
       slotLevel,
       targets: targetsHit,
       damage: totalDamage,
+      healing: totalHealing,
     });
     return totalDamage;
   }

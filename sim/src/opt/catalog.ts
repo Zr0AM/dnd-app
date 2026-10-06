@@ -19,9 +19,11 @@ import type { Ability } from '../core/types';
 import type { Spell } from '../combat/spell';
 import {
   burningHands,
+  cureWounds,
   fireBolt,
   fireball,
   guidingBolt,
+  healingWord,
   rayOfFrost,
   sacredFlame,
   scorchingRay,
@@ -69,7 +71,7 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
   cleric: {
     ability: 'wis',
     cantrips: [sacredFlame],
-    spells: [guidingBolt],
+    spells: [cureWounds, healingWord, guidingBolt],
     weaponName: 'Mace',
     armorName: 'Scale Mail', // medium armor + shield
     shield: true,

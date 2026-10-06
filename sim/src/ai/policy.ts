@@ -129,6 +129,7 @@ function spellExpectedDamage(
     const dmg = rays * meanDice(kind.damage(slotLevel, self.level)) * ASSUMED_HIT;
     return Math.min(dmg, target.hp);
   }
+  if (kind.type !== 'save-damage') return 0; // heal and other non-damage kinds
   // save-damage: expected damage per target after the save, capped per target's HP.
   const perTarget =
     meanDice(kind.damage(slotLevel, self.level)) *
@@ -154,6 +155,7 @@ function bestSpell(
   };
   for (const cantrip of self.cantrips) consider(cantrip, 0);
   for (const spell of self.spells) {
+    if (spell.kind.type === 'heal') continue; // healing is handled separately
     const slot = self.availableSlotLevels().find((l) => l >= spell.level);
     if (slot !== undefined) consider(spell, slot);
   }
@@ -171,9 +173,49 @@ function approach(api: TurnApi, target: Combatant, rangeFt: number): void {
   if (steps > 0) api.moveTo(stepTowardBy(api.self.position, target.position, steps));
 }
 
+/** An ally worth healing this turn: a downed ally first, else a badly wounded one. */
+function pickHealTarget(api: TurnApi): Combatant | null {
+  const allies = api.allAllies();
+  const downed = allies.filter((a) => a.isDying);
+  if (downed.length > 0) return downed[0];
+  const hurt = allies
+    .filter((a) => a.isConscious && a.hp / a.maxHp < 0.4)
+    .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+  return hurt[0] ?? null;
+}
+
+/**
+ * If the caster has a heal spell and an ally needs it, heal them. Prefers a
+ * bonus-action heal (Healing Word) for a downed ally so the caster can still act;
+ * returns true if the whole turn's action was spent healing.
+ */
+function tryHeal(api: TurnApi): boolean {
+  const healSpells = api.self.spells.filter((s) => s.kind.type === 'heal');
+  if (healSpells.length === 0) return false;
+  const target = pickHealTarget(api);
+  if (!target) return false;
+
+  const slot = api.self.availableSlotLevels().find((l) => l >= 1);
+  if (slot === undefined) return false;
+
+  // Prefer a bonus-action heal to revive while keeping the action for offense.
+  const bonusHeal = healSpells.find((s) => s.action === 'bonus');
+  const actionHeal = healSpells.find((s) => s.action === 'action');
+  if (target.isDying && bonusHeal && api.resources.bonus) {
+    api.castSpell(bonusHeal, target, slot);
+    return false; // action still free
+  }
+  const spell = actionHeal ?? bonusHeal!;
+  api.castSpell(spell, target, slot);
+  return spell.action === 'action';
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
+    // Healing takes priority when an ally is down or badly hurt.
+    if (tryHeal(api)) return;
+
     const enemies = api.enemies();
     if (enemies.length === 0) return;
 
