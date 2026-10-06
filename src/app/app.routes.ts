@@ -20,6 +20,25 @@ export const routes: Routes = [
     data: { name: 'Market', icon: 'scroll' } satisfies NavData,
   },
   {
+    path: 'spells',
+    loadComponent: () => import('./spells/spells.component').then((m) => m.SpellsComponent),
+    title: 'Spells · Adventurer’s Ledger',
+    data: { name: 'Spells', icon: 'scroll' } satisfies NavData,
+  },
+  {
+    path: 'monsters',
+    loadComponent: () => import('./monsters/monsters.component').then((m) => m.MonstersComponent),
+    title: 'Monsters · Adventurer’s Ledger',
+    data: { name: 'Monsters', icon: 'd20' } satisfies NavData,
+  },
+  {
+    path: 'equipment',
+    loadComponent: () =>
+      import('./equipment/equipment.component').then((m) => m.EquipmentComponent),
+    title: 'Equipment · Adventurer’s Ledger',
+    data: { name: 'Equipment', icon: 'chest' } satisfies NavData,
+  },
+  {
     path: 'loot-generator',
     loadComponent: () =>
       import('./treasure-generator/treasure-generator').then((m) => m.TreasureGenerator),
