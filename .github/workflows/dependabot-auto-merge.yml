@@ -33,7 +33,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN || github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr checks $PR_NUMBER --watch --interval 10
+          gh pr checks "$PR_NUMBER" --watch --interval 10
 
       - name: Approve PR
         if: >-
