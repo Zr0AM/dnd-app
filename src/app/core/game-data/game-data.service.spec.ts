@@ -30,7 +30,7 @@ describe('GameDataService', () => {
   // given body and the others with empty lists so verify() sees no stragglers.
   async function flushLists(
     url: string,
-    body: unknown,
+    body: object,
     init?: { status: number; statusText: string },
   ) {
     TestBed.tick();

@@ -94,7 +94,8 @@ export function listHandlers(view: string, filterKeys: readonly string[]) {
 // GET /api/<name>/<id>: one active row of a base table. Only `fields` is accepted.
 export function detailHandlers(table: string) {
   return methodGuards(async ({ request, env, params }) => {
-    const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const rawId = params?.['id'];
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
     if (!id || !/^\d{1,9}$/.test(id)) {
       return errorResponse(400, 'Invalid id');
     }
