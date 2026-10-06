@@ -1,5 +1,6 @@
--- Draft D1 (SQLite) schema for the Adventurer's Ledger game data.
--- Planning artifact only: nothing runs this yet. See docs/db/schema-plan.md.
+-- D1 (SQLite) schema for the Adventurer's Ledger game data. This is the body of
+-- Zr0AM/dnd-db-rest migrations/0003_game_data_tables.sql; keep the two identical.
+-- See docs/db/schema-plan.md.
 --
 -- Conventions (matching the existing Item table):
 --   * Tables are PascalCase and singular; columns are camelCase, prefixed with

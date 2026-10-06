@@ -1,12 +1,17 @@
 # Game data schema plan
 
-Status: **draft for discussion**. Nothing here is deployed.
+Status: **migration written, not yet applied to production.**
 
-- The draft DDL is [`schema-draft.sql`](./schema-draft.sql).
-- Seed data for most tables is in [`seed/`](./seed). It is generated from the
-  2024 SRD JSON, as described under "Data source" below.
-- `npm run srd:check` loads both into SQLite with foreign keys on, on top of a
-  stub of today's `Item` table.
+- The schema is migration `0003_game_data_tables.sql` and the data is
+  `seed/srd/*.sql`, both in [Zr0AM/dnd-db-rest](https://github.com/Zr0AM/dnd-db-rest)
+  (branch `game-data-tables`). Its README has the commands to apply them.
+- [`schema-draft.sql`](./schema-draft.sql) here is the same SQL. Keep the two
+  identical: change the migration with a new numbered migration, then copy it
+  here.
+- Seed data is generated into [`seed/`](./seed) as described under "Data
+  source" below. Copy it to `dnd-db-rest/seed/srd/` after regenerating.
+- `npm run srd:check` loads the schema and the seeds into SQLite with foreign
+  keys on, on top of a stub of today's `Item` table.
 
 ## What was analyzed
 
@@ -328,11 +333,13 @@ Each phase can ship on its own, and the app keeps working at every step.
 
 ## Open decisions
 
-1. **Where migrations live.** D1 is owned by the `dnd-db-rest` Worker. That
-   Worker isn't in this repo, so it is unclear whether its routes can serve
-   views and non-`Item` tables. This decides whether the views above are worth
-   it, or whether each new table needs its own Pages Function like
-   `functions/api/items.ts`.
+1. **Exposing the new tables.** Migrations live in `dnd-db-rest`, and the new
+   tables are not in its REST allowlist (`TABLES` in `src/rest.ts`) yet. The
+   generic `/rest/{table}` routes assume a single integer primary key. Most
+   content tables fit that (`spellID`, `monsterID` …), but text or composite
+   keys (`Denomination`, `TreasureBand`, link tables) and the views would need
+   either read-only allowlist entries or `/query` calls from a new Pages
+   Function.
 2. **Item cost unit.** Moving `itemCost` (gp) to cp would make it match the new
    tables, but every consumer of `formatCost`/`compareCost` would change. The
    plan leaves it in gp.
