@@ -47,7 +47,12 @@ export function formatSpellComponents(spell: {
 
 // 'Wizard, Sorcerer' -> ['Wizard', 'Sorcerer']; ' or ' separates monster sizes.
 export function splitList(value: string | null | undefined, separator: string): string[] {
-  return value ? value.split(separator).map((part) => part.trim()).filter(Boolean) : [];
+  return value
+    ? value
+        .split(separator)
+        .map((part) => part.trim())
+        .filter(Boolean)
+    : [];
 }
 
 // Capitalises a stored lowercase enum such as 'ammunition' for display.

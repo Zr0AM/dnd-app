@@ -65,7 +65,8 @@ export const spells: (SpellListRow & SpellDetail)[] = [
     spellVerbal: 1,
     spellSomatic: 1,
     spellMaterial: null,
-    spellDescription: 'A creature you touch regains hit points equal to a die roll plus your spellcasting modifier.',
+    spellDescription:
+      'A creature you touch regains hit points equal to a die roll plus your spellcasting modifier.',
     spellHigherLevel: 'The healing increases by one die for each slot level above 1.',
     active: 1,
   },
@@ -192,7 +193,8 @@ export const monsters: (MonsterListRow & MonsterDetail)[] = [
     monsterCha: 8,
     monsterPassivePerception: 9,
     monsterLanguages: 'Common, Goblin',
-    monsterDescription: 'Small, quick and spiteful, goblins prefer ambushes and retreats to a fair fight.',
+    monsterDescription:
+      'Small, quick and spiteful, goblins prefer ambushes and retreats to a fair fight.',
     active: 1,
   },
   {
@@ -388,7 +390,8 @@ export const monsters: (MonsterListRow & MonsterDetail)[] = [
     monsterCha: 21,
     monsterPassivePerception: 23,
     monsterLanguages: 'Common, Draconic',
-    monsterDescription: 'Greedy and proud, red dragons nest in volcanic peaks and hoard vast treasure.',
+    monsterDescription:
+      'Greedy and proud, red dragons nest in volcanic peaks and hoard vast treasure.',
     active: 1,
   },
 ];
@@ -571,7 +574,8 @@ export const equipment: (EquipmentListRow & EquipmentDetail)[] = [
     armorCategory: null,
     armorBaseAc: null,
     armorDexCap: null,
-    equipmentDescription: 'A backpack, bedroll, rations, torches, a tinderbox, a waterskin and rope.',
+    equipmentDescription:
+      'A backpack, bedroll, rations, torches, a tinderbox, a waterskin and rope.',
     active: 1,
   },
 ];

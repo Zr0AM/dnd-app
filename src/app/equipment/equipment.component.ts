@@ -97,7 +97,9 @@ export class EquipmentComponent {
     const query = toSearchText(this.searchDraft());
     const kind = this.kind();
     return this.searchIndex()
-      .filter(({ item, name }) => matchesSearch(name, query) && (!kind || item.equipmentKind === kind))
+      .filter(
+        ({ item, name }) => matchesSearch(name, query) && (!kind || item.equipmentKind === kind),
+      )
       .map(({ item }) => item);
   });
 

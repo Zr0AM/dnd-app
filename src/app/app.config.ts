@@ -25,6 +25,9 @@ export const appConfig: ApplicationConfig = {
       withViewTransitions({ skipInitialTransition: true }),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
     ),
-    provideHttpClient(withFetch(), withInterceptors([mockItemsInterceptor, mockGameDataInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([mockItemsInterceptor, mockGameDataInterceptor]),
+    ),
   ],
 };

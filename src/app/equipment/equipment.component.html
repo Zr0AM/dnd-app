@@ -1,7 +1,9 @@
 <header class="browse-head">
   <div>
     <h1>Equipment</h1>
-    <p class="browse-head__sub flavor">Mundane arms, armor, tools and gear for every adventurer’s kit.</p>
+    <p class="browse-head__sub flavor">
+      Mundane arms, armor, tools and gear for every adventurer’s kit.
+    </p>
   </div>
   @if (!catalog.error() && items().length) {
     <span class="chip browse-head__count">{{ items().length | number }} items</span>
@@ -114,7 +116,9 @@
                   [class.is-open]="expandedId() === item.equipmentID"
                   [attr.aria-expanded]="expandedId() === item.equipmentID"
                   [attr.aria-controls]="
-                    expandedId() === item.equipmentID ? 'equipment-details-' + item.equipmentID : null
+                    expandedId() === item.equipmentID
+                      ? 'equipment-details-' + item.equipmentID
+                      : null
                   "
                   [attr.aria-label]="'Toggle details for ' + item.equipmentName"
                   (click)="toggleExpand(item.equipmentID)"
@@ -148,7 +152,9 @@
             class="browse-card__head"
             [attr.aria-expanded]="expandedId() === item.equipmentID"
             [attr.aria-controls]="
-              expandedId() === item.equipmentID ? 'equipment-card-details-' + item.equipmentID : null
+              expandedId() === item.equipmentID
+                ? 'equipment-card-details-' + item.equipmentID
+                : null
             "
             (click)="toggleExpand(item.equipmentID)"
           >

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { oneOf, sortedUnique, toDirection, toPageSize, toPositiveInt, toText } from './browse-params';
+import {
+  oneOf,
+  sortedUnique,
+  toDirection,
+  toPageSize,
+  toPositiveInt,
+  toText,
+} from './browse-params';
 
 describe('browse params', () => {
   it('toPositiveInt falls back to 1 for malformed values', () => {

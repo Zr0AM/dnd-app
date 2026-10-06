@@ -68,12 +68,18 @@ describe('GameDataService', () => {
   });
 
   it('reports an error on a failed request and can reload', async () => {
-    await flushLists('/api/monsters', { success: false }, { status: 502, statusText: 'Bad Gateway' });
+    await flushLists(
+      '/api/monsters',
+      { success: false },
+      { status: 502, statusText: 'Bad Gateway' },
+    );
     expect(service.monsters.error()).toBeTruthy();
 
     service.monsters.reload();
     TestBed.tick();
-    httpMock.expectOne('/api/monsters').flush({ success: true, results: [{ monsterID: 1, active: 1 }] });
+    httpMock
+      .expectOne('/api/monsters')
+      .flush({ success: true, results: [{ monsterID: 1, active: 1 }] });
     await settle();
     expect(service.monsters.error()).toBeUndefined();
     expect(service.monsters.value()).toHaveLength(1);

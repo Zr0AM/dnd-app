@@ -22,8 +22,20 @@ function row(id: number, name: string, extra: Partial<MonsterListRow> = {}): Mon
 }
 
 const ROWS = [
-  row(1, 'Goblin', { creatureTypeName: 'Fey', crLabel: '1/4', crValue: 0.25, monsterSizes: 'Small' }),
-  row(2, 'Ogre', { creatureTypeName: 'Giant', crLabel: '2', crValue: 2, monsterSizes: 'Large', monsterAc: 11, monsterHpAvg: 68 }),
+  row(1, 'Goblin', {
+    creatureTypeName: 'Fey',
+    crLabel: '1/4',
+    crValue: 0.25,
+    monsterSizes: 'Small',
+  }),
+  row(2, 'Ogre', {
+    creatureTypeName: 'Giant',
+    crLabel: '2',
+    crValue: 2,
+    monsterSizes: 'Large',
+    monsterAc: 11,
+    monsterHpAvg: 68,
+  }),
   row(3, 'Hill Giant', {
     creatureTypeName: 'Giant',
     crLabel: '5',
@@ -32,7 +44,14 @@ const ROWS = [
     monsterAc: 13,
     monsterHpAvg: 105,
   }),
-  row(4, 'Dragon', { creatureTypeName: 'Dragon', crLabel: '17', crValue: 17, monsterSizes: 'Huge', monsterAc: 19, monsterHpAvg: 256 }),
+  row(4, 'Dragon', {
+    creatureTypeName: 'Dragon',
+    crLabel: '17',
+    crValue: 17,
+    monsterSizes: 'Huge',
+    monsterAc: 19,
+    monsterHpAvg: 256,
+  }),
   row(5, 'Wolf', { crLabel: '1/4', crValue: 0.25 }),
 ];
 
@@ -58,9 +77,9 @@ describe('MonstersComponent', () => {
 
   function names(): string[] {
     fixture.detectChanges();
-    return [...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name')].map(
-      (n) => (n as HTMLElement).textContent!.trim(),
-    );
+    return [
+      ...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name'),
+    ].map((n) => (n as HTMLElement).textContent!.trim());
   }
 
   function set(inputs: Record<string, unknown>) {

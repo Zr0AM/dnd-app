@@ -49,16 +49,19 @@ describe('EquipmentComponent', () => {
     catalog.isLoading.set(false);
     await TestBed.configureTestingModule({
       imports: [EquipmentComponent],
-      providers: [provideRouter([]), { provide: GameDataService, useValue: { equipment: catalog } }],
+      providers: [
+        provideRouter([]),
+        { provide: GameDataService, useValue: { equipment: catalog } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(EquipmentComponent);
   });
 
   function names(): string[] {
     fixture.detectChanges();
-    return [...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name')].map(
-      (n) => (n as HTMLElement).textContent!.trim(),
-    );
+    return [
+      ...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name'),
+    ].map((n) => (n as HTMLElement).textContent!.trim());
   }
 
   function set(inputs: Record<string, unknown>) {
@@ -103,9 +106,9 @@ describe('EquipmentComponent', () => {
 
   it('builds the kind dropdown from the data with display casing', () => {
     fixture.detectChanges();
-    const options = [...(fixture.nativeElement.querySelector('select') as HTMLSelectElement).options].map(
-      (o) => o.textContent!.trim(),
-    );
+    const options = [
+      ...(fixture.nativeElement.querySelector('select') as HTMLSelectElement).options,
+    ].map((o) => o.textContent!.trim());
     expect(options).toEqual(['All', 'Armor', 'Gear', 'Mount', 'Weapon']);
   });
 

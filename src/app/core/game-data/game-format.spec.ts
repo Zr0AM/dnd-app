@@ -52,10 +52,12 @@ describe('abilityModifier', () => {
 
 describe('formatSpellComponents', () => {
   it('joins the components present', () => {
-    expect(formatSpellComponents({ spellVerbal: 1, spellSomatic: 1, spellMaterial: 'bat guano' })).toBe(
-      'V, S, M',
+    expect(
+      formatSpellComponents({ spellVerbal: 1, spellSomatic: 1, spellMaterial: 'bat guano' }),
+    ).toBe('V, S, M');
+    expect(formatSpellComponents({ spellVerbal: 1, spellSomatic: 0, spellMaterial: null })).toBe(
+      'V',
     );
-    expect(formatSpellComponents({ spellVerbal: 1, spellSomatic: 0, spellMaterial: null })).toBe('V');
     expect(formatSpellComponents({ spellVerbal: 0, spellSomatic: 0, spellMaterial: null })).toBe(
       'None',
     );

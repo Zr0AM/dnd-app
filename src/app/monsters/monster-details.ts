@@ -1,5 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { GameDataService, MonsterDetail, MonsterListRow } from '../core/game-data/game-data.service';
+import {
+  GameDataService,
+  MonsterDetail,
+  MonsterListRow,
+} from '../core/game-data/game-data.service';
 import { abilityModifier } from '../core/game-data/game-format';
 import { Skeleton } from '../shared/skeleton/skeleton';
 

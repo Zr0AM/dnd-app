@@ -1,7 +1,9 @@
 <header class="browse-head">
   <div>
     <h1>Spells</h1>
-    <p class="browse-head__sub flavor">Every SRD spell, searchable by name, school, level and class.</p>
+    <p class="browse-head__sub flavor">
+      Every SRD spell, searchable by name, school, level and class.
+    </p>
   </div>
   @if (!catalog.error() && items().length) {
     <span class="chip browse-head__count">{{ items().length | number }} spells</span>

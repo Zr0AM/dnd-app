@@ -146,10 +146,12 @@ describe.each([
 
 describe('canonicalQuery', () => {
   it('renames keys to their canonical casing and keeps values and repeats', () => {
-    expect(canonicalQuery('?SPELLLEVEL=3&schoolname=Evocation&schoolname=Abjuration', [
-      'spellLevel',
-      'schoolName',
-    ])).toBe('?spellLevel=3&schoolName=Evocation&schoolName=Abjuration');
+    expect(
+      canonicalQuery('?SPELLLEVEL=3&schoolname=Evocation&schoolname=Abjuration', [
+        'spellLevel',
+        'schoolName',
+      ]),
+    ).toBe('?spellLevel=3&schoolName=Evocation&schoolName=Abjuration');
   });
 
   it('returns an empty string for no params and null for an unknown one', () => {

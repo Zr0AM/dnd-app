@@ -1,7 +1,9 @@
 <header class="browse-head">
   <div>
     <h1>Monsters</h1>
-    <p class="browse-head__sub flavor">Every SRD creature, searchable by name, type, size and challenge.</p>
+    <p class="browse-head__sub flavor">
+      Every SRD creature, searchable by name, type, size and challenge.
+    </p>
   </div>
   @if (!catalog.error() && items().length) {
     <span class="chip browse-head__count">{{ items().length | number }} monsters</span>
@@ -140,7 +142,9 @@
                   [class.is-open]="expandedId() === monster.monsterID"
                   [attr.aria-expanded]="expandedId() === monster.monsterID"
                   [attr.aria-controls]="
-                    expandedId() === monster.monsterID ? 'monster-details-' + monster.monsterID : null
+                    expandedId() === monster.monsterID
+                      ? 'monster-details-' + monster.monsterID
+                      : null
                   "
                   [attr.aria-label]="'Toggle details for ' + monster.monsterName"
                   (click)="toggleExpand(monster.monsterID)"
@@ -176,7 +180,9 @@
             class="browse-card__head"
             [attr.aria-expanded]="expandedId() === monster.monsterID"
             [attr.aria-controls]="
-              expandedId() === monster.monsterID ? 'monster-card-details-' + monster.monsterID : null
+              expandedId() === monster.monsterID
+                ? 'monster-card-details-' + monster.monsterID
+                : null
             "
             (click)="toggleExpand(monster.monsterID)"
           >

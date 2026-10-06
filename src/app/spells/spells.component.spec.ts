@@ -56,9 +56,9 @@ describe('SpellsComponent', () => {
 
   function names(): string[] {
     fixture.detectChanges();
-    return [...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name')].map(
-      (n) => (n as HTMLElement).textContent!.trim(),
-    );
+    return [
+      ...fixture.nativeElement.querySelectorAll('.browse-table__row .browse-table__name'),
+    ].map((n) => (n as HTMLElement).textContent!.trim());
   }
 
   function set(inputs: Record<string, unknown>) {
@@ -115,12 +115,16 @@ describe('SpellsComponent', () => {
   it('pages, and clamps a page beyond the end', () => {
     set({ size: '10' });
     expect(names()).toHaveLength(4);
-    catalog.value.set(Array.from({ length: 12 }, (_, i) => row(i + 1, `Spell ${String(i).padStart(2, '0')}`)));
+    catalog.value.set(
+      Array.from({ length: 12 }, (_, i) => row(i + 1, `Spell ${String(i).padStart(2, '0')}`)),
+    );
     set({ page: '2' });
     expect(names()).toEqual(['Spell 10', 'Spell 11']);
     set({ page: '99' });
     expect(names()).toEqual(['Spell 10', 'Spell 11']);
-    expect(fixture.nativeElement.querySelector('.browse-count').textContent).toContain('11–12 of 12');
+    expect(fixture.nativeElement.querySelector('.browse-count').textContent).toContain(
+      '11–12 of 12',
+    );
   });
 
   it('builds filter options from the data', () => {
