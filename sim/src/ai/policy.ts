@@ -13,6 +13,13 @@ import { distanceFt, stepDistance, type Cell } from '../grid/grid';
 import type { AttackProfile } from '../combat/attack';
 import type { Combatant } from '../combat/actor';
 import type { TurnApi, TurnPolicy } from '../combat/encounter';
+import { raysAt, type Spell } from '../combat/spell';
+
+// Rough constants the AI uses to estimate action value without a target's exact AC.
+const ASSUMED_HIT = 0.6;
+const ASSUMED_SAVE_FAIL = 0.5;
+/** Expected-damage penalty per slot level, so cantrips/weapons win when close. */
+const SLOT_PENALTY = 1.5;
 
 /** Tunable weights for the tactical AI (defaults = generalist). */
 export interface TacticsWeights {
@@ -96,35 +103,105 @@ function weaponRangeFt(weapon: AttackProfile): number {
   return weapon.rangeFt ?? 5;
 }
 
+/** A spell the AI has chosen to cast, with the slot and estimated value. */
+interface SpellChoice {
+  readonly spell: Spell;
+  readonly slotLevel: number;
+  readonly ev: number;
+  readonly rangeFt: number;
+}
+
+/**
+ * Expected useful damage of casting `spell` at `slotLevel`, capped at each
+ * target's remaining HP so overkill does not make a big nuke look good against a
+ * weak single target (which keeps the AI from wasting slots).
+ */
+function spellExpectedDamage(
+  self: Combatant,
+  spell: Spell,
+  slotLevel: number,
+  target: Combatant,
+  enemies: readonly Combatant[],
+): number {
+  const kind = spell.kind;
+  if (kind.type === 'attack-damage') {
+    const rays = raysAt(kind, slotLevel, Math.max(1, spell.level));
+    const dmg = rays * meanDice(kind.damage(slotLevel, self.level)) * ASSUMED_HIT;
+    return Math.min(dmg, target.hp);
+  }
+  // save-damage: expected damage per target after the save, capped per target's HP.
+  const perTarget =
+    meanDice(kind.damage(slotLevel, self.level)) *
+    (ASSUMED_SAVE_FAIL + (1 - ASSUMED_SAVE_FAIL) * (kind.onSuccess === 'half' ? 0.5 : 0));
+  if (kind.aoeRadiusFt == null) return Math.min(perTarget, target.hp);
+  const radius = kind.aoeRadiusFt;
+  const origin = kind.selfOrigin ? self.position : target.position;
+  const caught = enemies.filter((e) => distanceFt(origin, e.position) <= radius);
+  return (caught.length ? caught : [target]).reduce((sum, e) => sum + Math.min(perTarget, e.hp), 0);
+}
+
+/** The best spell to cast this turn, or null if the caster has none worth casting. */
+function bestSpell(
+  self: Combatant,
+  target: Combatant,
+  enemies: readonly Combatant[],
+): SpellChoice | null {
+  let best: SpellChoice | null = null;
+  const consider = (spell: Spell, slotLevel: number) => {
+    const ev =
+      spellExpectedDamage(self, spell, slotLevel, target, enemies) - slotLevel * SLOT_PENALTY;
+    if (!best || ev > best.ev) best = { spell, slotLevel, ev, rangeFt: spell.rangeFt };
+  };
+  for (const cantrip of self.cantrips) consider(cantrip, 0);
+  for (const spell of self.spells) {
+    const slot = self.availableSlotLevels().find((l) => l >= spell.level);
+    if (slot !== undefined) consider(spell, slot);
+  }
+  return best;
+}
+
+/** Move toward `target` until within `rangeFt`, as far as this turn allows. */
+function approach(api: TurnApi, target: Combatant, rangeFt: number): void {
+  const distCells = stepDistance(api.self.position, target.position);
+  const rangeCells = Math.max(1, Math.floor(rangeFt / 5));
+  const needed = Math.max(0, distCells - rangeCells);
+  if (needed <= 0) return;
+  const canMove = Math.floor(api.resources.movementFt / 5);
+  const steps = Math.min(needed, canMove);
+  if (steps > 0) api.moveTo(stepTowardBy(api.self.position, target.position, steps));
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
-    const weapon = primaryWeapon(api.self);
-    if (!weapon) return;
-
-    // Pick the best target.
     const enemies = api.enemies();
     if (enemies.length === 0) return;
+
+    // Pick the best target.
     const target = enemies.reduce((best, e) =>
       scoreTarget(api.self, e, weights) > scoreTarget(api.self, best, weights) ? e : best,
     );
 
-    // Move into range if needed (partial approach if we cannot reach this turn).
-    const rangeFt = weaponRangeFt(weapon);
-    const distCells = stepDistance(api.self.position, target.position);
-    const rangeCells = Math.max(1, Math.floor(rangeFt / 5));
-    const needed = Math.max(0, distCells - rangeCells);
-    if (needed > 0) {
-      const canMove = Math.floor(api.resources.movementFt / 5);
-      const steps = Math.min(needed, canMove);
-      if (steps > 0) api.moveTo(stepTowardBy(api.self.position, target.position, steps));
-    }
+    const weapon = primaryWeapon(api.self);
+    const weaponEv = weapon
+      ? weaponAverageDamage(weapon) * (1 + api.self.extraAttacks) * weights.assumedHitChance
+      : -1;
+    const spell = bestSpell(api.self, target, enemies);
 
-    // Attack with every attack the turn allows, while the target lives.
-    if (distanceFt(api.self.position, target.position) <= rangeFt) {
-      let dmg = api.attack(target, weapon);
-      while (dmg !== null && target.isConscious && api.resources.attacksRemaining > 0) {
-        dmg = api.attack(target, weapon);
+    // Cast if a spell beats the weapon; otherwise make weapon attacks.
+    if (spell && spell.ev > weaponEv) {
+      approach(api, target, spell.rangeFt);
+      if (distanceFt(api.self.position, target.position) <= spell.rangeFt) {
+        api.castSpell(spell.spell, target, spell.slotLevel);
+      }
+    } else if (weapon) {
+      const rangeFt = weaponRangeFt(weapon);
+      approach(api, target, rangeFt);
+      if (distanceFt(api.self.position, target.position) <= rangeFt) {
+        let dmg = api.attack(target, weapon);
+        while (dmg !== null && target.isConscious && api.resources.attacksRemaining > 0) {
+          dmg = api.attack(target, weapon);
+        }
       }
     }
   };

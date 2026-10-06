@@ -12,7 +12,8 @@ import { rollD20, roll as rollDiceTerm, type Advantage } from '../dice/dice';
 import { Random } from '../rng/rng';
 import { Grid, distanceFt, stepDistance, type Cell } from '../grid/grid';
 import { applyResponse } from './damage';
-import { resolveAttack, type AttackProfile } from './attack';
+import { resolveAttack, resolveSave, type AttackProfile } from './attack';
+import { raysAt, type Spell } from './spell';
 import {
   attackAdvantage,
   canAct,
@@ -39,6 +40,14 @@ export type CombatEvent =
       damage: number;
     }
   | { kind: 'opportunity'; attacker: string; target: string; hit: boolean; damage: number }
+  | {
+      kind: 'spell';
+      caster: string;
+      spell: string;
+      slotLevel: number;
+      targets: number;
+      damage: number;
+    }
   | { kind: 'down'; id: string }
   | { kind: 'death'; id: string }
   | { kind: 'deathSave'; id: string; d20: number; success: boolean }
@@ -63,6 +72,12 @@ export interface TurnApi {
   moveTo(dest: Cell): boolean;
   /** Make a weapon attack with an action. Returns the damage dealt, or null if illegal. */
   attack(target: Combatant, profile: AttackProfile): number | null;
+  /**
+   * Cast a spell at a target (or, for a point/area spell, aimed at `target`'s
+   * cell). Spends the action and a slot (cantrips are free). Returns the total
+   * damage dealt, or null if illegal (no slot, out of range, wrong action).
+   */
+  castSpell(spell: Spell, target: Combatant, slotLevel?: number): number | null;
 }
 
 /** A policy decides what one creature does on its turn by calling the TurnApi. */
@@ -205,7 +220,122 @@ export class Encounter {
         this.combatants.filter((c) => c.side === self.side && c.isConscious && c !== self),
       moveTo: (dest) => this.moveTo(self, dest, resources),
       attack: (target, profile) => this.attack(self, target, profile, resources),
+      castSpell: (spell, target, slotLevel) =>
+        this.castSpell(self, spell, target, slotLevel, resources),
     };
+  }
+
+  /**
+   * Resolve a spell cast. Cantrips cost the action only; leveled spells also spend
+   * a slot of `slotLevel` (default the spell's own level). An attack-damage spell
+   * makes a spell attack per ray; a save-damage spell makes the target (and, for an
+   * area spell, every enemy in radius of its cell) roll a save. Returns total
+   * damage, or null if the cast is illegal.
+   */
+  private castSpell(
+    self: Combatant,
+    spell: Spell,
+    target: Combatant,
+    slotLevelArg: number | undefined,
+    resources: TurnResources,
+  ): number | null {
+    // Action economy: a spell uses the action (bonus-action spells use the bonus).
+    if (spell.action === 'bonus') {
+      if (!resources.bonus) return null;
+    } else if (!resources.action) {
+      return null;
+    }
+
+    const slotLevel = spell.level === 0 ? 0 : (slotLevelArg ?? spell.level);
+    if (spell.level > 0 && slotLevel < spell.level) return null;
+    if (spell.level > 0 && self.slotCount(slotLevel) <= 0) return null;
+
+    // Range check against the primary target's cell.
+    const dist = distanceFt(self.position, target.position, this.grid.cellFt);
+    if (dist > spell.rangeFt) return null;
+
+    const dmgStream = this.rng.stream(`${self.id}:${spell.id}:dmg`);
+    let totalDamage = 0;
+    let targetsHit = 0;
+
+    if (spell.kind.type === 'attack-damage') {
+      const rays = raysAt(spell.kind, slotLevel, Math.max(1, spell.level));
+      const damage = spell.kind.damage(slotLevel, self.level);
+      for (let r = 0; r < rays; r++) {
+        if (!target.isConscious) break;
+        const atkStream = this.rng.stream(`${self.id}:${spell.id}:${target.id}:atk:${r}`);
+        const result = resolveAttack(atkStream, {
+          attackBonus: self.spellAttackBonus(),
+          targetAc: target.ac,
+          advantage: attackAdvantage(self, target, dist <= 5),
+        });
+        if (result.hit) {
+          let raw = rollDiceTerm(dmgStream, damage);
+          if (result.crit) raw += rollDiceTerm(dmgStream, { ...damage, bonus: 0 });
+          const dealt = applyResponse(raw, target.damageResponseFor(spell.kind.damageType));
+          totalDamage += this.applySpellDamage(target, dealt);
+        }
+      }
+      if (totalDamage > 0) targetsHit = 1;
+    } else {
+      // save-damage: gather targets (area or single).
+      const kind = spell.kind;
+      const victims =
+        kind.aoeRadiusFt != null
+          ? this.combatants.filter(
+              (c) =>
+                c.side !== self.side &&
+                c.isConscious &&
+                distanceFt(
+                  kind.selfOrigin ? self.position : target.position,
+                  c.position,
+                  this.grid.cellFt,
+                ) <= kind.aoeRadiusFt!,
+            )
+          : [target];
+      const damage = kind.damage(slotLevel, self.level);
+      const dc = self.spellSaveDc();
+      // Area damage is rolled once and shared (2024 rule).
+      const rolled = rollDiceTerm(dmgStream, damage);
+      for (const v of victims) {
+        const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
+          saveBonus: v.saveBonus(kind.save),
+          dc,
+        });
+        let amount = rolled;
+        if (save.success) amount = kind.onSuccess === 'half' ? Math.floor(rolled / 2) : 0;
+        const dealt = applyResponse(amount, v.damageResponseFor(kind.damageType));
+        if (dealt > 0) {
+          totalDamage += this.applySpellDamage(v, dealt);
+          targetsHit++;
+        }
+      }
+    }
+
+    // Spend resources.
+    if (spell.action === 'bonus') resources.bonus = false;
+    else resources.action = false;
+    if (spell.level > 0) self.spendSlot(slotLevel);
+    if (spell.concentration) self.concentratingOn = spell.id;
+
+    this.log.push({
+      kind: 'spell',
+      caster: self.id,
+      spell: spell.name,
+      slotLevel,
+      targets: targetsHit,
+      damage: totalDamage,
+    });
+    return totalDamage;
+  }
+
+  /** Apply spell damage to a target and log any down/death. */
+  private applySpellDamage(target: Combatant, dealt: number): number {
+    const before = target.isConscious;
+    const outcome = target.takeDamage(dealt);
+    if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
+    if (outcome.died) this.log.push({ kind: 'death', id: target.id });
+    return dealt;
   }
 
   /**

@@ -18,6 +18,7 @@ import type { DamageType } from '../core/types';
 import type { DamageResponses } from './damage';
 import type { AttackProfile } from './attack';
 import type { Feature } from './feature';
+import type { Spell } from './spell';
 
 export type Side = 'party' | 'enemy';
 
@@ -42,6 +43,15 @@ export interface CombatantSpec {
   readonly extraAttacks?: number;
   /** Starting resource pools (id -> max + recharge), e.g. Rage uses. */
   readonly resources?: readonly ResourceSpec[];
+  readonly spellcasting?: SpellcastingSpec;
+}
+
+export interface SpellcastingSpec {
+  readonly ability: Ability;
+  /** Spell slots by spell level, e.g. [{ level: 1, count: 4 }, { level: 2, count: 2 }]. */
+  readonly slots: readonly { readonly level: number; readonly count: number }[];
+  readonly cantrips: readonly Spell[];
+  readonly spells: readonly Spell[];
 }
 
 export interface ResourceSpec {
@@ -99,6 +109,14 @@ export class Combatant {
   readonly extraAttacks: number;
   private readonly pools = new Map<string, ResourcePool>();
 
+  // Spellcasting (undefined for non-casters).
+  readonly spellAbility?: Ability;
+  readonly cantrips: readonly Spell[] = [];
+  readonly spells: readonly Spell[] = [];
+  private readonly slots = new Map<number, { current: number; max: number }>();
+  /** The spell this creature is concentrating on, if any (by spell id). */
+  concentratingOn: string | null = null;
+
   hp: number;
   tempHp = 0;
   position: Cell;
@@ -132,6 +150,14 @@ export class Combatant {
     this.attacks = spec.attacks ? [...spec.attacks] : [];
     this.features = spec.features ? [...spec.features] : [];
     this.extraAttacks = spec.extraAttacks ?? 0;
+    if (spec.spellcasting) {
+      this.spellAbility = spec.spellcasting.ability;
+      this.cantrips = [...spec.spellcasting.cantrips];
+      this.spells = [...spec.spellcasting.spells];
+      for (const s of spec.spellcasting.slots) {
+        this.slots.set(s.level, { current: s.count, max: s.count });
+      }
+    }
     for (const r of spec.resources ?? []) {
       this.pools.set(r.id, {
         current: r.max,
@@ -145,6 +171,44 @@ export class Combatant {
   /** How many uses of a resource remain (0 if the pool is undefined). */
   resourceCount(id: string): number {
     return this.pools.get(id)?.current ?? 0;
+  }
+
+  /** Spell save DC: 8 + proficiency + spellcasting modifier. */
+  spellSaveDc(): number {
+    if (!this.spellAbility) return 0;
+    return 8 + this.proficiencyBonus + this.abilityMod(this.spellAbility);
+  }
+
+  /** Spell attack bonus: proficiency + spellcasting modifier. */
+  spellAttackBonus(): number {
+    if (!this.spellAbility) return 0;
+    return this.proficiencyBonus + this.abilityMod(this.spellAbility);
+  }
+
+  /** Remaining slots of a given spell level. */
+  slotCount(level: number): number {
+    return this.slots.get(level)?.current ?? 0;
+  }
+
+  /** The spell levels (ascending) that currently have at least one slot. */
+  availableSlotLevels(): number[] {
+    return [...this.slots.entries()]
+      .filter(([, v]) => v.current > 0)
+      .map(([level]) => level)
+      .sort((a, b) => a - b);
+  }
+
+  /** Spend one slot of the given level; returns whether a slot was available. */
+  spendSlot(level: number): boolean {
+    const pool = this.slots.get(level);
+    if (!pool || pool.current <= 0) return false;
+    pool.current -= 1;
+    return true;
+  }
+
+  /** Restore all spell slots (a long rest). */
+  restoreSlots(): void {
+    for (const pool of this.slots.values()) pool.current = pool.max;
   }
 
   /** Spend `n` of a resource if available; returns whether it was spent. */
@@ -171,6 +235,8 @@ export class Combatant {
   longRest(): void {
     this.recharge('rechargeShort');
     this.recharge('rechargeLong');
+    this.restoreSlots();
+    this.concentratingOn = null;
   }
 
   /**
