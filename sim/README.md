@@ -93,6 +93,37 @@ sneak dice, extra attacks), loaded from the seeds. The walking-skeleton test now
 also compiles a Barbarian from the seeds and confirms Rage activates and resists in
 a real fight.
 
-Still to come: the shared tactical AI, then the GA to close the Phase 3 loop
-(optimize a level-3 martial for a role against the seeded encounters); after that,
-casters and the spell effect layer.
+## Tactical AI (`src/ai/`)
+
+The shared, utility-based action chooser every build under test uses (plan
+decision 8): score candidate targets (focus-fire the wounded, remove threats,
+prefer closer, secure kills), move into range with the build's best weapon, and
+attack with every attack the turn allows. Tuned by a weight vector so roles can
+bias it; deterministic under a seed.
+
+## Optimizer (`src/opt/`)
+
+A minimal single-objective genetic algorithm that closes the Phase 3 loop:
+optimize a level-3 martial build against a seeded goblin encounter.
+
+- **genome** — a small martial genome (class, standard-array assignment, weapon,
+  armor, shield, fighting style) with random/mutate/crossover and a repair step
+  that keeps every genome legal (barbarians unarmored, no shield with two-handed,
+  fighters always styled).
+- **catalog** — resolves genome choices to engine data from the seeds.
+- **evaluate** — runs a genome through the scenario under common random numbers
+  (seeds depend on scenario + run index, not the genome, so builds are compared on
+  identical dice) and reduces to a scalar fitness (win rate, then surviving HP).
+- **ga** — elitism + tournament selection + crossover/mutation, with a
+  per-genome evaluation cache. Deterministic under a seed.
+
+Run end to end, the GA independently converges to a **raging two-handed Greatsword
+Barbarian** as the best level-3 martial brawler vs. goblins (~95% win rate) — which
+matches D&D convention, a passing smell test for the whole pipeline.
+
+Phase 3 is complete: seeds → compilers → features → tactical AI → combat →
+optimization, all deterministic and tested end to end.
+
+Still to come: a CLI/export step to write runs to a local file and later D1 (the
+display-only UI reads these); then the spell effect layer and caster builds; then
+the full metric catalog and NSGA-II (plan Phase 6).
