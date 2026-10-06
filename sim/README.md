@@ -28,6 +28,18 @@ npm run typecheck:sim    # type-check the package
 | `src/grid/`   | The battlefield grid: 2024 simple-grid distance (diagonals count as 5 ft), reach/range, and a terrain grid (walls, difficult terrain).                                                                                                                                 |
 | `src/combat/` | The combatant model (HP, temp HP, conditions, death saves) and resolution: attack rolls (nat 1/20, crits, widened crit range), saving throws, and damage mitigation (resistance/vulnerability/immunity). Each resolver ships a closed-form probability for validation. |
 
-Still to come in Phase 2: the initiative order and turn loop with the action
-economy (action / bonus action / reaction / movement), opportunity attacks, and
-wiring conditions into the attack/save modifiers.
+`src/combat/` also holds:
+
+- **conditions** — the 15 SRD conditions as mechanical queries (attack advantage
+  with the no-stacking netting rule, auto-fail saves, auto-crit targets, speed
+  locks, incapacitation, exhaustion), drawn from the Rules Glossary.
+- **encounter** — the initiative order and turn loop: rounds and turns, per-turn
+  resources (action / bonus / movement), movement with difficult terrain and
+  Opportunity Attacks, weapon attacks wired to condition-derived advantage, death
+  saves at the start of a dying creature's turn, and win detection. What a
+  creature does on its turn is an injected policy, so the loop runs without the
+  full AI (which arrives in a later phase). Fights are deterministic under a seed:
+  two runs produce identical event logs.
+
+Still to come: the content compiler (DB rows + effect layer → combat data) and
+the walking skeleton (Phase 3), then casters and the full AI.

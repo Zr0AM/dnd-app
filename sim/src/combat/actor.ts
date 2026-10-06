@@ -14,6 +14,7 @@ import {
 } from '../core/types';
 import type { Cell } from '../grid/grid';
 import type { DamageResponses } from './damage';
+import type { AttackProfile } from './attack';
 
 export type Side = 'party' | 'enemy';
 
@@ -30,6 +31,7 @@ export interface CombatantSpec {
   readonly saveProficiencies?: readonly Ability[];
   readonly damageResponses?: DamageResponses;
   readonly position?: Cell;
+  readonly attacks?: readonly AttackProfile[];
 }
 
 /** What happened when a creature took damage, for events and metrics. */
@@ -67,11 +69,15 @@ export class Combatant {
   readonly proficiencyBonus: number;
   private readonly saveProf: ReadonlySet<Ability>;
   readonly damageResponses: DamageResponses;
+  readonly attacks: readonly AttackProfile[];
 
   hp: number;
   tempHp = 0;
   position: Cell;
   private readonly conditions = new Set<Condition>();
+
+  // Exhaustion is level-based (0-6); the "exhaustion" condition is present when > 0.
+  exhaustionLevel = 0;
 
   // Death-save state (meaningful only while at 0 HP and not dead).
   deathSuccesses = 0;
@@ -94,6 +100,7 @@ export class Combatant {
     this.saveProf = new Set(spec.saveProficiencies ?? []);
     this.damageResponses = { ...spec.damageResponses };
     this.position = spec.position ?? { x: 0, y: 0 };
+    this.attacks = spec.attacks ? [...spec.attacks] : [];
   }
 
   abilityMod(ability: Ability): number {
@@ -121,6 +128,7 @@ export class Combatant {
 
   hasCondition(c: Condition): boolean {
     if (c === 'unconscious') return this.isDying || this.conditions.has('unconscious');
+    if (c === 'exhaustion') return this.exhaustionLevel > 0;
     return this.conditions.has(c);
   }
 
@@ -132,9 +140,16 @@ export class Combatant {
     this.conditions.delete(c);
   }
 
+  /** Raise exhaustion by `n` levels; at level 6 the creature dies. */
+  gainExhaustion(n = 1): void {
+    this.exhaustionLevel = Math.max(0, Math.min(6, this.exhaustionLevel + n));
+    if (this.exhaustionLevel >= 6) this.dead = true;
+  }
+
   get conditionList(): Condition[] {
     const list = [...this.conditions];
     if (this.isDying && !this.conditions.has('unconscious')) list.push('unconscious');
+    if (this.exhaustionLevel > 0 && !this.conditions.has('exhaustion')) list.push('exhaustion');
     return list;
   }
 

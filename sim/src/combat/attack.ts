@@ -8,8 +8,26 @@
 // Saving throws: d20 + bonus >= DC. The SRD gives saves no natural-20/1 auto
 // success or failure (unlike attacks and death saves), so none is applied here.
 
-import { rollD20, chanceToHit, type Advantage } from '../dice/dice';
+import { rollD20, chanceToHit, type Advantage, type Dice } from '../dice/dice';
 import type { Rng } from '../rng/rng';
+import type { DamageType } from '../core/types';
+
+/** A weapon or natural attack a creature can make. */
+export interface AttackProfile {
+  readonly name: string;
+  readonly kind: 'melee' | 'ranged';
+  /** Reach in feet for a melee attack (default 5). */
+  readonly reachFt?: number;
+  /** Normal range in feet for a ranged attack. */
+  readonly rangeFt?: number;
+  /** Long range in feet (attacks beyond `rangeFt` up to this have disadvantage). */
+  readonly rangeLongFt?: number;
+  readonly attackBonus: number;
+  readonly damage: Dice;
+  readonly damageType: DamageType;
+  /** Lowest die face that crits (default 20). */
+  readonly critRange?: number;
+}
 
 export interface AttackParams {
   readonly attackBonus: number;
