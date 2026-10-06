@@ -20,7 +20,9 @@
     "pages:deploy": "npm run build && wrangler pages deploy dist/dnd-app/browser --project-name=dnd-app",
     "pages:dev": "wrangler pages dev dist/dnd-app/browser",
     "sonar": "sonar-scanner",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "srd:seed": "node scripts/srd/build-srd-seed.mjs",
+    "srd:check": "node --no-warnings scripts/srd/check-srd-seed.mjs"
   },
   "prettier": {
     "printWidth": 100,
