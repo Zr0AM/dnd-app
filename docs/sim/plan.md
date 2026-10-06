@@ -147,7 +147,9 @@ one subclass per class, so the hero's subclass choice is that one or none.
 ## Phases
 
 1. **Specs**: metrics and normalization, genome and legality rules, scenario and map format, effect
-   format and coverage tiers. Done so far: the [effect format spec](./effect-format.md) (draft).
+   format and coverage tiers. All four drafted: [effect format](./effect-format.md),
+   [genome and legality](./genome.md), [metrics and normalization](./metrics.md),
+   [scenario and map format](./scenarios.md).
 2. **Engine skeleton**: dice, seeded streams, grid, attacks, saves and damage, conditions, combat
    loop. Tested against hand-computed damage per round and the DMG's CR benchmarks.
 3. **Walking skeleton**: level-3 Fighter, Barbarian and Rogue against goblins and bandits, through a

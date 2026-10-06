@@ -145,10 +145,15 @@ norm(m) = (mean_build(m) − floor_s(m)) / (anchor_s(m) − floor_s(m))
 - `floor_s(m)` = the value a build contributing nothing scores (0 for damage/healing/control; for
   "↓ better" metrics the orientation is flipped first so all normalized metrics are ↑ better).
 - **Zero-anchor guard.** When `anchor_s(m) ≈ floor` (e.g. a martial reference does no healing, so the
-  healing anchor is ~0), the ratio is undefined. Fall back to a scenario scale constant `scale_s(m)` —
-  a fixed reference magnitude for that metric at that level (e.g. "a typical heal = the party's average
-  max HP × 0.3") — so `norm(m) = mean_build(m) / scale_s(m)`. These constants are in config and are the
-  one place a metric's cross-scenario scale is asserted by hand; they are documented and testable.
+  healing anchor is ~0), the ratio is undefined. Fall back to a scenario scale constant `scale_s(m)`,
+  so `norm(m) = mean_build(m) / scale_s(m)`. **These constants are derived from the reference party's
+  own totals in the scenario, not typed by hand** (resolved open decision 4): the scale for a metric is
+  the party-wide pressure that metric answers, measured from the frozen reference party playing `s`.
+  For example the healing scale = the reference party's total HP lost per day in `s` (the demand a
+  healer must meet), the control scale = the enemies' total actions available per day, the support
+  damage scale = the party's total damage dealt. Because the reference party and the scenario are fixed,
+  each scale is a deterministic by-product of the anchor runs — computed once, cached, and covered by a
+  test that the role-matched benchmark scores ≈ 1.0 on its own axis. No magnitude is asserted by hand.
 
 Why ratio-to-anchor rather than z-score over the population: the population mean drifts as the GA
 improves, which would make a fixed build's score fall over generations even though nothing changed.
@@ -321,8 +326,7 @@ model) does.
    Accept it as the default, or do you want resources reported untransformed (per-type) only?
 3. **Counterfactual cost.** Paired suppression for buffer/controller metrics roughly doubles their
    evaluation cost. Enable always, or only for builds whose support/control axis is already promising?
-4. **Scale constants.** These hand-set magnitudes are the weakest point of normalization. I propose
-   deriving them from the reference party's totals at each level (e.g. healing scale = party missing-HP
-   pressure per day) rather than typing numbers. Agree?
+4. **Scale constants.** ✅ Resolved: derived from the reference party's totals per scenario, not typed
+   by hand (section 5, zero-anchor guard).
 5. **Clustering for archetypes.** In scope for the reports now, or deferred until after the first full
    run produces a population to cluster?
