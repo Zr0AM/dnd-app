@@ -10,7 +10,7 @@
 
 import { Random, seedFrom } from '../rng/rng';
 import { Grid, cell } from '../grid/grid';
-import { Encounter } from '../combat/encounter';
+import { Encounter, type CombatEvent } from '../combat/encounter';
 import { spawnMonster } from '../content/monster';
 import { tacticalPolicy } from '../ai/policy';
 import { buildFromGenome, type MartialGenome } from './genome';
@@ -20,7 +20,17 @@ export interface EvalResult {
   readonly fitness: number;
   readonly winRate: number;
   readonly avgHpFracOnWin: number;
+  /** Mean HP fraction retained across all runs (0 when downed) — survivability. */
+  readonly avgHpFracRetained: number;
+  /** Mean damage the hero dealt per fight — offense. */
+  readonly avgDamageDealt: number;
   readonly avgRounds: number;
+  /**
+   * Mean rounds for the efficiency objective: a win counts its rounds, a loss
+   * counts the round cap. This stops "die fast" from reading as "efficient" — a
+   * gap NSGA-II exploited when efficiency was raw rounds.
+   */
+  readonly avgRoundsEffective: number;
   readonly runs: number;
 }
 
@@ -40,9 +50,13 @@ export function evaluate(
   const scenarioId = opts.scenarioId ?? 'l3-goblins';
   const goblinCount = opts.goblinCount ?? 2;
 
+  const roundCap = 50;
   let wins = 0;
-  let hpFracSum = 0;
+  let hpFracOnWinSum = 0;
+  let hpFracRetainedSum = 0;
+  let damageSum = 0;
   let roundsSum = 0;
+  let roundsEffectiveSum = 0;
 
   for (let i = 0; i < runs; i++) {
     // CRN: the seed depends only on the scenario and run index.
@@ -62,19 +76,58 @@ export function evaluate(
       rng,
       policyFor: () => tacticalPolicy,
     });
-    const res = e.run(50);
+    const res = e.run(roundCap);
     roundsSum += res.rounds;
-    if (res.winner === 'party' && hero.isConscious) {
+    damageSum += heroDamageDealt(res.log, 'hero');
+    const retained = hero.isConscious ? hero.hp / hero.maxHp : 0;
+    hpFracRetainedSum += retained;
+    const won = res.winner === 'party' && hero.isConscious;
+    roundsEffectiveSum += won ? res.rounds : roundCap;
+    if (won) {
       wins++;
-      hpFracSum += hero.hp / hero.maxHp;
+      hpFracOnWinSum += retained;
     }
   }
 
   const winRate = wins / runs;
-  const avgHpFracOnWin = wins > 0 ? hpFracSum / wins : 0;
+  const avgHpFracOnWin = wins > 0 ? hpFracOnWinSum / wins : 0;
+  const avgHpFracRetained = hpFracRetainedSum / runs;
+  const avgDamageDealt = damageSum / runs;
   const avgRounds = roundsSum / runs;
+  const avgRoundsEffective = roundsEffectiveSum / runs;
   // Win rate dominates; surviving HP breaks ties; faster is a small bonus.
   const fitness = winRate * 100 + avgHpFracOnWin * 10 - avgRounds * 0.1;
 
-  return { fitness, winRate, avgHpFracOnWin, avgRounds, runs };
+  return {
+    fitness,
+    winRate,
+    avgHpFracOnWin,
+    avgHpFracRetained,
+    avgDamageDealt,
+    avgRounds,
+    avgRoundsEffective,
+    runs,
+  };
+}
+
+/** Total damage a combatant dealt in one fight, from the event log. */
+function heroDamageDealt(log: readonly CombatEvent[], id: string): number {
+  let total = 0;
+  for (const ev of log) {
+    if (ev.kind === 'attack' && ev.attacker === id) total += ev.damage;
+    else if (ev.kind === 'opportunity' && ev.attacker === id) total += ev.damage;
+  }
+  return total;
+}
+
+/**
+ * The multi-objective vector for NSGA-II, all oriented so higher is better:
+ * reliability (win rate), offense (damage), survival (HP retained), efficiency
+ * (negative rounds — fewer is better). A pragmatic subset of the metrics spec's
+ * six axes, enough for a meaningful Pareto front at the martial tier.
+ */
+export const OBJECTIVE_NAMES = ['reliability', 'offense', 'survival', 'efficiency'] as const;
+
+export function objectivesOf(r: EvalResult): number[] {
+  return [r.winRate, r.avgDamageDealt, r.avgHpFracRetained, -r.avgRoundsEffective];
 }

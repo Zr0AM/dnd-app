@@ -124,6 +124,29 @@ matches D&D convention, a passing smell test for the whole pipeline.
 Phase 3 is complete: seeds → compilers → features → tactical AI → combat →
 optimization, all deterministic and tested end to end.
 
-Still to come: a CLI/export step to write runs to a local file and later D1 (the
-display-only UI reads these); then the spell effect layer and caster builds; then
-the full metric catalog and NSGA-II (plan Phase 6).
+### NSGA-II and reports (Phase 6)
+
+- **evaluate** now also emits a multi-objective vector (all maximized): reliability
+  (win rate), offense (damage dealt), survival (HP retained), efficiency (negative
+  effective rounds — a loss counts the round cap, so "die fast" is not rewarded).
+- **nsga2** — fast non-dominated sort and crowding distance (pure, tested on
+  synthetic points) wrapped into a multi-objective optimizer returning the Pareto
+  front. Deterministic under a seed.
+- **reports** — the serializable run report the display-only UI will read: the
+  Pareto front and a de-duplicated leaderboard, each build with its raw metrics,
+  named objective vector, and a weighted scalar score. Weighting is a post-hoc
+  summary with the objective bounds stored, so the UI reweights and re-ranks
+  client-side (`rescore`) without re-simulating — the metrics-spec property.
+
+Run end to end, NSGA-II returns a clean Pareto front of level-3 barbarians with a
+real trade-off — Greataxe (more damage, less HP) vs. Greatsword (more HP, fewer
+rounds). NSGA-II also caught a metric gap the scalar GA hid: raw-rounds efficiency
+rewarded dying fast, so losers polluted the front; the effective-rounds fix (losses
+count the cap) removed them. That is the "GA exploits modelling gaps" guard working.
+
+Deferred (needs push access to dnd-db-rest and the environment's network/credential
+setup): the D1 results migration + the export/upload step, and the display-only
+Angular UI that reads these reports (see docs/sim/ui-integration.md).
+
+Still to come: the spell effect layer and caster builds; the full reference-party
+normalization and the six-axis metric catalog; levels 11/17; item/loot allocation.
