@@ -156,8 +156,8 @@ main {
   }
 }
 
-// Below this the brand plus four one-line nav labels no longer fit (~776px).
-@media (max-width: 799px) {
+// Below this the brand plus six one-line nav labels no longer fit (~1150px).
+@media (max-width: 1199px) {
   .nav-desktop {
     display: none;
   }
