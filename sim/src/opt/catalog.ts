@@ -6,6 +6,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ArmorInfo, BuildProgression, ClassInfo, WeaponInfo } from '../content/character';
 import type { MonsterTemplate } from '../content/monster';
 import { compileMonster } from '../content/monster';
+import { loadScenarios, type Scenario } from '../scenario/library';
 import {
   loadArmor,
   loadClass,
@@ -39,8 +40,10 @@ export interface MartialCatalog {
   subclassFor(slug: MartialClass): string;
   defaultArmorFor(slug: MartialClass): string;
   progressionFor(slug: MartialClass): BuildProgression;
-  /** The opposition for the evaluation scenario. */
+  /** The opposition for the simple legacy evaluation scenario. */
   readonly goblin: MonsterTemplate;
+  /** The scenario library a build is evaluated against. */
+  readonly scenarios: readonly Scenario[];
 }
 
 const WEAPON_NAMES = [
@@ -83,11 +86,14 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
     return found;
   };
 
+  const scenarios = loadScenarios(db, level);
+
   return {
     level,
     weapons,
     armors,
     goblin,
+    scenarios,
     weaponByName: (name) => byName(weapons, name, 'weapon'),
     armorByName: (name) => byName(armors, name, 'armor'),
     classByName: (slug) => {

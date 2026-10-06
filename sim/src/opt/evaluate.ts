@@ -1,20 +1,17 @@
-// Evaluate a martial genome by simulating it against a fixed seeded encounter,
-// several times under common random numbers, and reducing the outcomes to a
-// scalar fitness. The CRN seeds depend only on (scenario, runIndex), not on the
-// genome, so every build faces identical enemy rolls and initiative — the paired
-// comparison the metrics spec calls for.
-//
-// This is the Phase 3 single-objective fitness. The full metric catalog and the
-// NSGA-II multi-objective front arrive in later phases; the scalar here is just
-// win rate, then surviving HP, then speed.
+// Evaluate a martial genome by simulating it across the scenario library, several
+// times per scenario under common random numbers, and reducing the outcomes to a
+// multi-objective vector and a scalar fitness, each with a confidence interval.
+// The CRN seeds depend only on (scenario, runIndex), not on the genome, so every
+// build faces identical enemy rolls and initiative — the paired comparison the
+// metrics spec calls for. Running across the whole library (single foe, pack,
+// swarm, mixed) stops a build from overfitting one encounter.
 
 import { Random, seedFrom } from '../rng/rng';
-import { Grid, cell } from '../grid/grid';
 import { Encounter, type CombatEvent } from '../combat/encounter';
-import { spawnMonster } from '../content/monster';
 import { tacticalPolicy } from '../ai/policy';
 import { buildFromGenome, type MartialGenome } from './genome';
 import type { MartialCatalog } from './catalog';
+import { meanInterval, wilsonInterval, type Interval } from './stats';
 
 export interface EvalResult {
   readonly fitness: number;
@@ -31,13 +28,19 @@ export interface EvalResult {
    * gap NSGA-II exploited when efficiency was raw rounds.
    */
   readonly avgRoundsEffective: number;
+  /** Total runs across all scenarios. */
   readonly runs: number;
+  /** Confidence intervals (95%) for the headline metrics. */
+  readonly ci: {
+    readonly winRate: Interval;
+    readonly damage: Interval;
+    readonly hpRetained: Interval;
+  };
 }
 
 export interface EvalOptions {
+  /** Runs per scenario (total runs = this x scenario count). */
   readonly runs?: number;
-  readonly scenarioId?: string;
-  readonly goblinCount?: number;
 }
 
 /** Simulate one genome and return its fitness and the metrics behind it. */
@@ -46,55 +49,53 @@ export function evaluate(
   catalog: MartialCatalog,
   opts: EvalOptions = {},
 ): EvalResult {
-  const runs = opts.runs ?? 24;
-  const scenarioId = opts.scenarioId ?? 'l3-goblins';
-  const goblinCount = opts.goblinCount ?? 2;
-
+  const runsPer = opts.runs ?? 16;
+  const scenarios = catalog.scenarios;
   const roundCap = 50;
-  let wins = 0;
-  let hpFracOnWinSum = 0;
-  let hpFracRetainedSum = 0;
-  let damageSum = 0;
-  let roundsSum = 0;
-  let roundsEffectiveSum = 0;
 
-  for (let i = 0; i < runs; i++) {
-    // CRN: the seed depends only on the scenario and run index.
-    const rng = new Random(seedFrom(scenarioId, i));
-    const hero = buildFromGenome(genome, catalog, 'hero');
-    hero.position = cell(0, 5);
-    const goblins = Array.from({ length: goblinCount }, (_, g) =>
-      spawnMonster(catalog.goblin, {
-        id: `goblin-${g}`,
-        side: 'enemy',
-        position: cell(8, 4 + g * 2),
-      }),
-    );
-    const e = new Encounter({
-      grid: new Grid(12, 12),
-      combatants: [hero, ...goblins],
-      rng,
-      policyFor: () => tacticalPolicy,
-    });
-    const res = e.run(roundCap);
-    roundsSum += res.rounds;
-    damageSum += heroDamageDealt(res.log, 'hero');
-    const retained = hero.isConscious ? hero.hp / hero.maxHp : 0;
-    hpFracRetainedSum += retained;
-    const won = res.winner === 'party' && hero.isConscious;
-    roundsEffectiveSum += won ? res.rounds : roundCap;
-    if (won) {
-      wins++;
-      hpFracOnWinSum += retained;
+  // Per-run samples, pooled across the whole scenario library.
+  const winSamples: number[] = [];
+  const hpOnWinSamples: number[] = [];
+  const hpRetainedSamples: number[] = [];
+  const damageSamples: number[] = [];
+  const roundSamples: number[] = [];
+  const roundEffectiveSamples: number[] = [];
+
+  for (const scenario of scenarios) {
+    for (let i = 0; i < runsPer; i++) {
+      // CRN: the seed depends only on the scenario id and run index.
+      const rng = new Random(seedFrom(scenario.id, i));
+      const hero = buildFromGenome(genome, catalog, 'hero');
+      hero.position = scenario.heroStart;
+      const enemies = scenario.spawnEnemies();
+      const e = new Encounter({
+        grid: scenario.grid,
+        combatants: [hero, ...enemies],
+        rng,
+        policyFor: () => tacticalPolicy,
+      });
+      const res = e.run(roundCap);
+      const retained = hero.isConscious ? hero.hp / hero.maxHp : 0;
+      const won = res.winner === 'party' && hero.isConscious;
+      winSamples.push(won ? 1 : 0);
+      hpRetainedSamples.push(retained);
+      damageSamples.push(heroDamageDealt(res.log, 'hero'));
+      roundSamples.push(res.rounds);
+      roundEffectiveSamples.push(won ? res.rounds : roundCap);
+      if (won) hpOnWinSamples.push(retained);
     }
   }
 
-  const winRate = wins / runs;
-  const avgHpFracOnWin = wins > 0 ? hpFracOnWinSum / wins : 0;
-  const avgHpFracRetained = hpFracRetainedSum / runs;
-  const avgDamageDealt = damageSum / runs;
-  const avgRounds = roundsSum / runs;
-  const avgRoundsEffective = roundsEffectiveSum / runs;
+  const runs = winSamples.length;
+  const wins = winSamples.reduce((a, b) => a + b, 0);
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
+  const winRate = runs > 0 ? wins / runs : 0;
+  const avgHpFracOnWin = avg(hpOnWinSamples);
+  const avgHpFracRetained = avg(hpRetainedSamples);
+  const avgDamageDealt = avg(damageSamples);
+  const avgRounds = avg(roundSamples);
+  const avgRoundsEffective = avg(roundEffectiveSamples);
   // Win rate dominates; surviving HP breaks ties; faster is a small bonus.
   const fitness = winRate * 100 + avgHpFracOnWin * 10 - avgRounds * 0.1;
 
@@ -107,6 +108,11 @@ export function evaluate(
     avgRounds,
     avgRoundsEffective,
     runs,
+    ci: {
+      winRate: wilsonInterval(wins, runs),
+      damage: meanInterval(damageSamples),
+      hpRetained: meanInterval(hpRetainedSamples),
+    },
   };
 }
 
