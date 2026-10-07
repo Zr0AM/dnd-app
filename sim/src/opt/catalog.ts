@@ -30,6 +30,8 @@ import {
   healingWord,
   holdPerson,
   hypnoticPattern,
+  moonbeam,
+  produceFlame,
   rayOfFrost,
   sacredFlame,
   scorchingRay,
@@ -49,6 +51,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   bard: 'college-of-lore',
   sorcerer: 'draconic-sorcery',
   warlock: 'fiend-patron',
+  druid: 'circle-of-the-land',
 };
 
 /** A caster's fixed spell/gear package (spell selection is not evolved in v1). */
@@ -127,6 +130,14 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
     armorName: 'Leather Armor', // light armor
     shield: false,
   },
+  druid: {
+    ability: 'wis',
+    cantrips: [produceFlame],
+    spells: [cureWounds, moonbeam], // a versatile healer / area caster
+    weaponName: 'Mace',
+    armorName: 'Leather Armor', // nonmetal light armor
+    shield: false,
+  },
 };
 
 /** A sensible default armor for a non-barbarian martial. */
@@ -192,7 +203,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
 
   // Caster classes, slots and resolved spell/gear packages.
   const casterPackages = new Map<CasterClass, CasterPackage>();
-  for (const slug of ['wizard', 'cleric', 'bard', 'sorcerer', 'warlock'] as const) {
+  for (const slug of ['wizard', 'cleric', 'bard', 'sorcerer', 'warlock', 'druid'] as const) {
     classes.set(slug, loadClass(db, slug));
     const spec = CASTER_SPECS[slug];
     const resources: ResourceSpec[] = spec.levelPointsResource

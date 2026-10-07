@@ -66,6 +66,17 @@ export const sacredFlame: Spell = {
   },
 };
 
+/** Produce Flame (Druid cantrip): a ranged spell attack for 1d8 fire, scaling by level. */
+export const produceFlame: Spell = {
+  id: 'produce-flame',
+  name: 'Produce Flame',
+  level: 0,
+  action: 'action',
+  rangeFt: 60,
+  concentration: false,
+  kind: { type: 'attack-damage', damage: cantripDice(1, 8), damageType: 'fire' },
+};
+
 // --- Level 1 ---
 
 export const guidingBolt: Spell = {
@@ -111,6 +122,29 @@ export const scorchingRay: Spell = {
     damageType: 'fire',
     rays: 3,
     raysPerUpcast: 1,
+  },
+};
+
+/**
+ * Moonbeam (Druid): a concentration beam dealing 2d10 radiant (+1d10 per slot above
+ * 2nd) on a failed Con save, half on success. The 2024 spell is a persistent zone
+ * that re-damages each round; modeled here as a single Con-save area hit, a
+ * documented simplification (no re-trigger on later turns).
+ */
+export const moonbeam: Spell = {
+  id: 'moonbeam',
+  name: 'Moonbeam',
+  level: 2,
+  action: 'action',
+  rangeFt: 120,
+  concentration: true,
+  kind: {
+    type: 'save-damage',
+    save: 'con',
+    damage: upcastDice(2, 2, 10),
+    damageType: 'radiant',
+    onSuccess: 'half',
+    aoeRadiusFt: 5,
   },
 };
 

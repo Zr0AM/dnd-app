@@ -201,6 +201,15 @@ control and support. Control and support have no solo signal (a lone hero has no
 allies to buff/heal, and denies little on its own), so the solo `evaluate` scores 0
 on support; both carry real values only in the party harness.
 
+All twelve SRD classes are buildable heroes (each with its single SRD subclass):
+the six filler classes (Fighter, Ranger, Rogue, Cleric, Wizard, Bard) plus Paladin
+(a gish — Extra Attack, half-caster slots, slot-fuelled Divine Smite), Monk
+(unarmored Martial Arts striker with Stunning Strike), Sorcerer (Draconic, with
+Quickened Spell metamagic), Warlock (Eldritch Blast + Agonizing Blast on Pact
+Magic), and Druid (Wis caster: Produce Flame, Cure Wounds, Moonbeam). A handful of
+signature pieces are documented simplifications left for later (Hunter's Mark, Lay
+on Hands/Aura, Flurry of Blows, Dark One's Blessing, Wild Shape).
+
 End to end: the party harness distinguishes a Cleric healer (heals while the party
 fights), a Wizard blaster (high AoE damage), a controller (real `controlDenied`
 denial against the highest-threat enemy), and a Bard buffer (steady `buffBoost`

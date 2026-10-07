@@ -167,17 +167,19 @@ one subclass per class, so the hero's subclass choice is that one or none.
    expected value. The reference parties (R6/R4/R3 with role-slot substitution) and the **full six-role
    filler set** are built — Tank (Fighter), Sustained-DPS (Hunter Ranger archer: Archery, Extra Attack,
    Colossus Slayer), Burst (Rogue), Healer (Cleric), Controller (Wizard), Buffer (Bard) — and the hero
-   class roster is expanding past the filler set. Beyond those six, **Paladin** (a gish: heavy-armor
-   striker with Extra Attack, half-caster slots and Divine Smite, a slot-fueled radiant rider) and
-   **Monk** (unarmored Dex striker: Martial Arts unarmed strikes with an extra bonus attack, Extra
-   Attack, and Stunning Strike — a Focus-fuelled save-or-Stun that feeds the control axis), and
+   class roster now covers **all twelve SRD classes** (each with its single SRD subclass), so the
+   optimizer can build and rank any of them. Beyond the six filler classes: **Paladin** (gish:
+   heavy-armor striker with Extra Attack, half-caster slots and Divine Smite, a slot-fueled radiant
+   rider), **Monk** (unarmored Dex striker: Martial Arts unarmed strikes with an extra bonus attack,
+   Extra Attack, and Stunning Strike — a Focus-fuelled save-or-Stun feeding the control axis),
    **Sorcerer** (Draconic blaster/controller: CHA full caster, Draconic Resilience for +HP and
-   unarmored AC, and Quickened Spell metamagic — spend Sorcery Points to cast a second spell as a bonus
-   action), and **Warlock** (Fiend Pact caster: Eldritch Blast with Agonizing Blast — level-scaled
-   force beams plus Cha to each — and Pact Magic slots cast at their always-highest level) are
-   buildable. Still to add for full SRD class coverage: Druid. (Signature pieces left for later slices:
-   the Ranger's Hunter's Mark, the Paladin's Lay on Hands / Aura, the Monk's Flurry of Blows, the
-   Warlock's Dark One's Blessing, and the Warlock's short-rest slot recovery.)
+   unarmored AC, and Quickened Spell metamagic — Sorcery Points to cast a second spell as a bonus
+   action), **Warlock** (Fiend Pact caster: Eldritch Blast with Agonizing Blast — level-scaled force
+   beams plus Cha to each — on Pact Magic slots cast at their always-highest level), and **Druid**
+   (Circle of the Land: Wis full caster with Produce Flame, Cure Wounds and Moonbeam). Signature pieces
+   left for later slices (each a documented simplification): the Ranger's Hunter's Mark, the Paladin's
+   Lay on Hands / Aura, the Monk's Flurry of Blows, the Warlock's Dark One's Blessing and short-rest
+   slot recovery, and the Druid's Wild Shape.
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

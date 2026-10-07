@@ -5,6 +5,7 @@ import { loadMartialCatalog, type MartialCatalog } from './catalog';
 import {
   abilitiesFrom,
   buildFromGenome,
+  BUILD_CLASSES,
   crossover,
   genomeKey,
   mutate,
@@ -143,6 +144,45 @@ describe('random/mutate/crossover produce legal, buildable genomes', () => {
     expect(wizard.spellAbility).toBe('int');
     expect(wizard.spells.length).toBeGreaterThan(0);
     expect(wizard.slotCount(1)).toBeGreaterThan(0);
+  });
+
+  it('every SRD class compiles to a valid combatant', () => {
+    for (const classSlug of BUILD_CLASSES) {
+      const c = buildFromGenome(
+        {
+          classSlug,
+          abilityAssignment: [0, 1, 2, 3, 4, 5],
+          weaponName: 'Longsword',
+          armorName: classSlug === 'barbarian' ? null : 'Chain Mail',
+          shield: false,
+          twoHanded: false,
+          fightingStyle: 'defense',
+        },
+        catalog,
+      );
+      expect(c.hp, classSlug).toBeGreaterThan(0);
+      expect(c.ac, classSlug).toBeGreaterThan(0);
+      expect(c.attacks.length, classSlug).toBe(1);
+    }
+    // The full v1 roster is twelve classes.
+    expect(BUILD_CLASSES.length).toBe(12);
+  });
+
+  it('compiles a Druid to a Wis caster with nature spells', () => {
+    const druid = buildFromGenome(
+      {
+        classSlug: 'druid',
+        abilityAssignment: [5, 1, 2, 3, 0, 4],
+        weaponName: 'Mace',
+        armorName: null,
+        shield: false,
+        twoHanded: false,
+      },
+      catalog,
+    );
+    expect(druid.spellAbility).toBe('wis');
+    expect(druid.spells.some((s) => s.id === 'moonbeam')).toBe(true);
+    expect(druid.spells.some((s) => s.id === 'cure-wounds')).toBe(true);
   });
 
   it('genomeKey is stable and distinguishes genomes', () => {
