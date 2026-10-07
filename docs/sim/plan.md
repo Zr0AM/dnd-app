@@ -199,11 +199,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
    `loadScenarios` selects level-3, level-11 or level-17 opponent sets, each a varied spread of
    CR-appropriate single foes and packs calibrated to a tough-but-winnable solo fight, and a monster
    Multiattack table (centralized in `content/multiattack.ts`) is applied wherever monsters compile, so
-   a spawned monster makes its full set of attacks (wired through the combatant's extra attacks).
-   Remaining: high-level spell upcasting (so a level-17 caster uses its 6th+ slots rather than casting
-   Fireball at 3rd), legendary and lair actions (so solo bosses — dragons — act between turns), and
-   campaign-path scoring (a multi-encounter adventuring day with short rests, distinguishing nova
-   from sustained builds).
+   a spawned monster makes its full set of attacks (wired through the combatant's extra attacks). The
+   AI now upcasts: it weighs every affordable slot for a damage spell and casts into the highest one
+   whose extra dice (capped at the target's HP) beat the slot's cost, so a level-17 caster spends its
+   6th+ slots instead of casting Fireball at 3rd. Remaining: legendary and lair actions (so solo bosses
+   — dragons — act between turns), and campaign-path scoring (a multi-encounter adventuring day with
+   short rests, distinguishing nova from sustained builds).
 8. **Item and loot allocation** — _not started._
 
 ## Validation

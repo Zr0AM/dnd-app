@@ -179,8 +179,12 @@ function bestSpell(
   for (const spell of self.spells) {
     // Healing and buffs are handled by their own steps (tryHeal / tryBuff).
     if (spell.kind.type === 'heal' || spell.kind.type === 'buff') continue;
-    const slot = self.availableSlotLevels().find((l) => l >= spell.level);
-    if (slot !== undefined) consider(spell, slot);
+    // Consider every affordable slot level, so a damage spell upcasts into a higher
+    // slot when the extra dice (capped at the target's HP) beat the slot's cost —
+    // which is how a high-level caster uses its 6th+ slots instead of casting at base.
+    for (const slot of self.availableSlotLevels()) {
+      if (slot >= spell.level) consider(spell, slot);
+    }
   }
   return best;
 }
