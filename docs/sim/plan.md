@@ -180,10 +180,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
    has Lay on Hands (a 5-HP-per-level pool spent as a bonus-action heal), the Monk flurries, the Fiend
    Warlock gains Dark One's Blessing temp HP on a kill, the Ranger places Hunter's Mark (a bonus-action,
    concentration mark adding 1d6 Force to each hit on the target, from Favored Enemy's free uses), and
-   the Druid Wild Shapes into a temp-HP beast-form buffer. Only minor pieces remain, each inert or out
-   of scope at the 3/5 checkpoints: the full Wild Shape stat-block swap (only the defensive buffer is
-   modeled), the Warlock's short-rest slot recovery (inert in the single-encounter model), and the
-   Paladin's Aura of Protection (a level-6 feature).
+   the Druid Wild Shapes into a beast form (the form's Hit Points, Armor Class and natural attack). The
+   Paladin's Aura of Protection comes online at level 6 (allies within 10 ft add its Cha modifier to
+   saves), and Warlock Pact Magic slots recharge on a short rest. Every class's signature combat piece
+   is now modeled; the only remaining caveats are the breadth of the Wild Shape beast catalog (one
+   representative form) and that short-rest slot recovery is inert until multi-encounter adventuring
+   days exist (campaign-path scoring, Phase 7).
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

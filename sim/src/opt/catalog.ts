@@ -74,6 +74,8 @@ export interface CasterPackage {
   readonly unarmoredAcAbility?: Ability;
   /** Class features (a Warlock's Dark One's Blessing). */
   readonly features?: readonly Feature[];
+  /** Pact Magic: slots recharge on a Short Rest (Warlock). */
+  readonly shortRestSlots?: boolean;
 }
 
 interface CasterSpec {
@@ -89,6 +91,8 @@ interface CasterSpec {
   readonly extraHpPerLevel?: number;
   /** Unarmored AC ability (Draconic Resilience). */
   readonly unarmoredAcAbility?: Ability;
+  /** Pact Magic: slots recharge on a Short Rest (Warlock). */
+  readonly shortRestSlots?: boolean;
 }
 
 const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
@@ -134,6 +138,7 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
     weaponName: 'Dagger',
     armorName: 'Leather Armor', // light armor
     shield: false,
+    shortRestSlots: true, // Pact Magic recharges on a short rest
   },
   druid: {
     ability: 'wis',
@@ -246,6 +251,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
       extraHp: spec.extraHpPerLevel ? spec.extraHpPerLevel * level : undefined,
       unarmoredAcAbility: spec.unarmoredAcAbility,
       features: features.length ? features : undefined,
+      shortRestSlots: spec.shortRestSlots,
     });
   }
   const goblinSrc = loadMonsterSources(db).find((s) => s.monster.monsterSlug === 'goblin-warrior');

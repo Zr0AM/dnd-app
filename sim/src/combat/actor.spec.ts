@@ -209,3 +209,34 @@ describe('conditions', () => {
     expect(c.hasCondition('prone')).toBe(false);
   });
 });
+
+describe('spell-slot recovery', () => {
+  const caster = (shortRestSlots: boolean) =>
+    make({
+      spellcasting: {
+        ability: 'cha',
+        slots: [{ level: 3, count: 2 }],
+        cantrips: [],
+        spells: [],
+        shortRestSlots,
+      },
+    });
+
+  it('Pact Magic slots return on a short rest', () => {
+    const warlock = caster(true);
+    warlock.spendSlot(3);
+    warlock.spendSlot(3);
+    expect(warlock.slotCount(3)).toBe(0);
+    warlock.shortRest();
+    expect(warlock.slotCount(3)).toBe(2); // recharged on a short rest
+  });
+
+  it('ordinary slots do not return on a short rest, only a long rest', () => {
+    const wizard = caster(false);
+    wizard.spendSlot(3);
+    wizard.shortRest();
+    expect(wizard.slotCount(3)).toBe(1); // unchanged by a short rest
+    wizard.longRest();
+    expect(wizard.slotCount(3)).toBe(2); // a long rest restores them
+  });
+});

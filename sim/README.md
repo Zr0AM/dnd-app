@@ -210,9 +210,11 @@ Magic), and Druid (Wis caster: Produce Flame, Cure Wounds, Moonbeam). Each class
 signature piece is modeled: Divine Smite and Lay on Hands (Paladin), Martial Arts /
 Flurry / Stunning Strike (Monk), Quickened Spell (Sorcerer), Agonizing Blast and
 Dark One's Blessing (Warlock), Colossus Slayer and Hunter's Mark (Ranger), and a
-simplified Wild Shape (Druid). A few refinements are documented simplifications
-(the full Wild Shape stat-block swap, the Warlock's short-rest slot recovery, the
-Paladin's level-6 Aura).
+Wild Shape beast form (Druid). The Paladin's Aura of Protection (level 6+) and the
+Warlock's short-rest Pact Magic recovery are in too. The remaining caveats are
+breadth, not missing features: Wild Shape uses one representative beast form rather
+than the full catalog, and short-rest slot recovery only matters once multi-encounter
+adventuring days are modeled.
 
 End to end: the party harness distinguishes a Cleric healer (heals while the party
 fights), a Wizard blaster (high AoE damage), a controller (real `controlDenied`

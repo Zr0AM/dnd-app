@@ -52,6 +52,8 @@ export interface SpellcastingSpec {
   readonly slots: readonly { readonly level: number; readonly count: number }[];
   readonly cantrips: readonly Spell[];
   readonly spells: readonly Spell[];
+  /** Warlock Pact Magic: slots recharge on a Short Rest, not only a Long Rest. */
+  readonly shortRestSlots?: boolean;
 }
 
 export interface ResourceSpec {
@@ -149,6 +151,8 @@ export class Combatant {
   readonly cantrips: readonly Spell[] = [];
   readonly spells: readonly Spell[] = [];
   private readonly slots = new Map<number, { current: number; max: number }>();
+  /** Pact Magic: spell slots recharge on a Short Rest (Warlock). */
+  private readonly shortRestSlots: boolean;
   /** The spell this creature is concentrating on, if any (by spell id). */
   concentratingOn: string | null = null;
   /** The id of the creature this one has marked (Hunter's Mark), if any. */
@@ -193,6 +197,7 @@ export class Combatant {
     this.attacks = spec.attacks ? [...spec.attacks] : [];
     this.features = spec.features ? [...spec.features] : [];
     this.extraAttacks = spec.extraAttacks ?? 0;
+    this.shortRestSlots = spec.spellcasting?.shortRestSlots ?? false;
     if (spec.spellcasting) {
       this.spellAbility = spec.spellcasting.ability;
       this.cantrips = [...spec.spellcasting.cantrips];
@@ -269,9 +274,10 @@ export class Combatant {
     }
   }
 
-  /** Restore short-rest resources. */
+  /** Restore short-rest resources (and Pact Magic slots, for a Warlock). */
   shortRest(): void {
     this.recharge('rechargeShort');
+    if (this.shortRestSlots) this.restoreSlots();
   }
 
   /** Restore long-rest (and short-rest) resources, and reset exhaustion by one step is not done here. */

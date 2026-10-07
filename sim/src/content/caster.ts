@@ -37,6 +37,8 @@ export interface CasterBuildSpec {
   readonly resources?: readonly ResourceSpec[];
   /** Class features (e.g. a Warlock's Dark One's Blessing). */
   readonly features?: readonly Feature[];
+  /** Pact Magic: slots recharge on a Short Rest (Warlock). */
+  readonly shortRestSlots?: boolean;
   /** Extra HP added to the computed maximum (Draconic Resilience: +1 per level). */
   readonly extraHp?: number;
   /**
@@ -106,6 +108,7 @@ export function compileCaster(spec: CasterBuildSpec): Combatant {
       slots: spec.slots,
       cantrips: spec.cantrips,
       spells: spec.spells,
+      shortRestSlots: spec.shortRestSlots,
     },
     position: spec.position,
   });
