@@ -3,10 +3,9 @@
 // solo-hero evaluation into the party simulation the plan describes, so support
 // roles (a healer keeping allies up, a buffer boosting their attacks) have signal.
 //
-// R6 stands in the as-yet-unbuilt Ranger (sustained-dps) with a second burst
-// striker; it goes live fully when the half-caster filler lands. Encounter sizing
-// scales with the party and is tuned to be a hard-but-winnable fight rather than
-// matched to the exact XP budget (a party-harness v1 choice).
+// All three templates use the full frozen filler set. Encounter sizing scales with
+// the party and is tuned to be a hard-but-winnable fight rather than matched to the
+// exact XP budget (a party-harness v1 choice).
 
 import type { DatabaseSync } from 'node:sqlite';
 import { Grid, cell, type Cell } from '../grid/grid';
@@ -26,10 +25,9 @@ export interface PartyTemplate {
 }
 
 export const R6: PartyTemplate = {
-  // The full six-role party. 'sustained-dps' (Ranger) is stood in by a second
-  // 'burst' striker until the half-caster filler lands.
+  // The full six-role party.
   id: 'R6',
-  roles: ['tank', 'burst', 'burst', 'healer', 'controller', 'buffer'],
+  roles: ['tank', 'sustained-dps', 'burst', 'healer', 'controller', 'buffer'],
   flex: 'burst',
   weight: 2,
 };

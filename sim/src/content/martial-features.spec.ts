@@ -5,7 +5,12 @@ import { dice } from '../dice/dice';
 import { Combatant } from '../combat/actor';
 import { Encounter, idlePolicy, type TurnPolicy } from '../combat/encounter';
 import type { AttackProfile } from '../combat/attack';
-import { RageFeature, RecklessAttackFeature, SneakAttackFeature } from './martial-features';
+import {
+  ColossusSlayerFeature,
+  RageFeature,
+  RecklessAttackFeature,
+  SneakAttackFeature,
+} from './martial-features';
 import type { OnHitContext } from '../combat/feature';
 
 const greataxe: AttackProfile = {
@@ -151,6 +156,39 @@ describe('SneakAttackFeature', () => {
     expect(
       s.onHit(onHitCtx(combatant('r'), combatant('t'), greataxe, { rollAdvantage: 'advantage' })),
     ).toHaveLength(0);
+  });
+});
+
+describe('ColossusSlayerFeature', () => {
+  const longbow: AttackProfile = {
+    name: 'Longbow',
+    kind: 'ranged',
+    rangeFt: 150,
+    attackBonus: 7,
+    damage: dice(1, 8, 2),
+    damageType: 'piercing',
+  };
+
+  it('adds 1d8 to a hit on a wounded target, once per turn', () => {
+    const c = new ColossusSlayerFeature();
+    const self = combatant('ranger');
+    const wounded = combatant('t', { maxHp: 30 });
+    wounded.takeDamage(5); // now missing HP
+    const first = c.onHit(onHitCtx(self, wounded, longbow));
+    expect(first).toHaveLength(1);
+    expect(first[0].damage.count).toBe(1);
+    expect(first[0].damage.sides).toBe(8);
+    // Second hit the same turn: no extra.
+    expect(c.onHit(onHitCtx(self, wounded, longbow))).toHaveLength(0);
+    // Available again next turn.
+    c.onTurnStart();
+    expect(c.onHit(onHitCtx(self, wounded, longbow))).toHaveLength(1);
+  });
+
+  it('does not trigger against a full-HP target', () => {
+    const c = new ColossusSlayerFeature();
+    const full = combatant('t', { maxHp: 30 }); // undamaged
+    expect(c.onHit(onHitCtx(combatant('ranger'), full, longbow))).toHaveLength(0);
   });
 });
 

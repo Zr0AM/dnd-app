@@ -1,11 +1,11 @@
 // The character-build compiler: turns a resolved build into an engine Combatant.
 //
-// Scope for the walking skeleton: single-class martial builds (Fighter, Barbarian,
-// Rogue) with correct Hit Points, Armor Class, saving throws, and one weapon
-// attack (to-hit and damage), plus the numeric fighting styles. Class features
-// that are conditional or triggered (Rage, Sneak Attack, Reckless Attack) and
-// Extra Attack belong to the effect/feature layer and are added on top of this
-// base; they are not applied here. Spellcasting is a later phase.
+// Scope: single-class martial builds (Fighter, Barbarian, Rogue, Ranger) with
+// correct Hit Points, Armor Class, saving throws, and one weapon attack (to-hit
+// and damage), plus the numeric fighting styles. Class features that are
+// conditional or triggered (Rage, Sneak Attack, Reckless Attack, Colossus Slayer)
+// and Extra Attack belong to the effect/feature layer and are added on top of this
+// base via buildFeatures. Spellcasting (incl. the Ranger's) is the caster compiler.
 //
 // Like the monster compiler, this is pure: it takes resolved data objects (class,
 // weapon, armor) so it can be unit-tested without a database. A loader resolves
@@ -17,7 +17,12 @@ import { Combatant, type ResourceSpec, type Side } from '../combat/actor';
 import type { AttackProfile } from '../combat/attack';
 import type { Feature } from '../combat/feature';
 import type { Cell } from '../grid/grid';
-import { RageFeature, RecklessAttackFeature, SneakAttackFeature } from './martial-features';
+import {
+  ColossusSlayerFeature,
+  RageFeature,
+  RecklessAttackFeature,
+  SneakAttackFeature,
+} from './martial-features';
 
 export type FightingStyle = 'archery' | 'defense' | 'great-weapon' | 'two-weapon';
 export type UnarmoredDefense = 'barbarian' | 'monk';
@@ -189,6 +194,10 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   }
   if (spec.class.slug === 'rogue' && p.sneakAttackDice && p.sneakAttackDice > 0) {
     features.push(new SneakAttackFeature(p.sneakAttackDice));
+  }
+  // Hunter Ranger's level-3 Hunter's Prey (Colossus Slayer option).
+  if (spec.class.slug === 'ranger' && spec.subclass === 'hunter' && spec.level >= 3) {
+    features.push(new ColossusSlayerFeature());
   }
   return { features, resources };
 }

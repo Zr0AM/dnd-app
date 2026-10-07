@@ -182,13 +182,19 @@ count the cap) removed them. That is the "GA exploits modelling gaps" guard work
   behind the **support** objective axis (healing + buff assists). The AI establishes
   a buff by value before attacking, and the **Healer** and **Buffer** role presets
   are live.
-- **reference parties** — the R6, R4 and R3 templates with the full frozen filler
-  set (Tank/Fighter, Burst/Rogue, Healer/Cleric, Controller/Wizard, Buffer/Bard) and
-  hero role-slot substitution, run against party-scaled encounters under common
-  random numbers (`opt/party-evaluate.ts`, `scenario/party.ts`). Damage, healing,
-  buff assists and control are attributed to the hero; `partyObjectivesOf` maps a
-  party result to the same six-axis vector the solo evaluator emits, so a
-  party-context run feeds NSGA-II and the role presets unchanged.
+- **sustained-dps striker** — a Hunter Ranger archer (Longbow with the Archery
+  style, Extra Attack at L5, and Colossus Slayer: once per turn, +1d8 to a hit on a
+  wounded target). Steady weapon output with no resource spike — the sustained-DPS
+  profile, distinct from the Rogue's front-loaded burst. (Hunter's Mark, its other
+  sustained-damage source, is left for a later slice.)
+- **reference parties** — the R6, R4 and R3 templates with the full six-role frozen
+  filler set (Tank/Fighter, Sustained-DPS/Ranger, Burst/Rogue, Healer/Cleric,
+  Controller/Wizard, Buffer/Bard) and hero role-slot substitution, run against
+  party-scaled encounters under common random numbers (`opt/party-evaluate.ts`,
+  `scenario/party.ts`). Damage, healing, buff assists and control are attributed to
+  the hero; `partyObjectivesOf` maps a party result to the same six-axis vector the
+  solo evaluator emits, so a party-context run feeds NSGA-II and the role presets
+  unchanged.
 
 All six objective axes are now live: reliability, offense, survival, efficiency,
 control and support. Control and support have no solo signal (a lone hero has no
@@ -200,9 +206,7 @@ fights), a Wizard blaster (high AoE damage), a controller (real `controlDenied`
 denial against the highest-threat enemy), and a Bard buffer (steady `buffBoost`
 assists from Bless/Haste) — each topping its own role's weighting.
 
-Deferred: the Sustained-DPS (Ranger) half-caster filler — R6 stands it in with a
-second striker until it lands. Still deferred (needs push access to dnd-db-rest and
-the environment's network/credential setup): the D1 results migration + the
-export/upload step, and the display-only Angular UI that reads these reports (see
-docs/sim/ui-integration.md). Still to come: levels 11/17 (Phase 7); then item/loot
-allocation (Phase 8).
+Deferred (needs push access to dnd-db-rest and the environment's network/credential
+setup): the D1 results migration + the export/upload step, and the display-only
+Angular UI that reads these reports (see docs/sim/ui-integration.md). Still to come:
+levels 11/17 (Phase 7); then item/loot allocation (Phase 8).

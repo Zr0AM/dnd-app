@@ -164,10 +164,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
    efficiency, control (enemy actions denied) and support (healing + buff assists); control and support
    carry signal in the party harness (`party-evaluate.ts`, with `partyObjectivesOf` mapping a party
    result to the same six-axis vector). The AI heals, buffs by value, and casts control/damage by
-   expected value. The reference parties (R6/R4/R3 with role-slot substitution) and the full filler set
-   (Tank, Burst, Healer, Controller, Buffer) are built, and Wizard/Cleric/Bard caster builds compete in
-   the optimizer. Remaining Phase 4 polish: the Sustained-DPS (Ranger) half-caster filler (R6 stands it
-   in with a second striker for now).
+   expected value. The reference parties (R6/R4/R3 with role-slot substitution) and the **full six-role
+   filler set** are built — Tank (Fighter), Sustained-DPS (Hunter Ranger archer: Archery, Extra Attack,
+   Colossus Slayer), Burst (Rogue), Healer (Cleric), Controller (Wizard), Buffer (Bard) — and
+   Fighter/Barbarian/Rogue/Ranger/Wizard/Cleric/Bard builds compete in the optimizer. (The Ranger's
+   Hunter's Mark, its other sustained-damage source, needs marked-target + concentration bookkeeping and
+   is left for a later slice.)
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

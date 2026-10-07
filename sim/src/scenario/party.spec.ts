@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { buildSeedDatabase } from '../content/load-db';
 import { loadFillers, type Filler, type Role } from '../content/fillers';
-import { assembleParty, loadPartyScenarios, R3, R4, type PartyScenario } from './party';
+import { assembleParty, loadPartyScenarios, R3, R4, R6, type PartyScenario } from './party';
 import { Combatant } from '../combat/actor';
 import { cell } from '../grid/grid';
 
@@ -30,11 +30,21 @@ describe('fillers', () => {
     }
   });
 
-  it('builds the available roles', () => {
+  it('builds every role, including the full six', () => {
     expect(fillers.tank).toBeDefined();
+    expect(fillers['sustained-dps']).toBeDefined();
+    expect(fillers.burst).toBeDefined();
     expect(fillers.healer).toBeDefined();
     expect(fillers.controller).toBeDefined();
-    expect(fillers.burst).toBeDefined();
+    expect(fillers.buffer).toBeDefined();
+  });
+
+  it('the sustained-dps ranger is an archer with Extra Attack and Colossus Slayer', () => {
+    const ranger = fillers['sustained-dps']!.make('r', 'party', cell(0, 0));
+    expect(ranger.extraAttacks).toBe(1); // Extra Attack at level 5
+    expect(ranger.attacks[0].kind).toBe('ranged'); // Longbow
+    expect(ranger.attacks[0].attackBonus).toBe(7); // Dex +2, prof +3, Archery +2
+    expect(ranger.features.some((f) => f.id === 'colossus-slayer')).toBe(true);
   });
 
   it('the healer is a spellcaster with healing', () => {
@@ -74,6 +84,22 @@ describe('assembleParty', () => {
     expect(party.filter((c) => c.id === 'hero')).toHaveLength(1);
     // The hero occupies the tank slot (index 0 in R4.roles).
     expect(party[0].id).toBe('hero');
+  });
+
+  it('assembles the full R6 party with six unique members', () => {
+    const h = hero();
+    const party = assembleParty(
+      fillers,
+      R6,
+      h,
+      'buffer',
+      R6.roles.map((_, i) => cell(0, i)),
+    );
+    expect(party).toHaveLength(6);
+    expect(new Set(party.map((c) => c.id)).size).toBe(6); // ids unique per slot
+    expect(party.filter((c) => c.id === 'hero')).toHaveLength(1);
+    // The hero occupies the buffer slot (last in R6.roles).
+    expect(party[R6.roles.indexOf('buffer')].id).toBe('hero');
   });
 
   it('a hero without a matching role takes the flex slot', () => {

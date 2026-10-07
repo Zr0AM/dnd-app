@@ -39,6 +39,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   fighter: 'champion',
   barbarian: 'path-of-the-berserker',
   rogue: 'thief',
+  ranger: 'hunter',
   wizard: 'evoker',
   cleric: 'life-domain',
   bard: 'college-of-lore',
@@ -96,6 +97,7 @@ const DEFAULT_ARMOR: Readonly<Record<MartialClass, string>> = {
   fighter: 'Chain Mail',
   barbarian: 'Chain Mail', // unused (barbarian is unarmored), kept for completeness
   rogue: 'Studded Leather Armor',
+  ranger: 'Studded Leather Armor',
 };
 
 export interface MartialCatalog {
@@ -133,7 +135,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
   const armors = ARMOR_NAMES.map((n) => loadArmor(db, n));
   const classes = new Map<BuildClass, ClassInfo>();
   const progression = new Map<MartialClass, BuildProgression>();
-  for (const slug of ['fighter', 'barbarian', 'rogue'] as const) {
+  for (const slug of ['fighter', 'barbarian', 'rogue', 'ranger'] as const) {
     classes.set(slug, loadClass(db, slug));
     progression.set(slug, loadProgression(db, slug, level));
   }

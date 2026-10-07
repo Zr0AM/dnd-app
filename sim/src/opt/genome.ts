@@ -14,7 +14,7 @@ import { compileCaster } from '../content/caster';
 import type { Combatant } from '../combat/actor';
 import type { MartialCatalog } from './catalog';
 
-export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue'] as const;
+export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue', 'ranger'] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
 
 export const CASTER_CLASSES = ['wizard', 'cleric', 'bard'] as const;

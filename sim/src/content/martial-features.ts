@@ -15,6 +15,10 @@
 // - Sneak Attack is exact: once per turn, on a qualifying weapon, when the roll
 //   had advantage or an ally is adjacent to the target and the roll was not at
 //   disadvantage.
+// - Colossus Slayer (Hunter Ranger) is exact: once per turn, +1d8 when the owner
+//   hits a creature that is missing any Hit Points. (Hunter's Mark, the Ranger's
+//   other sustained-damage source, needs marked-target + concentration bookkeeping
+//   and is left for a later slice.)
 
 import { dice } from '../dice/dice';
 import type { DamageType } from '../core/types';
@@ -93,5 +97,23 @@ export class SneakAttackFeature implements Feature {
     if (!eligible) return [];
     this.usedThisTurn = true;
     return [{ damage: dice(this.diceCount, 6), type: ctx.weapon.damageType }];
+  }
+}
+
+/** Colossus Slayer (Hunter Ranger): once per turn, +1d8 to a hit on a wounded target. */
+export class ColossusSlayerFeature implements Feature {
+  readonly id = 'colossus-slayer';
+  private usedThisTurn = false;
+
+  onTurnStart(): void {
+    this.usedThisTurn = false;
+  }
+
+  onHit(ctx: OnHitContext): ExtraDamage[] {
+    if (this.usedThisTurn) return [];
+    // Only a target already missing Hit Points qualifies.
+    if (ctx.target.hp >= ctx.target.maxHp) return [];
+    this.usedThisTurn = true;
+    return [{ damage: dice(1, 8), type: ctx.weapon.damageType }];
   }
 }

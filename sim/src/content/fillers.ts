@@ -3,11 +3,11 @@
 // recipes (Human, standard array, the SRD subclass), reproducible and reviewable,
 // so the hero's results are not skewed by evolving teammates.
 //
-// Buildable now: Tank (Fighter/Champion), Burst (Rogue/Thief), Healer (Cleric/
-// Life with Cure Wounds and Healing Word), Controller (Wizard/Evoker, used here as
-// the party's area-damage/lockdown option), and Buffer (Bard, with Bless and
-// Haste). The Sustained-DPS (Ranger) filler needs half-caster content; R6, R4 and
-// R3 are otherwise complete.
+// The full role set is buildable: Tank (Fighter/Champion), Sustained-DPS (Hunter
+// Ranger archer with Archery, Extra Attack and Colossus Slayer), Burst (Rogue/
+// Thief), Healer (Cleric/Life with Cure Wounds and Healing Word), Controller
+// (Wizard/Evoker, the party's area-damage/lockdown option), and Buffer (Bard, with
+// Bless and Haste). R6, R4 and R3 are complete.
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { Ability } from '../core/types';
@@ -45,12 +45,14 @@ const array = (str: number, dex: number, con: number, int: number, wis: number, 
 /** Build the filler set available at this level. */
 export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Role, Filler>> {
   const fighter = loadClass(db, 'fighter');
+  const ranger = loadClass(db, 'ranger');
   const rogue = loadClass(db, 'rogue');
   const cleric = loadClass(db, 'cleric');
   const wizard = loadClass(db, 'wizard');
   const bard = loadClass(db, 'bard');
 
   const longsword = loadWeapon(db, 'Longsword');
+  const longbow = loadWeapon(db, 'Longbow');
   const rapier = loadWeapon(db, 'Rapier');
   const mace = loadWeapon(db, 'Mace');
   const dagger = loadWeapon(db, 'Dagger');
@@ -62,6 +64,7 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
   // Resolve all DB-dependent values now; the make() closures must not touch the
   // database (it may be closed by the time a filler is spawned).
   const rogueProgression = loadProgression(db, 'rogue', level);
+  const rangerProgression = loadProgression(db, 'ranger', level);
   const clericSlots = loadSpellSlots(db, 'cleric', level);
   const wizardSlots = loadSpellSlots(db, 'wizard', level);
   const bardSlots = loadSpellSlots(db, 'bard', level);
@@ -82,6 +85,24 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
           armor: chainMail,
           shield: true,
           fightingStyle: 'defense',
+          position,
+        }),
+    },
+    'sustained-dps': {
+      role: 'sustained-dps',
+      make: (id, side, position) =>
+        compileBuild({
+          id,
+          name: 'Ranger (Sustained DPS)',
+          side,
+          class: ranger,
+          subclass: 'hunter',
+          level,
+          abilities: array(10, 15, 14, 8, 13, 12),
+          weapon: longbow,
+          armor: studded,
+          fightingStyle: 'archery',
+          progression: rangerProgression,
           position,
         }),
     },
