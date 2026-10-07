@@ -182,6 +182,21 @@ export class DarkOnesBlessingFeature implements Feature {
   }
 }
 
+/**
+ * Hunter's Mark (Ranger): while the ranger concentrates on the mark, every hit it
+ * lands on the marked creature deals an extra 1d6 Force damage. The mark is placed
+ * through the engine (TurnApi.markTarget), sustained by concentration, and this
+ * rider reads the owner's markedTarget. Moving the mark to a new creature when the
+ * first dies is a documented simplification left out (the mark stays put).
+ */
+export class HuntersMarkFeature implements Feature {
+  readonly id = 'hunters-mark';
+  onHit(ctx: OnHitContext): ExtraDamage[] {
+    if (ctx.self.markedTarget !== ctx.target.id) return [];
+    return [{ damage: dice(1, 6), type: 'force' }];
+  }
+}
+
 /** Colossus Slayer (Hunter Ranger): once per turn, +1d8 to a hit on a wounded target. */
 export class ColossusSlayerFeature implements Feature {
   readonly id = 'colossus-slayer';

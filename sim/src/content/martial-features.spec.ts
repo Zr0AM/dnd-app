@@ -9,6 +9,7 @@ import type { AttackProfile } from '../combat/attack';
 import {
   ColossusSlayerFeature,
   DivineSmiteFeature,
+  HuntersMarkFeature,
   MartialArtsFeature,
   RageFeature,
   RecklessAttackFeature,
@@ -463,6 +464,64 @@ describe('features in the engine', () => {
     expect(paladin.resourceCount('lay-on-hands')).toBeLessThan(25); // pool was drawn from
     // The bonus-action heal left the action free, so the paladin also attacked.
     expect(e.events.some((x) => x.kind === 'attack' && x.attacker === 'pal')).toBe(true);
+  });
+
+  it('a Ranger marks a target (bonus action) and hits carry the mark', () => {
+    const bow: AttackProfile = {
+      name: 'Longbow',
+      kind: 'ranged',
+      rangeFt: 150,
+      attackBonus: 20, // always hits for a deterministic test
+      damage: dice(1, 8, 3),
+      damageType: 'piercing',
+    };
+    const ranger = combatant('ranger', {
+      side: 'party',
+      level: 5,
+      attacks: [bow],
+      features: [new HuntersMarkFeature()],
+      resources: [{ id: 'hunters-mark', max: 3, rechargeLong: 'all' }],
+      position: cell(0, 0),
+    });
+    const foe = combatant('foe', { side: 'enemy', ac: 1, maxHp: 300, position: cell(2, 0) });
+    const policy: TurnPolicy = (api) => {
+      if (api.self.id !== 'ranger') return;
+      api.markTarget(foe);
+      api.attack(foe, bow);
+    };
+    const e = new Encounter({
+      grid: new Grid(10, 10),
+      combatants: [ranger, foe],
+      rng: new Random(3),
+      policyFor: (c) => (c.id === 'ranger' ? policy : idlePolicy),
+    });
+    e.rollInitiative();
+    e.runRound();
+    expect(ranger.markedTarget).toBe('foe');
+    expect(ranger.concentratingOn).toBe('hunters-mark');
+    expect(ranger.resourceCount('hunters-mark')).toBe(2); // a use was spent
+    expect(e.events.some((x) => x.kind === 'marked' && x.source === 'ranger')).toBe(true);
+  });
+
+  it('Hunter’s Mark adds 1d6 force only to the marked target', () => {
+    const bow: AttackProfile = {
+      name: 'Longbow',
+      kind: 'ranged',
+      rangeFt: 150,
+      attackBonus: 7,
+      damage: dice(1, 8, 3),
+      damageType: 'piercing',
+    };
+    const f = new HuntersMarkFeature();
+    const ranger = combatant('ranger');
+    const marked = combatant('m');
+    const other = combatant('o');
+    ranger.markedTarget = 'm';
+    const extra = f.onHit(onHitCtx(ranger, marked, bow));
+    expect(extra).toHaveLength(1);
+    expect(extra[0].type).toBe('force');
+    expect(extra[0].damage.sides).toBe(6);
+    expect(f.onHit(onHitCtx(ranger, other, bow))).toHaveLength(0); // not the marked one
   });
 
   it('sanity: adjacency helper matches grid distance', () => {

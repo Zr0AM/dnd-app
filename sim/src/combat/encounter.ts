@@ -56,6 +56,8 @@ export type CombatEvent =
   | { kind: 'concentrationBroken'; id: string }
   /** Non-spell healing (Paladin Lay on Hands) from `source` to `target`. */
   | { kind: 'heal'; source: string; target: string; amount: number }
+  /** The Ranger placed Hunter's Mark on a target. */
+  | { kind: 'marked'; source: string; target: string }
   /** A buff was placed on an ally. `source` is the caster, `target` the recipient. */
   | { kind: 'buffApplied'; source: string; buff: string; target: string }
   /** A buff materially helped the recipient (boosted roll / extra attack). */
@@ -98,6 +100,8 @@ export interface TurnApi {
   ): number | null;
   /** Heal an ally from a pool as a Bonus Action (Paladin Lay on Hands). Returns HP restored, or null. */
   layOnHands(target: Combatant): number | null;
+  /** Place Hunter's Mark on an enemy as a Bonus Action (Ranger). Returns success. */
+  markTarget(target: Combatant): boolean;
 }
 
 /** A policy decides what one creature does on its turn by calling the TurnApi. */
@@ -267,7 +271,24 @@ export class Encounter {
       castSpell: (spell, target, slotLevel, quickened) =>
         this.castSpell(self, spell, target, slotLevel, resources, quickened),
       layOnHands: (target) => this.layOnHands(self, target, resources),
+      markTarget: (target) => this.markTarget(self, target, resources),
     };
+  }
+
+  /**
+   * Place Hunter's Mark (Ranger): a Bonus Action that marks an enemy and starts
+   * concentration, spending one of the ranger's free uses (Favored Enemy). The
+   * Hunter's Mark feature then adds its damage to hits on the marked target.
+   */
+  private markTarget(self: Combatant, target: Combatant, resources: TurnResources): boolean {
+    if (!resources.bonus || target.side === self.side) return false;
+    if (self.resourceCount('hunters-mark') <= 0) return false;
+    self.spendResource('hunters-mark', 1);
+    self.markedTarget = target.id;
+    self.concentratingOn = 'hunters-mark';
+    resources.bonus = false;
+    this.log.push({ kind: 'marked', source: self.id, target: target.id });
+    return true;
   }
 
   /** Lay on Hands: a Bonus Action that heals `target` from the 'lay-on-hands' pool. */
@@ -509,6 +530,7 @@ export class Encounter {
     });
     if (!save.success) {
       target.concentratingOn = null;
+      target.markedTarget = null; // Hunter's Mark drops with concentration
       for (const c of this.combatants) {
         c.endConcentrationConditions(target.id);
         c.endConcentrationBuffs(target.id);

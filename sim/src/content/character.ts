@@ -20,6 +20,7 @@ import type { Cell } from '../grid/grid';
 import {
   ColossusSlayerFeature,
   DivineSmiteFeature,
+  HuntersMarkFeature,
   MartialArtsFeature,
   RageFeature,
   RecklessAttackFeature,
@@ -200,9 +201,16 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   if (spec.class.slug === 'rogue' && p.sneakAttackDice && p.sneakAttackDice > 0) {
     features.push(new SneakAttackFeature(p.sneakAttackDice));
   }
-  // Hunter Ranger's level-3 Hunter's Prey (Colossus Slayer option).
-  if (spec.class.slug === 'ranger' && spec.subclass === 'hunter' && spec.level >= 3) {
-    features.push(new ColossusSlayerFeature());
+  // Ranger: Favored Enemy grants free Hunter's Mark casts (uses = proficiency bonus).
+  if (spec.class.slug === 'ranger') {
+    features.push(new HuntersMarkFeature());
+    resources.push({
+      id: 'hunters-mark',
+      max: proficiencyBonus(spec.level),
+      rechargeLong: 'all',
+    });
+    // Hunter subclass (level 3): Hunter's Prey — Colossus Slayer.
+    if (spec.subclass === 'hunter' && spec.level >= 3) features.push(new ColossusSlayerFeature());
   }
   // Paladin's Divine Smite (a slot-fueled radiant rider on a melee hit) once it has slots.
   if (spec.class.slug === 'paladin' && (spec.spellcasting?.slots.length ?? 0) > 0) {

@@ -343,6 +343,19 @@ function tryLayOnHands(api: TurnApi): void {
   if (target) api.layOnHands(target);
 }
 
+/**
+ * Hunter's Mark (Ranger): place the mark on the kill target as a Bonus Action when
+ * the ranger has a free use and isn't already concentrating, so its hits carry the
+ * +1d6. Uses only the bonus action; the ranger still attacks this turn.
+ */
+function tryMark(api: TurnApi, damageTarget: Combatant): void {
+  const self = api.self;
+  if (self.concentratingOn !== null || !api.resources.bonus) return;
+  if (!self.features.some((f) => f.id === 'hunters-mark')) return;
+  if (self.resourceCount('hunters-mark') <= 0) return;
+  api.markTarget(damageTarget);
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
@@ -361,6 +374,9 @@ export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): T
       scoreTarget(api.self, e, weights) > scoreTarget(api.self, best, weights) ? e : best,
     );
     const controlTarget = enemies.reduce((best, e) => (threatOf(e) > threatOf(best) ? e : best));
+
+    // Hunter's Mark on the kill target (bonus action), before attacking.
+    tryMark(api, damageTarget);
 
     const weapon = primaryWeapon(api.self);
     const weaponEv = weapon

@@ -151,6 +151,8 @@ export class Combatant {
   private readonly slots = new Map<number, { current: number; max: number }>();
   /** The spell this creature is concentrating on, if any (by spell id). */
   concentratingOn: string | null = null;
+  /** The id of the creature this one has marked (Hunter's Mark), if any. */
+  markedTarget: string | null = null;
 
   hp: number;
   tempHp = 0;
@@ -276,6 +278,7 @@ export class Combatant {
     this.recharge('rechargeLong');
     this.restoreSlots();
     this.concentratingOn = null;
+    this.markedTarget = null;
   }
 
   /**
