@@ -3,7 +3,7 @@
 // death-save pipeline. Attack/save *rolls* live in attack.ts; this module owns
 // what happens to a creature's HP and life state as a result.
 
-import { rollD20 } from '../dice/dice';
+import { rollD20, type Dice } from '../dice/dice';
 import type { Rng } from '../rng/rng';
 import {
   abilityModifier,
@@ -84,6 +84,25 @@ export interface ActiveCondition {
   readonly concentrationOwner?: string;
 }
 
+/** A beneficial effect placed on a creature for a duration (Bless, Haste). */
+export interface ActiveBuff {
+  /** Stable id so re-applying the same buff refreshes rather than stacks. */
+  readonly id: string;
+  /** The caster id that granted this (for support-metric attribution). */
+  readonly source: string;
+  roundsLeft: number;
+  /** Dice added to the recipient's attack rolls (rolled per attack by the engine). */
+  readonly attackBonusDice?: Dice;
+  /** Dice added to the recipient's saving throws (rolled per save by the engine). */
+  readonly saveBonusDice?: Dice;
+  /** Flat bonus to Armor Class. */
+  readonly acBonus?: number;
+  /** Grants one extra action usable only for a single weapon attack. */
+  readonly extraAttackAction?: boolean;
+  /** The caster id whose concentration sustains this, if any. */
+  readonly concentrationOwner?: string;
+}
+
 /** What happened when a creature took damage, for events and metrics. */
 export interface DamageOutcome {
   /** HP actually removed from the HP pool (after temp HP absorption). */
@@ -139,6 +158,8 @@ export class Combatant {
   private readonly conditions = new Set<Condition>();
   /** Conditions applied for a duration, with repeat-save and attribution info. */
   private readonly timed: ActiveCondition[] = [];
+  /** Beneficial effects (Bless, Haste) active on this creature. */
+  private readonly buffs: ActiveBuff[] = [];
 
   // Exhaustion is level-based (0-6); the "exhaustion" condition is present when > 0.
   exhaustionLevel = 0;
@@ -364,6 +385,87 @@ export class Combatant {
         this.timed.splice(this.timed.indexOf(t), 1);
         this.syncConditionFlag(t.condition);
       }
+    }
+  }
+
+  /** Apply (or refresh) a beneficial buff for a duration. */
+  applyBuff(spec: Omit<ActiveBuff, 'roundsLeft'> & { rounds: number }): void {
+    const existing = this.buffs.findIndex((b) => b.id === spec.id);
+    const buff: ActiveBuff = {
+      id: spec.id,
+      source: spec.source,
+      roundsLeft: spec.rounds,
+      attackBonusDice: spec.attackBonusDice,
+      saveBonusDice: spec.saveBonusDice,
+      acBonus: spec.acBonus,
+      extraAttackAction: spec.extraAttackAction,
+      concentrationOwner: spec.concentrationOwner,
+    };
+    // Re-applying the same buff refreshes it rather than stacking (2024 rule).
+    if (existing >= 0) this.buffs[existing] = buff;
+    else this.buffs.push(buff);
+  }
+
+  hasBuff(id: string): boolean {
+    return this.buffs.some((b) => b.id === id);
+  }
+
+  /** Dice (with their source) to add to each attack roll, from active buffs. */
+  buffAttackBonuses(): { readonly dice: Dice; readonly id: string; readonly source: string }[] {
+    return this.buffs
+      .filter((b) => b.attackBonusDice)
+      .map((b) => ({ dice: b.attackBonusDice!, id: b.id, source: b.source }));
+  }
+
+  /** Dice (with their source) to add to each saving throw, from active buffs. */
+  buffSaveBonuses(): { readonly dice: Dice; readonly id: string; readonly source: string }[] {
+    return this.buffs
+      .filter((b) => b.saveBonusDice)
+      .map((b) => ({ dice: b.saveBonusDice!, id: b.id, source: b.source }));
+  }
+
+  /** Net AC bonus from active buffs. */
+  buffAcBonus(): number {
+    return this.buffs.reduce((sum, b) => sum + (b.acBonus ?? 0), 0);
+  }
+
+  /** Armor Class including active buffs (Haste's +2, etc.). */
+  effectiveAc(): number {
+    return this.ac + this.buffAcBonus();
+  }
+
+  /** Whether a buff grants an extra action usable for a single weapon attack. */
+  hasExtraAttackAction(): boolean {
+    return this.buffs.some((b) => b.extraAttackAction);
+  }
+
+  /** The caster ids of buffs currently active on this creature (for attribution). */
+  buffSources(): string[] {
+    return this.buffs.map((b) => b.source);
+  }
+
+  /** The caster id that granted a specific active buff, if present. */
+  buffSourceFor(id: string): string | undefined {
+    return this.buffs.find((b) => b.id === id)?.source;
+  }
+
+  /** End-of-turn decrement of buff durations; returns the ids that ended. */
+  tickBuffs(): string[] {
+    const ended: string[] = [];
+    for (const b of [...this.buffs]) {
+      b.roundsLeft -= 1;
+      if (b.roundsLeft <= 0) {
+        this.buffs.splice(this.buffs.indexOf(b), 1);
+        ended.push(b.id);
+      }
+    }
+    return ended;
+  }
+
+  /** End all buffs sustained by `casterId`'s concentration. */
+  endConcentrationBuffs(casterId: string): void {
+    for (const b of [...this.buffs]) {
+      if (b.concentrationOwner === casterId) this.buffs.splice(this.buffs.indexOf(b), 1);
     }
   }
 

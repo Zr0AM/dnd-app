@@ -17,7 +17,7 @@ import type { MartialCatalog } from './catalog';
 export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue'] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
 
-export const CASTER_CLASSES = ['wizard', 'cleric'] as const;
+export const CASTER_CLASSES = ['wizard', 'cleric', 'bard'] as const;
 export type CasterClass = (typeof CASTER_CLASSES)[number];
 
 /** All classes the genome can pick. */

@@ -4,7 +4,7 @@ import { buildSeedDatabase } from '../content/load-db';
 import { loadMartialCatalog, type MartialCatalog } from './catalog';
 import { runNsga2, type Nsga2Result } from './nsga2';
 import { buildReport, rescore } from './reports';
-import { CASTER_ROLES, ROLE_WEIGHTS, roleWeights } from './roles';
+import { PARTY_ONLY_ROLES, ROLE_WEIGHTS, roleWeights } from './roles';
 import {
   BENCHMARK_GENOME,
   computeAnchor,
@@ -20,9 +20,22 @@ describe('role presets', () => {
     expect(roleWeights('tank')['survival']).toBeGreaterThan(roleWeights('tank')['offense']);
   });
 
-  it('marks caster roles as not-yet-usable', () => {
-    expect(CASTER_ROLES['healer']).toBeDefined();
-    expect(() => roleWeights('healer')).toThrow();
+  it('exposes the caster roles, weighting their axis highest', () => {
+    expect(roleWeights('healer')['support']).toBeGreaterThan(roleWeights('healer')['offense']);
+    expect(roleWeights('buffer')['support']).toBeGreaterThan(roleWeights('buffer')['survival']);
+    expect(roleWeights('controller')['control']).toBeGreaterThan(
+      roleWeights('controller')['offense'],
+    );
+  });
+
+  it('marks the party-only roles (support/control signal needs a party)', () => {
+    expect(PARTY_ONLY_ROLES).toContain('healer');
+    expect(PARTY_ONLY_ROLES).toContain('buffer');
+    expect(PARTY_ONLY_ROLES).toContain('controller');
+  });
+
+  it('rejects an unknown role', () => {
+    expect(() => roleWeights('paladin-smiter')).toThrow();
   });
 });
 

@@ -1,9 +1,10 @@
-// Authored damage spells for levels 3-5, verified against the SRD 5.2.1 text. The
-// numbers are hand-entered per the effect-format spec (never parsed): cantrips
-// scale by caster level, leveled spells by the slot used. Healing, control and
-// buff spells extend this set in the next slice.
+// Authored spells for levels 3-5, verified against the SRD 5.2.1 text. The numbers
+// are hand-entered per the effect-format spec (never parsed): cantrips scale by
+// caster level, leveled spells by the slot used. Covers the damage, healing,
+// control and buff families the caster roles exercise.
 
 import { cantripDice, upcastDice, type Spell } from '../combat/spell';
+import { dice } from '../dice/dice';
 
 // --- Cantrips ---
 
@@ -179,3 +180,44 @@ export const hypnoticPattern: Spell = {
 
 /** Control spells available to controller casters. */
 export const CONTROL_SPELLS: readonly Spell[] = [holdPerson, hypnoticPattern];
+
+// --- Buffs ---
+
+export const bless: Spell = {
+  id: 'bless',
+  name: 'Bless',
+  level: 1,
+  action: 'action',
+  rangeFt: 30,
+  concentration: true,
+  kind: {
+    type: 'buff',
+    buffId: 'bless',
+    maxTargets: 3,
+    rounds: 10, // 1 minute
+    attackBonusDice: dice(1, 4),
+    saveBonusDice: dice(1, 4),
+  },
+};
+
+export const haste: Spell = {
+  id: 'haste',
+  name: 'Haste',
+  level: 3,
+  action: 'action',
+  rangeFt: 30,
+  concentration: true,
+  kind: {
+    type: 'buff',
+    buffId: 'haste',
+    maxTargets: 1,
+    rounds: 10, // 1 minute
+    acBonus: 2,
+    extraAttackAction: true,
+    // (Doubled speed and advantage on Dex saves are omitted: they have little
+    // effect in the current scenarios, where the hasted ally is already in reach.)
+  },
+};
+
+/** Buff spells available to buffer casters. */
+export const BUFF_SPELLS: readonly Spell[] = [bless, haste];

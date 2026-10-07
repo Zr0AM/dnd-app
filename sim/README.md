@@ -159,7 +159,7 @@ count the cap) removed them. That is the "GA exploits modelling gaps" guard work
 - **opt/roles.ts** — the roles as weight presets; a report re-ranks for a role
   (`rescore`) without re-simulating.
 
-### Casters, parties and control (Phase 4, in progress)
+### Casters, parties, control and support (Phase 4)
 
 - **spellcasting core** — slots, save DC, spell attack, and concentration, on the
   `Combatant`; the engine casts through a `castSpell` turn action.
@@ -172,27 +172,37 @@ count the cap) removed them. That is the "GA exploits modelling gaps" guard work
   the condition for a duration, a repeat save each turn can shake it off, and
   breaking the caster's concentration ends it. A controlled creature's turn is
   denied, logged as `controlDenied` and attributed to the caster — the signal behind
-  the **control** objective axis (scored solo in `evaluate` and in the party harness).
-  The AI values control by threat-weighted expected denial, and the **Controller**
-  role preset is now live.
-- **reference parties** — the R4 and R3 templates with frozen filler builds (tank,
-  burst, healer, controller) and hero role-slot substitution, run against
-  party-scaled encounters under common random numbers (`opt/party-evaluate.ts`,
-  `scenario/party.ts`). Healing and control are attributed to the hero in the party,
-  giving the support/control signal a solo martial lacks.
+  the **control** objective axis. The AI values control by threat-weighted expected
+  denial, and the **Controller** role preset is live.
+- **buff spells** — Bless (+1d4 to up to three allies' attacks and saves) and Haste
+  (+2 AC and one extra weapon-attack action for one ally), on a parallel buff
+  subsystem: the engine rolls the Bless die into the recipient's attack/save rolls,
+  grants the Haste extra attack, and ends both when the caster's concentration
+  breaks. Each realized benefit logs a `buffBoost` against the caster — the signal
+  behind the **support** objective axis (healing + buff assists). The AI establishes
+  a buff by value before attacking, and the **Healer** and **Buffer** role presets
+  are live.
+- **reference parties** — the R6, R4 and R3 templates with the full frozen filler
+  set (Tank/Fighter, Burst/Rogue, Healer/Cleric, Controller/Wizard, Buffer/Bard) and
+  hero role-slot substitution, run against party-scaled encounters under common
+  random numbers (`opt/party-evaluate.ts`, `scenario/party.ts`). Damage, healing,
+  buff assists and control are attributed to the hero; `partyObjectivesOf` maps a
+  party result to the same six-axis vector the solo evaluator emits, so a
+  party-context run feeds NSGA-II and the role presets unchanged.
 
-End to end: NSGA-II surfaces a damage caster on the Pareto front (an L5 Wizard
-glass cannon), the party harness distinguishes a Cleric healer (heals while the
-party fights) from a Wizard blaster (~370 AoE damage), and a controller hero reads
-real `controlDenied` denial against the highest-threat enemy.
+All six objective axes are now live: reliability, offense, survival, efficiency,
+control and support. Control and support have no solo signal (a lone hero has no
+allies to buff/heal, and denies little on its own), so the solo `evaluate` scores 0
+on support; both carry real values only in the party harness.
 
-Remaining in Phase 4: buff spells (Bless/Haste) and the support axis wired into the
-main objective vector, which unlock the Bard buffer filler, the R6 template and the
-live Healer/Buffer roles.
+End to end: the party harness distinguishes a Cleric healer (heals while the party
+fights), a Wizard blaster (high AoE damage), a controller (real `controlDenied`
+denial against the highest-threat enemy), and a Bard buffer (steady `buffBoost`
+assists from Bless/Haste) — each topping its own role's weighting.
 
-Deferred (needs push access to dnd-db-rest and the environment's network/credential
-setup): the D1 results migration + the export/upload step, and the display-only
-Angular UI that reads these reports (see docs/sim/ui-integration.md).
-
-Still to come after Phase 4: levels 11/17 (Phase 7); then item/loot allocation
-(Phase 8).
+Deferred: the Sustained-DPS (Ranger) half-caster filler — R6 stands it in with a
+second striker until it lands. Still deferred (needs push access to dnd-db-rest and
+the environment's network/credential setup): the D1 results migration + the
+export/upload step, and the display-only Angular UI that reads these reports (see
+docs/sim/ui-integration.md). Still to come: levels 11/17 (Phase 7); then item/loot
+allocation (Phase 8).

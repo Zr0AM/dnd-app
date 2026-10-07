@@ -20,19 +20,20 @@ describe('weightedScore', () => {
     survival: [0, 1] as [number, number],
     efficiency: [-10, 0] as [number, number],
     control: [0, 10] as [number, number],
+    support: [0, 10] as [number, number],
   };
 
   it('ranks a dominant point highest under equal weights', () => {
-    const best = weightedScore([1, 100, 1, 0, 10], bounds, equalWeights());
-    const worst = weightedScore([0, 0, 0, -10, 0], bounds, equalWeights());
+    const best = weightedScore([1, 100, 1, 0, 10, 10], bounds, equalWeights());
+    const worst = weightedScore([0, 0, 0, -10, 0, 0], bounds, equalWeights());
     expect(best).toBeCloseTo(1, 10);
     expect(worst).toBeCloseTo(0, 10);
   });
 
   it('weights shift the ranking', () => {
     // Build A: great offense, poor survival. Build B: the reverse.
-    const a = [0.5, 100, 0, -5, 0] as const;
-    const b = [0.5, 0, 1, -5, 0] as const;
+    const a = [0.5, 100, 0, -5, 0, 0] as const;
+    const b = [0.5, 0, 1, -5, 0, 0] as const;
     const offenseHeavy = { reliability: 0, offense: 1, survival: 0, efficiency: 0 };
     const survivalHeavy = { reliability: 0, offense: 0, survival: 1, efficiency: 0 };
     expect(weightedScore(a, bounds, offenseHeavy)).toBeGreaterThan(
@@ -90,6 +91,7 @@ describe('buildReport against the seeds', () => {
       'survival',
       'efficiency',
       'control',
+      'support',
     ]);
     expect(report.paretoFront.length).toBeGreaterThan(0);
     expect(report.leaderboard.length).toBeGreaterThan(0);

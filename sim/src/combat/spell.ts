@@ -58,11 +58,35 @@ export type SpellKind =
       readonly aoeRadiusFt?: number;
       /** Restrict to a creature type (e.g. Hold Person → Humanoid). */
       readonly onlyType?: string;
+    }
+  | {
+      /**
+       * A beneficial effect placed on allies for a duration (Bless, Haste). The
+       * engine applies the modifiers while the buff is active; concentration ends
+       * it early if broken. Each modifier is optional so one kind covers both the
+       * roll-rider buffs (Bless: +dice to attacks and saves) and the action/defence
+       * buffs (Haste: +AC and an extra attack action).
+       */
+      readonly type: 'buff';
+      /** A stable id so stacking the same buff twice is idempotent (refresh, not add). */
+      readonly buffId: string;
+      /** How many allies the cast can cover (Bless 3, Haste 1), nearest first. */
+      readonly maxTargets: number;
+      /** Duration in rounds (a minute = 10 rounds). */
+      readonly rounds: number;
+      /** Dice added to the recipient's attack rolls (Bless: 1d4), rolled per attack. */
+      readonly attackBonusDice?: Dice;
+      /** Dice added to the recipient's saving throws (Bless: 1d4), rolled per save. */
+      readonly saveBonusDice?: Dice;
+      /** Flat bonus to the recipient's Armor Class (Haste: +2). */
+      readonly acBonus?: number;
+      /** Grants one extra action usable only for a single weapon attack (Haste). */
+      readonly extraAttackAction?: boolean;
     };
 
 /** Which side a spell is cast at. */
 export function spellTargetsAllies(spell: Spell): boolean {
-  return spell.kind.type === 'heal';
+  return spell.kind.type === 'heal' || spell.kind.type === 'buff';
 }
 
 export interface Spell {

@@ -143,8 +143,13 @@ function actionsDenied(log: readonly CombatEvent[], id: string): number {
 /**
  * The multi-objective vector for NSGA-II, all oriented so higher is better:
  * reliability (win rate), offense (damage), survival (HP retained), efficiency
- * (negative rounds — fewer is better). A pragmatic subset of the metrics spec's
- * six axes, enough for a meaningful Pareto front at the martial tier.
+ * (negative rounds — fewer is better), control (enemy actions denied), and support
+ * (healing + buffs the hero gives allies). The six axes of the metrics spec.
+ *
+ * Support has no solo signal — a lone hero has no allies to heal or buff — so solo
+ * `evaluate` always scores 0 on it (martials correctly read 0 support). The axis
+ * carries real values only in the party harness (`party-evaluate.ts`), the same
+ * place control's party attribution lives.
  */
 export const OBJECTIVE_NAMES = [
   'reliability',
@@ -152,6 +157,7 @@ export const OBJECTIVE_NAMES = [
   'survival',
   'efficiency',
   'control',
+  'support',
 ] as const;
 
 export function objectivesOf(r: EvalResult): number[] {
@@ -161,5 +167,6 @@ export function objectivesOf(r: EvalResult): number[] {
     r.avgHpFracRetained,
     -r.avgRoundsEffective,
     r.avgActionsDenied,
+    0, // support: no allies in a solo evaluation
   ];
 }

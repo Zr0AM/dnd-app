@@ -98,7 +98,7 @@ describe('runNsga2 against the seeds', () => {
     expect(result.front.length).toBeGreaterThan(0);
     for (const ind of result.front) {
       expect(ind.rank).toBe(0);
-      expect(ind.objectives).toHaveLength(5);
+      expect(ind.objectives).toHaveLength(6);
     }
   });
 

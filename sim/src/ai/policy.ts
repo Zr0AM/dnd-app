@@ -173,7 +173,8 @@ function bestSpell(
   };
   for (const cantrip of self.cantrips) consider(cantrip, 0);
   for (const spell of self.spells) {
-    if (spell.kind.type === 'heal') continue; // healing is handled separately
+    // Healing and buffs are handled by their own steps (tryHeal / tryBuff).
+    if (spell.kind.type === 'heal' || spell.kind.type === 'buff') continue;
     const slot = self.availableSlotLevels().find((l) => l >= spell.level);
     if (slot !== undefined) consider(spell, slot);
   }
@@ -228,11 +229,93 @@ function tryHeal(api: TurnApi): boolean {
   return spell.action === 'action';
 }
 
+/**
+ * Estimated value of casting `spell` (a buff) now, with the allies it would cover.
+ * Allies are ranked by threat and capped at the spell's target count; the per-ally
+ * benefit credits an extra attack (Haste), a to-hit rider (Bless, ~+12% hit) and a
+ * small survivability bump for +AC. Used only to choose among buffs and vs. attacking.
+ */
+function buffValue(
+  spell: Spell,
+  alliesInRange: readonly Combatant[],
+): { value: number; targets: Combatant[] } {
+  const kind = spell.kind;
+  if (kind.type !== 'buff') return { value: 0, targets: [] };
+  const ranked = [...alliesInRange]
+    .sort((a, b) => threatOf(b) - threatOf(a))
+    .slice(0, kind.maxTargets);
+  let value = 0;
+  for (const a of ranked) {
+    if (kind.extraAttackAction) value += 0.5 * threatOf(a); // roughly one extra attack
+    if (kind.attackBonusDice) value += 0.12 * threatOf(a); // +~2.5 to hit ≈ +12% of output
+    if (kind.acBonus) value += 0.5 * kind.acBonus;
+  }
+  return { value, targets: ranked };
+}
+
+/**
+ * If the caster has a buff spell, isn't already concentrating, and has allies worth
+ * buffing in range, cast the most valuable buff. Buffs are concentration, so this
+ * fires once and then the buffer acts normally while the effect holds. Returns true
+ * if the turn's action was spent casting.
+ */
+function tryBuff(api: TurnApi): boolean {
+  const self = api.self;
+  if (self.concentratingOn !== null || !api.resources.action) return false;
+  const buffSpells = self.spells.filter((s) => s.kind.type === 'buff');
+  if (buffSpells.length === 0) return false;
+
+  // Allies that actually attack are worth buffing.
+  const combatants = api.allies().filter((a) => threatOf(a) > 0);
+  if (combatants.length === 0) return false;
+
+  // Rank affordable buffs by value against the allies currently in range, else by
+  // value against the strongest ally we could approach.
+  const affordable = buffSpells.filter(
+    (s) => self.availableSlotLevels().find((l) => l >= s.level) !== undefined,
+  );
+  if (affordable.length === 0) return false;
+
+  const inRangeOf = (s: Spell) =>
+    combatants.filter((a) => distanceFt(self.position, a.position) <= s.rangeFt);
+
+  let chosenSpell: Spell | null = null;
+  let chosenTarget: Combatant | null = null;
+  let bestValue = 0;
+  for (const s of affordable) {
+    const near = inRangeOf(s);
+    const { value, targets } = buffValue(s, near);
+    if (targets.length > 0 && value > bestValue) {
+      bestValue = value;
+      chosenSpell = s;
+      chosenTarget = targets[0];
+    }
+  }
+
+  // Nobody in range: approach the strongest ally for the best affordable buff, then retry.
+  if (!chosenSpell) {
+    const strongest = [...combatants].sort((a, b) => threatOf(b) - threatOf(a))[0];
+    const spell = affordable.reduce((a, b) => (b.level > a.level ? b : a));
+    approach(api, strongest, spell.rangeFt);
+    const near = inRangeOf(spell);
+    const { targets } = buffValue(spell, near);
+    if (targets.length === 0) return false;
+    chosenSpell = spell;
+    chosenTarget = targets[0];
+  }
+
+  const slot = self.availableSlotLevels().find((l) => l >= chosenSpell!.level)!;
+  const r = api.castSpell(chosenSpell!, chosenTarget!, slot);
+  return r !== null && chosenSpell!.action === 'action';
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
     // Healing takes priority when an ally is down or badly hurt.
     if (tryHeal(api)) return;
+    // Then establish a buff (Bless/Haste) if we have one and aren't concentrating.
+    if (tryBuff(api)) return;
 
     const enemies = api.enemies();
     if (enemies.length === 0) return;
@@ -259,8 +342,14 @@ export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): T
       const rangeFt = weaponRangeFt(weapon);
       approach(api, damageTarget, rangeFt);
       if (distanceFt(api.self.position, damageTarget.position) <= rangeFt) {
+        // Drain the Attack action, its Extra Attacks, then any buff-granted extra
+        // attack action (Haste), so a hasted striker actually uses the extra swing.
         let dmg = api.attack(damageTarget, weapon);
-        while (dmg !== null && damageTarget.isConscious && api.resources.attacksRemaining > 0) {
+        while (
+          dmg !== null &&
+          damageTarget.isConscious &&
+          (api.resources.attacksRemaining > 0 || api.resources.extraAttackActions > 0)
+        ) {
           dmg = api.attack(damageTarget, weapon);
         }
       }

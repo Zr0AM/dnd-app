@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildSeedDatabase } from '../content/load-db';
 import { loadMartialCatalog, type MartialCatalog } from './catalog';
-import { loadPartyHarness, evaluatePartyBuild, type PartyHarness } from './party-evaluate';
+import {
+  loadPartyHarness,
+  evaluatePartyBuild,
+  partyObjectivesOf,
+  type PartyHarness,
+} from './party-evaluate';
+import { OBJECTIVE_NAMES } from './evaluate';
 import type { MartialGenome } from './genome';
 
 const clericHealer: MartialGenome = {
@@ -16,6 +22,14 @@ const wizardBlaster: MartialGenome = {
   classSlug: 'wizard',
   abilityAssignment: [5, 1, 2, 0, 3, 4], // Int high
   weaponName: 'Dagger',
+  armorName: null,
+  shield: false,
+  twoHanded: false,
+};
+const bardBuffer: MartialGenome = {
+  classSlug: 'bard',
+  abilityAssignment: [5, 1, 2, 3, 4, 0], // Cha high
+  weaponName: 'Rapier',
   armorName: null,
   shield: false,
   twoHanded: false,
@@ -55,6 +69,35 @@ describe('party evaluation', () => {
     // out-damages by a wide margin (AoE across the horde).
     expect(healer.avgHeroHealing).toBeGreaterThan(blaster.avgHeroHealing);
     expect(blaster.avgHeroDamage).toBeGreaterThan(healer.avgHeroDamage);
+  });
+
+  it('a buffer hero delivers buff assists and support the blaster does not', () => {
+    const buffer = evaluatePartyBuild(bardBuffer, catalog, harness, {
+      runs: 12,
+      heroRole: 'buffer',
+    });
+    const blaster = evaluatePartyBuild(wizardBlaster, catalog, harness, {
+      runs: 12,
+      heroRole: 'controller',
+    });
+    // The bard's Bless/Haste land on allies, so it registers buff assists and a
+    // support signal; the blaster buffs no one.
+    expect(buffer.avgHeroBuffAssists).toBeGreaterThan(0);
+    expect(buffer.avgHeroSupport).toBeGreaterThan(blaster.avgHeroSupport);
+    expect(blaster.avgHeroBuffAssists).toBe(0);
+  });
+
+  it('partyObjectivesOf yields the six-axis vector with a support value', () => {
+    const buffer = evaluatePartyBuild(bardBuffer, catalog, harness, {
+      runs: 10,
+      heroRole: 'buffer',
+    });
+    const vec = partyObjectivesOf(buffer);
+    expect(vec).toHaveLength(OBJECTIVE_NAMES.length);
+    // Support is the last axis and is positive for a working buffer.
+    expect(vec[OBJECTIVE_NAMES.indexOf('support')]).toBeGreaterThan(0);
+    // Efficiency (index 3) is negative rounds.
+    expect(vec[OBJECTIVE_NAMES.indexOf('efficiency')]).toBeLessThanOrEqual(0);
   });
 
   it('is deterministic under the fixed scenario seeds', () => {

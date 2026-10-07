@@ -5,9 +5,9 @@
 //
 // Buildable now: Tank (Fighter/Champion), Burst (Rogue/Thief), Healer (Cleric/
 // Life with Cure Wounds and Healing Word), Controller (Wizard/Evoker, used here as
-// the party's area-damage/lockdown option). The Sustained-DPS (Ranger) and Buffer
-// (Bard) fillers need half-caster/buff content and arrive with it; R4 and R3 are
-// complete, R6 waits on them.
+// the party's area-damage/lockdown option), and Buffer (Bard, with Bless and
+// Haste). The Sustained-DPS (Ranger) filler needs half-caster content; R6, R4 and
+// R3 are otherwise complete.
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { Ability } from '../core/types';
@@ -18,10 +18,12 @@ import { compileBuild } from './character';
 import { compileCaster } from './caster';
 import { loadArmor, loadClass, loadProgression, loadSpellSlots, loadWeapon } from './load-db';
 import {
+  bless,
   cureWounds,
   fireBolt,
   fireball,
   guidingBolt,
+  haste,
   healingWord,
   holdPerson,
   hypnoticPattern,
@@ -46,6 +48,7 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
   const rogue = loadClass(db, 'rogue');
   const cleric = loadClass(db, 'cleric');
   const wizard = loadClass(db, 'wizard');
+  const bard = loadClass(db, 'bard');
 
   const longsword = loadWeapon(db, 'Longsword');
   const rapier = loadWeapon(db, 'Rapier');
@@ -54,12 +57,14 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
   const chainMail = loadArmor(db, 'Chain Mail');
   const studded = loadArmor(db, 'Studded Leather Armor');
   const scaleMail = loadArmor(db, 'Scale Mail');
+  const leather = loadArmor(db, 'Leather Armor');
 
   // Resolve all DB-dependent values now; the make() closures must not touch the
   // database (it may be closed by the time a filler is spawned).
   const rogueProgression = loadProgression(db, 'rogue', level);
   const clericSlots = loadSpellSlots(db, 'cleric', level);
   const wizardSlots = loadSpellSlots(db, 'wizard', level);
+  const bardSlots = loadSpellSlots(db, 'bard', level);
 
   return {
     tank: {
@@ -136,6 +141,27 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
           cantrips: [fireBolt],
           spells: [hypnoticPattern, holdPerson, fireball, scorchingRay],
           slots: wizardSlots,
+          position,
+        }),
+    },
+    buffer: {
+      role: 'buffer',
+      make: (id, side, position) =>
+        compileCaster({
+          id,
+          name: 'Bard (Buffer)',
+          side,
+          class: bard,
+          subclass: null,
+          level,
+          abilities: array(8, 14, 13, 10, 12, 15),
+          weapon: rapier,
+          armor: leather,
+          shield: false,
+          spellAbility: 'cha',
+          cantrips: [],
+          spells: [bless, haste],
+          slots: bardSlots,
           position,
         }),
     },

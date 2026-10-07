@@ -26,6 +26,7 @@ export const OBJECTIVE_FLOORS: Readonly<Record<(typeof OBJECTIVE_NAMES)[number],
   survival: 0,
   efficiency: -50,
   control: 0,
+  support: 0,
 };
 
 /** The frozen benchmark: a sword-and-board Champion fighter (a modest baseline). */

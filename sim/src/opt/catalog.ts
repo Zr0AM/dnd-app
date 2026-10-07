@@ -18,11 +18,13 @@ import {
 import type { Ability } from '../core/types';
 import type { Spell } from '../combat/spell';
 import {
+  bless,
   burningHands,
   cureWounds,
   fireBolt,
   fireball,
   guidingBolt,
+  haste,
   healingWord,
   holdPerson,
   hypnoticPattern,
@@ -39,6 +41,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   rogue: 'thief',
   wizard: 'evoker',
   cleric: 'life-domain',
+  bard: 'college-of-lore',
 };
 
 /** A caster's fixed spell/gear package (spell selection is not evolved in v1). */
@@ -77,6 +80,14 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
     weaponName: 'Mace',
     armorName: 'Scale Mail', // medium armor + shield
     shield: true,
+  },
+  bard: {
+    ability: 'cha',
+    cantrips: [],
+    spells: [bless, haste], // the buffer package
+    weaponName: 'Rapier',
+    armorName: 'Leather Armor', // light armor, no shield
+    shield: false,
   },
 };
 
@@ -129,7 +140,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
 
   // Caster classes, slots and resolved spell/gear packages.
   const casterPackages = new Map<CasterClass, CasterPackage>();
-  for (const slug of ['wizard', 'cleric'] as const) {
+  for (const slug of ['wizard', 'cleric', 'bard'] as const) {
     classes.set(slug, loadClass(db, slug));
     const spec = CASTER_SPECS[slug];
     casterPackages.set(slug, {

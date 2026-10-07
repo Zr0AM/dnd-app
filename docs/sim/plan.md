@@ -155,22 +155,24 @@ one subclass per class, so the hero's subclass choice is that one or none.
 3. **Walking skeleton** — _done._ level-3 Fighter, Barbarian and Rogue (compiled from the seeds) vs.
    goblins, with martial features (Rage, Sneak Attack, Extra Attack), the shared tactical AI, and a
    minimal GA.
-4. **Casters and effects** — _in progress._ Done: the spellcasting core (slots, save DC, spell attack,
-   concentration); authored damage spells (cantrips, Burning Hands, Scorching Ray, Guiding Bolt,
-   Fireball); healing spells (Cure Wounds, Healing Word) with the healer attributing healing in the
-   party harness; **control spells (Hold Person, Hypnotic Pattern) with timed conditions, repeat
-   saves and concentration breaking, the fifth _control_ objective axis (enemy actions denied, scored
-   solo and attributed to a hero in the party), the AI valuing control by threat-weighted denial, and
-   the live Controller role**; the reference parties (R4/R3 with role-slot substitution); and Wizard/
-   Cleric builds in the optimizer — damage, healer and controller casters now compete on the Pareto
-   front. Remaining: buff spells (Bless/Haste) and the support axis wired into the main objective
-   vector, which unlock the Bard buffer filler, the R6 template and the live Healer/Buffer roles.
+4. **Casters and effects** — _done for levels 3–5._ The spellcasting core (slots, save DC, spell
+   attack, concentration); authored damage spells (cantrips, Burning Hands, Scorching Ray, Guiding
+   Bolt, Fireball); healing spells (Cure Wounds, Healing Word); control spells (Hold Person, Hypnotic
+   Pattern) with timed conditions, repeat saves and concentration breaking; and **buff spells (Bless,
+   Haste) with the recipient's attack/save riders, Haste's +AC and extra attack action, and
+   concentration breaking**. All six objective axes are live — reliability, offense, survival,
+   efficiency, control (enemy actions denied) and support (healing + buff assists); control and support
+   carry signal in the party harness (`party-evaluate.ts`, with `partyObjectivesOf` mapping a party
+   result to the same six-axis vector). The AI heals, buffs by value, and casts control/damage by
+   expected value. The reference parties (R6/R4/R3 with role-slot substitution) and the full filler set
+   (Tank, Burst, Healer, Controller, Buffer) are built, and Wizard/Cleric/Bard caster builds compete in
+   the optimizer. Remaining Phase 4 polish: the Sustained-DPS (Ranger) half-caster filler (R6 stands it
+   in with a second striker for now).
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
-   _done for what martials exercise._ The scenario library (maps + XP-validated level-3 encounters),
-   confidence intervals, the metric axes (reliability, offense, survival, efficiency, and now control),
-   reference-anchor normalization and the martial role presets are built. The support axis and the R6
-   reference party are deferred to Phase 4 (buffs), since they need buff spells and a sixth party slot;
-   the control axis and the R4/R3 parties landed with the control-spell slice.
+   _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
+   axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,
+   the full role presets, and the R6/R4/R3 reference parties are built. Control and support carry signal
+   only in the party harness (a solo martial has no allies to buff/heal and scores 0 there).
 6. **D1 results store and reports**, then the NSGA-II optimizer with the legality validator — _optimizer
    done, store deferred._ NSGA-II (non-dominated sort + crowding), the legality validator (genome
    repair), and the serializable run reports with client-side reweighting are built. The D1 migration

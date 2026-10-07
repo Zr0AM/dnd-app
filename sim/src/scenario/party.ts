@@ -1,11 +1,12 @@
-// The reference-party harness: party templates (R4, R3), assembly with the hero
-// substituted into its role slot, and party-scaled encounters. This turns the
+// The reference-party harness: party templates (R6, R4, R3), assembly with the
+// hero substituted into its role slot, and party-scaled encounters. This turns the
 // solo-hero evaluation into the party simulation the plan describes, so support
-// roles (a healer keeping allies up) finally have signal.
+// roles (a healer keeping allies up, a buffer boosting their attacks) have signal.
 //
-// R6 (six roles) waits on the Ranger and Bard fillers; R4 and R3 are complete.
-// Encounter sizing scales with the party and is tuned to be a hard-but-winnable
-// fight rather than matched to the exact XP budget (a party-harness v1 choice).
+// R6 stands in the as-yet-unbuilt Ranger (sustained-dps) with a second burst
+// striker; it goes live fully when the half-caster filler lands. Encounter sizing
+// scales with the party and is tuned to be a hard-but-winnable fight rather than
+// matched to the exact XP budget (a party-harness v1 choice).
 
 import type { DatabaseSync } from 'node:sqlite';
 import { Grid, cell, type Cell } from '../grid/grid';
@@ -24,6 +25,15 @@ export interface PartyTemplate {
   readonly weight: number;
 }
 
+export const R6: PartyTemplate = {
+  // The full six-role party. 'sustained-dps' (Ranger) is stood in by a second
+  // 'burst' striker until the half-caster filler lands.
+  id: 'R6',
+  roles: ['tank', 'burst', 'burst', 'healer', 'controller', 'buffer'],
+  flex: 'burst',
+  weight: 2,
+};
+
 export const R4: PartyTemplate = {
   id: 'R4',
   roles: ['tank', 'burst', 'healer', 'controller'],
@@ -38,7 +48,7 @@ export const R3: PartyTemplate = {
   weight: 1,
 };
 
-export const PARTY_TEMPLATES: readonly PartyTemplate[] = [R4, R3];
+export const PARTY_TEMPLATES: readonly PartyTemplate[] = [R6, R4, R3];
 
 /** Party deployment cells (left side) and enemy cells (right side). */
 function partyMap(): { grid: Grid; partyCells: Cell[]; enemyCells: Cell[] } {
@@ -62,15 +72,19 @@ export function assembleParty(
 ): Combatant[] {
   const heroSlot = template.roles.includes(heroRole) ? heroRole : template.flex;
   const party: Combatant[] = [];
+  let heroPlaced = false;
   template.roles.forEach((role, i) => {
     const position = partyCells[i] ?? partyCells[partyCells.length - 1];
-    if (role === heroSlot) {
+    // The hero takes the first slot matching its role; duplicate role slots (e.g.
+    // R6's two striker slots) are filled normally, with ids unique per slot index.
+    if (role === heroSlot && !heroPlaced) {
       hero.position = position;
       party.push(hero);
+      heroPlaced = true;
     } else {
       const filler = fillers[role];
       if (!filler) throw new Error(`no filler for role ${role}`);
-      party.push(filler.make(`ally-${role}`, 'party', position));
+      party.push(filler.make(`ally-${role}-${i}`, 'party', position));
     }
   });
   return party;

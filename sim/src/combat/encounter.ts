@@ -54,6 +54,10 @@ export type CombatEvent =
   | { kind: 'deathSave'; id: string; d20: number; success: boolean }
   | { kind: 'controlDenied'; victim: string; source: string }
   | { kind: 'concentrationBroken'; id: string }
+  /** A buff was placed on an ally. `source` is the caster, `target` the recipient. */
+  | { kind: 'buffApplied'; source: string; buff: string; target: string }
+  /** A buff materially helped the recipient (boosted roll / extra attack). */
+  | { kind: 'buffBoost'; source: string; buff: string; beneficiary: string; amount: number }
   | { kind: 'end'; round: number; winner: Side | null };
 
 /** Per-turn resource budget. */
@@ -63,6 +67,8 @@ export interface TurnResources {
   movementFt: number;
   /** Remaining attacks in the current Attack action (set when the action is spent). */
   attacksRemaining: number;
+  /** Extra single-attack actions from a buff (Haste), each good for one weapon attack. */
+  extraAttackActions: number;
 }
 
 /** The restricted interface a policy uses to act on its turn. */
@@ -209,15 +215,17 @@ export class Encounter {
         bonus: true,
         movementFt: effectiveSpeedFt(c),
         attacksRemaining: 0,
+        extraAttackActions: c.hasExtraAttackAction() ? 1 : 0,
       };
       this.policyFor(c)(this.makeApi(c, resources));
       this.endOfTurn(c);
     }
   }
 
-  /** End-of-turn upkeep: tick timed conditions (repeat saves, durations). */
+  /** End-of-turn upkeep: tick timed conditions (repeat saves, durations) and buffs. */
   private endOfTurn(c: Combatant): void {
     c.tickTimedConditions(this.rng.stream(`tick:${c.id}:${this.round}`));
+    c.tickBuffs();
   }
 
   /** Run the fight to a conclusion (or the round cap). */
@@ -294,10 +302,11 @@ export class Encounter {
       const damage = spell.kind.damage(slotLevel, self.level);
       for (let r = 0; r < rays; r++) {
         if (!target.isConscious) break;
+        const buffToHit = this.rollBuffAttackBonus(self, `${spell.id}:${target.id}:${r}`);
         const atkStream = this.rng.stream(`${self.id}:${spell.id}:${target.id}:atk:${r}`);
         const result = resolveAttack(atkStream, {
-          attackBonus: self.spellAttackBonus(),
-          targetAc: target.ac,
+          attackBonus: self.spellAttackBonus() + buffToHit,
+          targetAc: target.effectiveAc(),
           advantage: attackAdvantage(self, target, dist <= 5),
         });
         if (result.hit) {
@@ -324,7 +333,7 @@ export class Encounter {
       const dc = self.spellSaveDc();
       for (const v of victims) {
         const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
-          saveBonus: v.saveBonus(kind.save),
+          saveBonus: v.saveBonus(kind.save) + this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`),
           dc,
         });
         if (!save.success) {
@@ -340,6 +349,33 @@ export class Encounter {
           targetsHit++;
         }
       }
+    } else if (spell.kind.type === 'buff') {
+      // Place a beneficial effect on up to maxTargets allies (the chosen target
+      // first, then any others in range), refreshing rather than stacking.
+      const kind = spell.kind;
+      const eligible = (c: Combatant): boolean =>
+        c.side === self.side &&
+        c !== self &&
+        c.isConscious &&
+        distanceFt(self.position, c.position, this.grid.cellFt) <= spell.rangeFt;
+      const others = this.combatants.filter((c) => c !== target && eligible(c));
+      const chosen = (eligible(target) ? [target, ...others] : others).slice(0, kind.maxTargets);
+      for (const ally of chosen) {
+        ally.applyBuff({
+          id: kind.buffId,
+          source: self.id,
+          rounds: kind.rounds,
+          attackBonusDice: kind.attackBonusDice,
+          saveBonusDice: kind.saveBonusDice,
+          acBonus: kind.acBonus,
+          extraAttackAction: kind.extraAttackAction,
+          concentrationOwner: spell.concentration ? self.id : undefined,
+        });
+        this.log.push({ kind: 'buffApplied', source: self.id, buff: kind.buffId, target: ally.id });
+        targetsHit++;
+      }
+      // A buff with no valid recipient should not consume the slot/action.
+      if (chosen.length === 0) return null;
     } else {
       // save-damage: gather targets (area or single).
       const kind = spell.kind;
@@ -362,7 +398,7 @@ export class Encounter {
       const rolled = rollDiceTerm(dmgStream, damage);
       for (const v of victims) {
         const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
-          saveBonus: v.saveBonus(kind.save),
+          saveBonus: v.saveBonus(kind.save) + this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`),
           dc,
         });
         let amount = rolled;
@@ -412,12 +448,15 @@ export class Encounter {
     if (dealt <= 0 || target.concentratingOn === null || !target.isConscious) return;
     const dc = Math.max(10, Math.floor(dealt / 2));
     const save = resolveSave(this.rng.stream(`${target.id}:conc:${this.concSeq++}`), {
-      saveBonus: target.saveBonus('con'),
+      saveBonus: target.saveBonus('con') + this.rollBuffSaveBonus(target, `conc:${this.concSeq}`),
       dc,
     });
     if (!save.success) {
       target.concentratingOn = null;
-      for (const c of this.combatants) c.endConcentrationConditions(target.id);
+      for (const c of this.combatants) {
+        c.endConcentrationConditions(target.id);
+        c.endConcentrationBuffs(target.id);
+      }
       this.log.push({ kind: 'concentrationBroken', id: target.id });
     }
   }
@@ -498,9 +537,12 @@ export class Encounter {
   ): number | null {
     if (!target.isConscious) return null;
     // The first attack spends the Attack action and grants the Extra Attack(s);
-    // further attacks in the same action draw from attacksRemaining.
+    // further attacks in the same action draw from attacksRemaining. Once both are
+    // spent, a Haste-style extra action can fund one more single weapon attack.
     const usingAction = resources.action;
-    if (!usingAction && resources.attacksRemaining <= 0) return null;
+    const usingExtra =
+      !usingAction && resources.attacksRemaining <= 0 && resources.extraAttackActions > 0;
+    if (!usingAction && resources.attacksRemaining <= 0 && !usingExtra) return null;
 
     const dmg = this.resolveWeaponAttack(self, target, profile, 'action');
     if (dmg === null) return null;
@@ -508,10 +550,51 @@ export class Encounter {
     if (usingAction) {
       resources.action = false;
       resources.attacksRemaining = self.extraAttacks;
+    } else if (usingExtra) {
+      resources.extraAttackActions -= 1; // one attack only, no Extra Attack chain
+      const source = self.buffSourceFor('haste');
+      if (source) {
+        this.log.push({
+          kind: 'buffBoost',
+          source,
+          buff: 'haste',
+          beneficiary: self.id,
+          amount: 1,
+        });
+      }
     } else {
       resources.attacksRemaining -= 1;
     }
     return dmg;
+  }
+
+  /**
+   * Roll the attacker's buff bonus to an attack roll (Bless's +1d4), logging the
+   * assist against the buff's caster. `tag` keeps the stream distinct per attack.
+   */
+  private rollBuffAttackBonus(self: Combatant, tag: string): number {
+    let bonus = 0;
+    for (const b of self.buffAttackBonuses()) {
+      const rolled = rollDiceTerm(this.rng.stream(`${self.id}:buff-atk:${b.id}:${tag}`), b.dice);
+      bonus += rolled;
+      this.log.push({
+        kind: 'buffBoost',
+        source: b.source,
+        buff: b.id,
+        beneficiary: self.id,
+        amount: rolled,
+      });
+    }
+    return bonus;
+  }
+
+  /** Roll the defender's buff bonus to a saving throw (Bless's +1d4). */
+  private rollBuffSaveBonus(self: Combatant, tag: string): number {
+    let bonus = 0;
+    for (const b of self.buffSaveBonuses()) {
+      bonus += rollDiceTerm(this.rng.stream(`${self.id}:buff-save:${b.id}:${tag}`), b.dice);
+    }
+    return bonus;
   }
 
   /**
@@ -561,10 +644,11 @@ export class Encounter {
     );
     const adv = combineAdvantage(combineAdvantage(condAdv, rangePenalty), featureAdv);
 
+    const buffToHit = this.rollBuffAttackBonus(self, `${profile.name}:${target.id}`);
     const stream = this.rng.stream(`${self.id}:${profile.name}:${target.id}`);
     const result = resolveAttack(stream, {
-      attackBonus: profile.attackBonus + toHitBonus,
-      targetAc: target.ac,
+      attackBonus: profile.attackBonus + toHitBonus + buffToHit,
+      targetAc: target.effectiveAc(),
       advantage: adv,
       critRange: profile.critRange,
     });
