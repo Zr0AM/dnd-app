@@ -176,10 +176,11 @@ one subclass per class, so the hero's subclass choice is that one or none.
    unarmored AC, and Quickened Spell metamagic — Sorcery Points to cast a second spell as a bonus
    action), **Warlock** (Fiend Pact caster: Eldritch Blast with Agonizing Blast — level-scaled force
    beams plus Cha to each — on Pact Magic slots cast at their always-highest level), and **Druid**
-   (Circle of the Land: Wis full caster with Produce Flame, Cure Wounds and Moonbeam). Signature pieces
-   left for later slices (each a documented simplification): the Ranger's Hunter's Mark, the Paladin's
-   Lay on Hands / Aura, the Warlock's Dark One's Blessing and short-rest
-   slot recovery, and the Druid's Wild Shape.
+   (Circle of the Land: Wis full caster with Produce Flame, Cure Wounds and Moonbeam). The Paladin also
+   has Lay on Hands (a 5-HP-per-level pool spent as a bonus-action heal) and the Monk flurries. Signature
+   pieces still left (each a documented simplification): the Ranger's Hunter's Mark, the Warlock's Dark
+   One's Blessing and short-rest slot recovery, the Druid's Wild Shape, and the Paladin's Aura of
+   Protection (a level-6 feature, outside the 3/5 checkpoints).
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

@@ -208,6 +208,10 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   if (spec.class.slug === 'paladin' && (spec.spellcasting?.slots.length ?? 0) > 0) {
     features.push(new DivineSmiteFeature());
   }
+  // Paladin's Lay on Hands: a healing pool of 5 HP per level (a Bonus Action to spend).
+  if (spec.class.slug === 'paladin') {
+    resources.push({ id: 'lay-on-hands', max: 5 * spec.level, rechargeLong: 'all' });
+  }
   // Monk: Martial Arts (free bonus unarmed strike) and, from level 2, Focus Points
   // fuelling Stunning Strike (available once the monk can make two attacks, at 5).
   if (spec.class.slug === 'monk') {

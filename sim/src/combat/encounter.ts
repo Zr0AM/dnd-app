@@ -54,6 +54,8 @@ export type CombatEvent =
   | { kind: 'deathSave'; id: string; d20: number; success: boolean }
   | { kind: 'controlDenied'; victim: string; source: string }
   | { kind: 'concentrationBroken'; id: string }
+  /** Non-spell healing (Paladin Lay on Hands) from `source` to `target`. */
+  | { kind: 'heal'; source: string; target: string; amount: number }
   /** A buff was placed on an ally. `source` is the caster, `target` the recipient. */
   | { kind: 'buffApplied'; source: string; buff: string; target: string }
   /** A buff materially helped the recipient (boosted roll / extra attack). */
@@ -94,6 +96,8 @@ export interface TurnApi {
     slotLevel?: number,
     quickened?: boolean,
   ): number | null;
+  /** Heal an ally from a pool as a Bonus Action (Paladin Lay on Hands). Returns HP restored, or null. */
+  layOnHands(target: Combatant): number | null;
 }
 
 /** A policy decides what one creature does on its turn by calling the TurnApi. */
@@ -262,7 +266,22 @@ export class Encounter {
       attack: (target, profile) => this.attack(self, target, profile, resources),
       castSpell: (spell, target, slotLevel, quickened) =>
         this.castSpell(self, spell, target, slotLevel, resources, quickened),
+      layOnHands: (target) => this.layOnHands(self, target, resources),
     };
+  }
+
+  /** Lay on Hands: a Bonus Action that heals `target` from the 'lay-on-hands' pool. */
+  private layOnHands(self: Combatant, target: Combatant, resources: TurnResources): number | null {
+    if (!resources.bonus) return null;
+    const pool = self.resourceCount('lay-on-hands');
+    if (pool <= 0 || !target.isAlive) return null;
+    const missing = Math.max(1, target.maxHp - target.hp);
+    const draw = Math.min(pool, missing);
+    const healed = target.heal(draw);
+    self.spendResource('lay-on-hands', draw);
+    resources.bonus = false;
+    this.log.push({ kind: 'heal', source: self.id, target: target.id, amount: healed });
+    return healed;
   }
 
   /**

@@ -332,9 +332,22 @@ function tryQuickenedCantrip(api: TurnApi, damageTarget: Combatant): boolean {
   return api.castSpell(cantrip, damageTarget, 0, true) !== null;
 }
 
+/**
+ * Lay on Hands (Paladin): a Bonus Action top-up for a downed or badly hurt ally,
+ * from the healing pool, costing no spell slot. It uses only the bonus action, so
+ * the paladin still takes its action normally this turn.
+ */
+function tryLayOnHands(api: TurnApi): void {
+  if (api.self.resourceCount('lay-on-hands') <= 0 || !api.resources.bonus) return;
+  const target = pickHealTarget(api);
+  if (target) api.layOnHands(target);
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
+    // Lay on Hands first: a free bonus-action top-up that keeps the action open.
+    tryLayOnHands(api);
     // Healing takes priority when an ally is down or badly hurt.
     if (tryHeal(api)) return;
     // Then establish a buff (Bless/Haste) if we have one and aren't concentrating.

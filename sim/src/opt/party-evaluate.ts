@@ -77,7 +77,10 @@ function heroDamage(log: readonly CombatEvent[], id: string): number {
 
 function heroHealing(log: readonly CombatEvent[], id: string): number {
   let total = 0;
-  for (const ev of log) if (ev.kind === 'spell' && ev.caster === id) total += ev.healing;
+  for (const ev of log) {
+    if (ev.kind === 'spell' && ev.caster === id) total += ev.healing;
+    else if (ev.kind === 'heal' && ev.source === id) total += ev.amount; // Lay on Hands
+  }
   return total;
 }
 

@@ -3,7 +3,8 @@ import { Random } from '../rng/rng';
 import { Grid, cell, distanceFt } from '../grid/grid';
 import { dice } from '../dice/dice';
 import { Combatant } from '../combat/actor';
-import { Encounter, idlePolicy, type TurnPolicy } from '../combat/encounter';
+import { Encounter, idlePolicy, type CombatEvent, type TurnPolicy } from '../combat/encounter';
+import { tacticalPolicy } from '../ai/policy';
 import type { AttackProfile } from '../combat/attack';
 import {
   ColossusSlayerFeature,
@@ -425,6 +426,43 @@ describe('features in the engine', () => {
     // Stunning Strike landed, so the foe's turn is denied and attributed to the monk.
     const denied = e.events.filter((x) => x.kind === 'controlDenied' && x.source === 'monk');
     expect(denied.length).toBeGreaterThan(0);
+  });
+
+  it('a Paladin uses Lay on Hands (bonus action) to heal a hurt ally, then acts', () => {
+    const sword: AttackProfile = {
+      name: 'Longsword',
+      kind: 'melee',
+      reachFt: 5,
+      attackBonus: 6,
+      damage: dice(1, 8, 3),
+      damageType: 'slashing',
+    };
+    const paladin = combatant('pal', {
+      side: 'party',
+      level: 5,
+      attacks: [sword],
+      resources: [{ id: 'lay-on-hands', max: 25, rechargeLong: 'all' }],
+      position: cell(0, 0),
+    });
+    const ally = combatant('ally', { side: 'party', maxHp: 50, position: cell(0, 1) });
+    ally.takeDamage(45); // down to 5/50 (badly hurt)
+    const foe = combatant('foe', { side: 'enemy', ac: 12, maxHp: 80, position: cell(1, 0) });
+    const e = new Encounter({
+      grid: new Grid(10, 10),
+      combatants: [paladin, ally, foe],
+      rng: new Random(4),
+      policyFor: (c) => (c.id === 'pal' ? tacticalPolicy : idlePolicy),
+    });
+    e.rollInitiative();
+    e.runRound();
+    const heals = e.events.filter(
+      (x): x is Extract<CombatEvent, { kind: 'heal' }> => x.kind === 'heal' && x.source === 'pal',
+    );
+    expect(heals.length).toBe(1);
+    expect(ally.hp).toBeGreaterThan(5); // the ally was topped up
+    expect(paladin.resourceCount('lay-on-hands')).toBeLessThan(25); // pool was drawn from
+    // The bonus-action heal left the action free, so the paladin also attacked.
+    expect(e.events.some((x) => x.kind === 'attack' && x.attacker === 'pal')).toBe(true);
   });
 
   it('sanity: adjacency helper matches grid distance', () => {
