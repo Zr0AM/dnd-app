@@ -17,6 +17,30 @@ declare module 'node:sqlite' {
 declare module 'node:fs' {
   export function readFileSync(path: string, encoding: 'utf8'): string;
   export function readdirSync(path: string): string[];
+  export function writeFileSync(path: string, data: string): void;
+  export function mkdirSync(path: string, options?: { readonly recursive?: boolean }): void;
+  export function existsSync(path: string): boolean;
+}
+
+declare module 'node:readline/promises' {
+  interface Interface {
+    question(query: string): Promise<string>;
+    close(): void;
+  }
+  export function createInterface(options: {
+    readonly input: unknown;
+    readonly output: unknown;
+  }): Interface;
+}
+
+declare module 'node:process' {
+  const process: {
+    readonly argv: string[];
+    readonly stdin: unknown;
+    readonly stdout: { write(s: string): void };
+    exit(code?: number): never;
+  };
+  export default process;
 }
 
 declare module 'node:path' {
