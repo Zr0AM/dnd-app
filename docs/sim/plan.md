@@ -205,10 +205,13 @@ one subclass per class, so the hero's subclass choice is that one or none.
    6th+ slots instead of casting Fireball at 3rd. Legendary actions are modeled: a boss (the dragons
    carry three) refreshes its budget at the start of its turn and spends points to attack between other
    creatures' turns, the extra action economy that makes a solo boss dangerous to a whole party — its
-   primary use is party boss fights. Remaining: campaign-path scoring (a multi-encounter adventuring day
-   with short rests, distinguishing nova from sustained builds). Lair actions are deferred — they are
-   location-gated and 2024 folds most into the stat block, so they add little over legendary actions in
-   the current scenarios.
+   primary use is party boss fights. Campaign-path scoring is in: `opt/campaign.ts` runs an adventuring
+   day — the scenario set in sequence on one persisted hero with only short rests between — so long-rest
+   resources deplete while short-rest resources and at-will options carry the build, giving a day win
+   rate and encounters-cleared that separate nova from sustained (a slot-dumping Wizard collapses over a
+   day a Barbarian sustains, and the short-rest Warlock out-lasts its one-shot standing). Phase 7 is
+   essentially complete for levels 11/17; lair actions are the one documented deferral (location-gated,
+   and 2024 folds most into the stat block).
 8. **Item and loot allocation** — _not started._
 
 ## Validation
