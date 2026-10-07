@@ -37,6 +37,13 @@ export interface BuildReportEntry {
   };
   readonly objectives: Record<string, number>;
   readonly weightedScore: number;
+  /**
+   * Adventuring-day win rate (campaign viability), filled in by
+   * `annotateCampaignViability` — the multi-encounter counterpart to the one-shot
+   * metrics, so the UI can compare a build's nova standing with how it holds up over
+   * a day. Absent until annotated.
+   */
+  readonly campaignDayWinRate?: number;
 }
 
 export interface RunReport {

@@ -12,6 +12,7 @@ import { Encounter } from '../combat/encounter';
 import { tacticalPolicy } from '../ai/policy';
 import { buildFromGenome, type MartialGenome } from './genome';
 import type { MartialCatalog } from './catalog';
+import type { BuildReportEntry, RunReport } from './reports';
 import { mean, wilsonInterval, type Interval } from './stats';
 
 export interface CampaignResult {
@@ -92,5 +93,35 @@ export function evaluateAdventuringDay(
     encountersPerDay: perDay,
     days,
     ci: { dayWinRate: wilsonInterval(wins, days) },
+  };
+}
+
+/**
+ * Annotate a one-shot run report with each build's adventuring-day win rate, so the
+ * one-shot ranking can be read against campaign viability (the project's
+ * one-shot-vs-multi-year question). Only the reported builds (front + leaderboard)
+ * are re-simulated, keyed by genome so a build appearing in both is run once.
+ */
+export function annotateCampaignViability(
+  report: RunReport,
+  catalog: MartialCatalog,
+  opts: CampaignOptions = {},
+): RunReport {
+  const cache = new Map<string, number>();
+  const dayWinRate = (entry: BuildReportEntry): number => {
+    const cached = cache.get(entry.key);
+    if (cached !== undefined) return cached;
+    const rate = evaluateAdventuringDay(entry.genome, catalog, opts).dayWinRate;
+    cache.set(entry.key, rate);
+    return rate;
+  };
+  const annotate = (entry: BuildReportEntry): BuildReportEntry => ({
+    ...entry,
+    campaignDayWinRate: dayWinRate(entry),
+  });
+  return {
+    ...report,
+    paretoFront: report.paretoFront.map(annotate),
+    leaderboard: report.leaderboard.map(annotate),
   };
 }

@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildSeedDatabase } from '../content/load-db';
+import { Random } from '../rng/rng';
 import { loadMartialCatalog, type MartialCatalog } from './catalog';
 import { evaluate } from './evaluate';
-import { evaluateAdventuringDay } from './campaign';
+import { annotateCampaignViability, evaluateAdventuringDay } from './campaign';
+import { runNsga2 } from './nsga2';
+import { buildReport } from './reports';
 import type { MartialGenome } from './genome';
 
 const barbarian: MartialGenome = {
@@ -63,5 +66,23 @@ describe('adventuring-day (campaign) evaluation', () => {
     // ...but the sustained build clears far more of the adventuring day.
     expect(barbDay.avgEncountersCleared).toBeGreaterThan(wizDay.avgEncountersCleared);
     expect(barbDay.dayWinRate).toBeGreaterThan(wizDay.dayWinRate);
+  });
+
+  it('annotates a run report with each build’s campaign viability', () => {
+    const result = runNsga2(catalog, new Random(42), {
+      populationSize: 12,
+      generations: 4,
+      eval: { runs: 6 },
+    });
+    const report = buildReport(result, { level: 5 });
+    expect(report.leaderboard[0].campaignDayWinRate).toBeUndefined(); // not yet annotated
+
+    const annotated = annotateCampaignViability(report, catalog, { days: 6 });
+    for (const entry of [...annotated.paretoFront, ...annotated.leaderboard]) {
+      expect(entry.campaignDayWinRate).toBeGreaterThanOrEqual(0);
+      expect(entry.campaignDayWinRate).toBeLessThanOrEqual(1);
+    }
+    // The original one-shot report is left untouched.
+    expect(report.leaderboard[0].campaignDayWinRate).toBeUndefined();
   });
 });
