@@ -43,7 +43,7 @@ export const MARTIAL_CLASSES = [
 ] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
 
-export const CASTER_CLASSES = ['wizard', 'cleric', 'bard', 'sorcerer'] as const;
+export const CASTER_CLASSES = ['wizard', 'cleric', 'bard', 'sorcerer', 'warlock'] as const;
 export type CasterClass = (typeof CASTER_CLASSES)[number];
 
 /** All classes the genome can pick. */

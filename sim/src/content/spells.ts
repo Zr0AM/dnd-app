@@ -28,6 +28,28 @@ export const rayOfFrost: Spell = {
   kind: { type: 'attack-damage', damage: cantripDice(1, 8), damageType: 'cold' },
 };
 
+/**
+ * Eldritch Blast with the Agonizing Blast invocation: a ranged spell attack firing
+ * 1d10 force per beam, with the warlock's spellcasting modifier added to each beam.
+ * The beam count rises with character level (1 / 2 / 3 / 4 at levels 1 / 5 / 11 / 17),
+ * not slot level, so it is modeled with `beams` rather than the upcast-ray path.
+ */
+export const eldritchBlast: Spell = {
+  id: 'eldritch-blast',
+  name: 'Eldritch Blast',
+  level: 0,
+  action: 'action',
+  rangeFt: 120,
+  concentration: false,
+  kind: {
+    type: 'attack-damage',
+    damage: () => dice(1, 10),
+    damageType: 'force',
+    beams: (level) => (level >= 17 ? 4 : level >= 11 ? 3 : level >= 5 ? 2 : 1),
+    addSpellMod: true, // Agonizing Blast
+  },
+};
+
 export const sacredFlame: Spell = {
   id: 'sacred-flame',
   name: 'Sacred Flame',

@@ -5,7 +5,7 @@ import { meanDice } from '../dice/dice';
 import { Combatant, type CombatantSpec } from './actor';
 import { Encounter, idlePolicy, type CombatEvent, type TurnPolicy } from './encounter';
 import { cantripDice, raysAt, upcastDice, type Spell } from './spell';
-import { fireBolt, fireball, sacredFlame, scorchingRay } from '../content/spells';
+import { eldritchBlast, fireBolt, fireball, sacredFlame, scorchingRay } from '../content/spells';
 
 describe('spell scaling', () => {
   it('cantrips gain a die at 5, 11, 17', () => {
@@ -133,6 +133,26 @@ describe('casting in the engine', () => {
     const ev = castOnce(w, fireball, a, [a, b, c], 3);
     expect(ev?.targets).toBe(3); // all three caught
     expect(ev?.damage).toBeGreaterThan(0);
+  });
+
+  it('Eldritch Blast fires two beams at level 5, each with Agonizing Blast (+Cha)', () => {
+    const warlock = new Combatant({
+      id: 'lock',
+      name: 'Warlock',
+      side: 'party',
+      level: 5,
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 }, // Cha +4
+      ac: 12,
+      maxHp: 30,
+      spellcasting: { ability: 'cha', slots: [], cantrips: [eldritchBlast], spells: [] },
+      position: cell(0, 0),
+    });
+    const d = dummy('d', cell(2, 0), { ac: 1, maxHp: 200 }); // AC 1: both beams hit
+    const ev = castOnce(warlock, eldritchBlast, d, [d]);
+    expect(ev?.spell).toBe('Eldritch Blast');
+    // Two beams, each 1d10 + 4 (Cha): total in [2*(1+4), 2*(10+4)] = [10, 28].
+    expect(ev!.damage).toBeGreaterThanOrEqual(10);
+    expect(ev!.damage).toBeLessThanOrEqual(28);
   });
 
   it('refuses to cast with no slot of the required level', () => {

@@ -128,8 +128,11 @@ function spellExpectedDamage(
 ): number {
   const kind = spell.kind;
   if (kind.type === 'attack-damage') {
-    const rays = raysAt(kind, slotLevel, Math.max(1, spell.level));
-    const dmg = rays * meanDice(kind.damage(slotLevel, self.level)) * ASSUMED_HIT;
+    const rays = kind.beams
+      ? kind.beams(self.level)
+      : raysAt(kind, slotLevel, Math.max(1, spell.level));
+    const bonus = kind.addSpellMod && self.spellAbility ? self.abilityMod(self.spellAbility) : 0;
+    const dmg = rays * (meanDice(kind.damage(slotLevel, self.level)) + bonus) * ASSUMED_HIT;
     return Math.min(dmg, target.hp);
   }
   if (kind.type === 'control') {

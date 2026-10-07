@@ -22,6 +22,7 @@ import {
   bless,
   burningHands,
   cureWounds,
+  eldritchBlast,
   fireBolt,
   fireball,
   guidingBolt,
@@ -47,6 +48,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   cleric: 'life-domain',
   bard: 'college-of-lore',
   sorcerer: 'draconic-sorcery',
+  warlock: 'fiend-patron',
 };
 
 /** A caster's fixed spell/gear package (spell selection is not evolved in v1). */
@@ -117,6 +119,14 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
     extraHpPerLevel: 1, // Draconic Resilience
     unarmoredAcAbility: 'cha', // 10 + Dex + Cha when unarmored
   },
+  warlock: {
+    ability: 'cha',
+    cantrips: [eldritchBlast], // the workhorse: Eldritch Blast + Agonizing Blast
+    spells: [holdPerson], // Pact Magic slots, cast at their (always highest) level
+    weaponName: 'Dagger',
+    armorName: 'Leather Armor', // light armor
+    shield: false,
+  },
 };
 
 /** A sensible default armor for a non-barbarian martial. */
@@ -182,7 +192,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
 
   // Caster classes, slots and resolved spell/gear packages.
   const casterPackages = new Map<CasterClass, CasterPackage>();
-  for (const slug of ['wizard', 'cleric', 'bard', 'sorcerer'] as const) {
+  for (const slug of ['wizard', 'cleric', 'bard', 'sorcerer', 'warlock'] as const) {
     classes.set(slug, loadClass(db, slug));
     const spec = CASTER_SPECS[slug];
     const resources: ResourceSpec[] = spec.levelPointsResource

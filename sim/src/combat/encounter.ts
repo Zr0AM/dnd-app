@@ -313,8 +313,15 @@ export class Encounter {
       totalHealing = target.heal(amount);
       targetsHit = 1;
     } else if (spell.kind.type === 'attack-damage') {
-      const rays = raysAt(spell.kind, slotLevel, Math.max(1, spell.level));
-      const damage = spell.kind.damage(slotLevel, self.level);
+      const kind = spell.kind;
+      // Beam count: level-based (Eldritch Blast) or the upcast-ray path.
+      const rays = kind.beams
+        ? kind.beams(self.level)
+        : raysAt(kind, slotLevel, Math.max(1, spell.level));
+      const damage = kind.damage(slotLevel, self.level);
+      // Agonizing Blast adds the caster's spell modifier to each beam's damage.
+      const perBeamBonus =
+        kind.addSpellMod && self.spellAbility ? self.abilityMod(self.spellAbility) : 0;
       for (let r = 0; r < rays; r++) {
         if (!target.isConscious) break;
         const buffToHit = this.rollBuffAttackBonus(self, `${spell.id}:${target.id}:${r}`);
@@ -327,7 +334,8 @@ export class Encounter {
         if (result.hit) {
           let raw = rollDiceTerm(dmgStream, damage);
           if (result.crit) raw += rollDiceTerm(dmgStream, { ...damage, bonus: 0 });
-          const dealt = applyResponse(raw, target.damageResponseFor(spell.kind.damageType));
+          raw += perBeamBonus;
+          const dealt = applyResponse(raw, target.damageResponseFor(kind.damageType));
           totalDamage += this.applySpellDamage(target, dealt);
         }
       }

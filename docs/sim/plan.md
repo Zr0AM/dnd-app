@@ -173,9 +173,11 @@ one subclass per class, so the hero's subclass choice is that one or none.
    Attack, and Stunning Strike — a Focus-fuelled save-or-Stun that feeds the control axis), and
    **Sorcerer** (Draconic blaster/controller: CHA full caster, Draconic Resilience for +HP and
    unarmored AC, and Quickened Spell metamagic — spend Sorcery Points to cast a second spell as a bonus
-   action) are buildable. Still to add for full SRD class coverage: Warlock, Druid. (Signature pieces
-   left for later slices: the Ranger's Hunter's Mark, the Paladin's Lay on Hands / Aura, the Monk's
-   Flurry of Blows.)
+   action), and **Warlock** (Fiend Pact caster: Eldritch Blast with Agonizing Blast — level-scaled
+   force beams plus Cha to each — and Pact Magic slots cast at their always-highest level) are
+   buildable. Still to add for full SRD class coverage: Druid. (Signature pieces left for later slices:
+   the Ranger's Hunter's Mark, the Paladin's Lay on Hands / Aura, the Monk's Flurry of Blows, the
+   Warlock's Dark One's Blessing, and the Warlock's short-rest slot recovery.)
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

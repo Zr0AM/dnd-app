@@ -27,6 +27,10 @@ export type SpellKind =
       readonly rays?: number;
       /** Extra rays per slot level above the spell's base level. */
       readonly raysPerUpcast?: number;
+      /** Beam count as a function of caster level, overriding `rays` (Eldritch Blast). */
+      readonly beams?: (casterLevel: number) => number;
+      /** Add the caster's spellcasting modifier to each attack's damage (Agonizing Blast). */
+      readonly addSpellMod?: boolean;
     }
   | {
       readonly type: 'save-damage';
