@@ -6,7 +6,15 @@ evaluation) is library code reachable only from tests. This CLI is the operator'
 front door: an interactive, menu-driven session that gathers a run configuration,
 executes it, writes the report JSON, and prints a summary.
 
-Status: **plan**. Nothing here is built yet.
+Status: **built**. The CLI ships in `sim/src/cli/` — the prompt module (zero-dep
+`node:readline` + scripted backend), the pure `config`/summary/report-writer, the
+`CliEngine` over the library, the interactive flows, and `main.ts` dispatch. The
+runner is `scripts/run-sim.mjs` (esbuild bundle, since the sim uses vite-resolved
+imports + native `node:sqlite`; `vite-node` is not installed and the sim stays
+offline/zero-dep). Run with `npm run sim`. One deviation from the plan below:
+`optimize` runs **solo** NSGA-II (the engine's optimizer is solo); party _context_
+is exercised per-build in the `eval` flow, where control/support actually score.
+See `sim/README.md` for usage.
 
 ## Goals
 

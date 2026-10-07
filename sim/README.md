@@ -18,6 +18,54 @@ npm run test:sim:watch   # watch mode
 npm run typecheck:sim    # type-check the package
 ```
 
+## CLI (`src/cli/`)
+
+The operator's front door: an interactive, menu-driven utility that configures and
+runs optimizations against the engine, writes the report JSON, and prints a summary.
+The whole engine is otherwise reachable only from tests; this is the way to actually
+drive a run. It reads the committed seed DB in memory and writes local JSON — no
+network, no D1.
+
+```bash
+npm run sim                       # interactive menus (optimize / eval / campaign / rescore / browse)
+npm run sim -- --help             # flag reference
+```
+
+Every option is settable two ways — **entered values** (the menus walk each choice,
+showing the current value and a sensible default) and **flags** (for scripted,
+repeatable runs). A flag pre-seeds the interactive session; adding `--yes` skips the
+menus and runs straight from flags:
+
+```bash
+# Best overall build at level 11, scored for control, with a campaign-viability pass
+npm run sim -- optimize --level 11 --role controller --campaign --preset thorough --seed 7 --yes
+
+# Restrict the genome pool to answer "best wizard vs. sorcerer"
+npm run sim -- optimize --level 5 --classes wizard,sorcerer --yes
+
+# Hand-tune the GA instead of a preset
+npm run sim -- optimize --pop 48 --gens 20 --runs 12 --mutation 0.3 --yes
+
+# Evaluate one build in the reference party (control/support only score in a party)
+npm run sim -- eval --class cleric --context party --role healer --yes
+```
+
+Output is a `RunReport` JSON at `<outDir>/<runKey>.json` (default `sim/out/`, the
+filename a stable hash of the config so re-runs overwrite) plus a compact stdout
+leaderboard. **Modes:** `optimize` (alias `run`), `eval`, `campaign` (annotate a
+saved report with adventuring-day win rate), `rescore` (re-rank a saved report under
+new role weights, no re-simulation), `browse` (classes / roles / scenarios).
+`optimize` and `eval` have a non-interactive (`--yes`) path; `campaign`, `rescore`,
+and `browse` are interactive (they pick from saved reports or explore content).
+
+Design: a thin `prompt` module (select / multiselect / text / number / confirm) with
+a zero-dependency `node:readline` backend and a scripted backend for tests, so the
+screens never touch the terminal directly and flow tests navigate the menus
+deterministically with no TTY. The flows drive a `CliEngine` (not the simulator
+directly), so those tests inject a fake and need no database. The runner bundles the
+entry with esbuild (`scripts/run-sim.mjs`) since the sim uses vite-resolved imports
+and native `node:sqlite`.
+
 ## Layout (Phase 2: engine skeleton, in progress)
 
 | Path          | Holds                                                                                                                                                                                                                                                                  |
