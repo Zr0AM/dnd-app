@@ -259,8 +259,22 @@ describe('Monk features', () => {
       resources: [{ id: 'focus', max: 5, rechargeShort: 'all' as const }],
     });
 
-  it('Martial Arts grants one bonus attack action', () => {
+  it('Martial Arts grants one bonus attack action by default', () => {
     expect(new MartialArtsFeature().bonusAttackActions()).toBe(1);
+  });
+
+  it('Flurry of Blows spends Focus for a second bonus strike, keeping one in reserve', () => {
+    const m = new MartialArtsFeature();
+    const self = monk(); // 5 Focus
+    m.onTurnStart(self);
+    expect(m.bonusAttackActions()).toBe(2); // Martial Arts + Flurry
+    expect(self.resourceCount('focus')).toBe(4); // one Focus spent
+
+    // Drain to a single Focus: no Flurry, so the point is kept for Stunning Strike.
+    self.spendResource('focus', 3);
+    m.onTurnStart(self);
+    expect(m.bonusAttackActions()).toBe(1);
+    expect(self.resourceCount('focus')).toBe(1);
   });
 
   it('Stunning Strike spends Focus for a Con save vs Stunned, once per turn', () => {

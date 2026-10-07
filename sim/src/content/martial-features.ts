@@ -127,16 +127,24 @@ export class DivineSmiteFeature implements Feature {
 }
 
 /**
- * Martial Arts (Monk): grants one extra bonus-action unarmed strike each turn,
- * made with the monk's primary (unarmed) weapon via the engine's extra-attack
- * channel. Flurry of Blows (spending Focus for a second bonus strike) is a
- * documented deferral — the free Martial Arts strike already models the monk's
- * bonus attack.
+ * Martial Arts + Flurry of Blows (Monk): one free bonus-action unarmed strike each
+ * turn, and — when the monk can spare a Focus point — Flurry of Blows spends 1 Focus
+ * for a second bonus strike. Both are made with the monk's unarmed weapon through
+ * the engine's extra-attack channel. To avoid starving Stunning Strike (which also
+ * costs Focus), the monk flurries only while it holds more than one point, keeping
+ * one in reserve for a stun.
  */
 export class MartialArtsFeature implements Feature {
   readonly id = 'martial-arts';
+  private flurryThisTurn = false;
+
+  onTurnStart(self: Combatant): void {
+    // Flurry if we can keep a point in reserve for Stunning Strike.
+    this.flurryThisTurn = self.resourceCount('focus') > 1 && self.spendResource('focus', 1);
+  }
+
   bonusAttackActions(): number {
-    return 1;
+    return 1 + (this.flurryThisTurn ? 1 : 0);
   }
 }
 

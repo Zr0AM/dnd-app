@@ -178,7 +178,7 @@ one subclass per class, so the hero's subclass choice is that one or none.
    beams plus Cha to each — on Pact Magic slots cast at their always-highest level), and **Druid**
    (Circle of the Land: Wis full caster with Produce Flame, Cure Wounds and Moonbeam). Signature pieces
    left for later slices (each a documented simplification): the Ranger's Hunter's Mark, the Paladin's
-   Lay on Hands / Aura, the Monk's Flurry of Blows, the Warlock's Dark One's Blessing and short-rest
+   Lay on Hands / Aura, the Warlock's Dark One's Blessing and short-rest
    slot recovery, and the Druid's Wild Shape.
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
