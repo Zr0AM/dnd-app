@@ -18,7 +18,8 @@ import {
   loadSpellSlots,
   loadWeapon,
 } from '../content/load-db';
-import type { Ability } from '../core/types';
+import { proficiencyBonus, type Ability } from '../core/types';
+import { dice } from '../dice/dice';
 import type { Spell } from '../combat/spell';
 import {
   bless,
@@ -216,7 +217,21 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
     const features: Feature[] = [];
     if (slug === 'warlock') features.push(new DarkOnesBlessingFeature());
     if (slug === 'druid') {
-      features.push(new WildShapeFeature(2 * level)); // representative beast-form buffer
+      // A representative mid-tier beast form: its HP (as temp HP), AC and bite.
+      features.push(
+        new WildShapeFeature({
+          hp: 2 * level,
+          ac: 13,
+          attack: {
+            name: 'Bite',
+            kind: 'melee',
+            reachFt: 5,
+            attackBonus: 2 + proficiencyBonus(level),
+            damage: dice(2, 6, 2),
+            damageType: 'piercing',
+          },
+        }),
+      );
       resources.push({ id: 'wild-shape', max: 2, rechargeShort: 'all', rechargeLong: 'all' });
     }
     casterPackages.set(slug, {

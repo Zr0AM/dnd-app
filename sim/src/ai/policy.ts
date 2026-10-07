@@ -52,10 +52,11 @@ export function weaponAverageDamage(weapon: AttackProfile): number {
   return avg;
 }
 
-/** The build's best weapon by average damage (its primary). */
+/** The build's best weapon by average damage (its primary), honoring a Wild Shape form. */
 export function primaryWeapon(c: Combatant): AttackProfile | null {
-  if (c.attacks.length === 0) return null;
-  return c.attacks.reduce((best, w) =>
+  const attacks = c.activeAttacks();
+  if (attacks.length === 0) return null;
+  return attacks.reduce((best, w) =>
     weaponAverageDamage(w) > weaponAverageDamage(best) ? w : best,
   );
 }

@@ -171,22 +171,31 @@ export class StunningStrikeFeature implements Feature {
   }
 }
 
+/** A Wild Shape beast form: its own HP (as temp HP), Armor Class and natural attack. */
+export interface BeastForm {
+  readonly hp: number;
+  readonly ac: number;
+  readonly attack: AttackProfile;
+}
+
 /**
- * Wild Shape (Druid) — a simplified combat model. As a Bonus Action (here, at the
- * start of a turn while it has a use), the druid slips into a resilient animal form,
- * gaining a pool of temporary Hit Points that stands in for the beast's durability;
- * it re-forms when that buffer is gone and a use remains. The full beast stat-block
- * swap (the form's own attacks, AC, speed and senses) is a documented simplification
- * left out — only the defensive buffer is modeled, which is Wild Shape's main
- * low-level combat effect.
+ * Wild Shape (Druid). As a Bonus Action (here, at the start of a turn while it has a
+ * use), the druid assumes a beast form: it gains the form's Hit Points as temporary
+ * HP, and takes on the form's Armor Class and natural attack until that pool is gone,
+ * then re-forms if a use remains. Simplifications (documented): a single
+ * representative form rather than the full beast catalog, and spellcasting is not
+ * suppressed while shaped (the druid keeps acting as the AI judges best).
  */
 export class WildShapeFeature implements Feature {
   readonly id = 'wild-shape';
-  constructor(private readonly formHp: number) {}
+  constructor(private readonly form: BeastForm) {}
 
   onTurnStart(self: Combatant): void {
     if (self.tempHp > 0) return; // still in a form with HP to spare
-    if (self.spendResource('wild-shape', 1)) self.grantTempHp(this.formHp);
+    if (self.spendResource('wild-shape', 1)) {
+      self.grantTempHp(this.form.hp);
+      self.enterForm({ ac: this.form.ac, attack: this.form.attack });
+    }
   }
 }
 

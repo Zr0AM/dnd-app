@@ -525,23 +525,37 @@ describe('features in the engine', () => {
     expect(f.onHit(onHitCtx(ranger, other, bow))).toHaveLength(0); // not the marked one
   });
 
-  it('Wild Shape grants a temp-HP buffer, re-forming when it is spent', () => {
-    const w = new WildShapeFeature(10);
+  it('Wild Shape assumes a beast form (HP, AC, bite) and re-forms when spent', () => {
+    const bite: AttackProfile = {
+      name: 'Bite',
+      kind: 'melee',
+      reachFt: 5,
+      attackBonus: 5,
+      damage: dice(2, 6, 2),
+      damageType: 'piercing',
+    };
+    const w = new WildShapeFeature({ hp: 10, ac: 13, attack: bite });
     const druid = combatant('druid', {
+      ac: 11,
       maxHp: 40,
       resources: [{ id: 'wild-shape', max: 2, rechargeShort: 'all' as const }],
     });
     w.onTurnStart(druid); // forms
     expect(druid.tempHp).toBe(10);
+    expect(druid.effectiveAc()).toBe(13); // the form's AC overrides the druid's 11
+    expect(druid.activeAttacks()[0].name).toBe('Bite');
     expect(druid.resourceCount('wild-shape')).toBe(1);
     // Still buffered: no re-form, no use spent.
     w.onTurnStart(druid);
     expect(druid.resourceCount('wild-shape')).toBe(1);
-    // Buffer chewed through: re-forms using the second charge.
+    // Buffer chewed through: the form ends (AC and attack revert), then re-forms.
     druid.takeDamage(10);
     expect(druid.tempHp).toBe(0);
+    expect(druid.effectiveAc()).toBe(11); // reverted to the druid's own AC
+    expect(druid.activeAttacks().length).toBe(0); // no base attacks on this dummy
     w.onTurnStart(druid);
     expect(druid.tempHp).toBe(10);
+    expect(druid.effectiveAc()).toBe(13);
     expect(druid.resourceCount('wild-shape')).toBe(0);
     // Out of charges: no more forms.
     druid.takeDamage(10);

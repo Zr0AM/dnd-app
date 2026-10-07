@@ -153,6 +153,8 @@ export class Combatant {
   concentratingOn: string | null = null;
   /** The id of the creature this one has marked (Hunter's Mark), if any. */
   markedTarget: string | null = null;
+  /** The active Wild Shape form (overriding AC and attack), or null when not shaped. */
+  activeForm: { readonly ac: number; readonly attack: AttackProfile } | null = null;
 
   hp: number;
   tempHp = 0;
@@ -432,9 +434,20 @@ export class Combatant {
     return this.buffs.reduce((sum, b) => sum + (b.acBonus ?? 0), 0);
   }
 
-  /** Armor Class including active buffs (Haste's +2, etc.). */
+  /** Armor Class including active buffs (Haste's +2) and any Wild Shape form. */
   effectiveAc(): number {
-    return this.ac + this.buffAcBonus();
+    const base = this.activeForm ? this.activeForm.ac : this.ac;
+    return base + this.buffAcBonus();
+  }
+
+  /** The attacks to use right now: the Wild Shape form's natural attack, or the base set. */
+  activeAttacks(): readonly AttackProfile[] {
+    return this.activeForm ? [this.activeForm.attack] : this.attacks;
+  }
+
+  /** Assume a Wild Shape beast form (overrides AC and attack until its HP is gone). */
+  enterForm(form: { readonly ac: number; readonly attack: AttackProfile }): void {
+    this.activeForm = form;
   }
 
   /** Whether a buff grants an extra action usable for a single weapon attack. */
@@ -520,6 +533,8 @@ export class Combatant {
 
     const absorbedByTemp = Math.min(this.tempHp, amount);
     this.tempHp -= absorbedByTemp;
+    // A Wild Shape form ends when its (temporary) Hit Points are used up.
+    if (this.activeForm && this.tempHp === 0) this.activeForm = null;
     const toHp = amount - absorbedByTemp;
     const newHp = this.hp - toHp;
 
