@@ -12,6 +12,7 @@ import { Grid, cell, type Cell } from '../grid/grid';
 import { Combatant } from '../combat/actor';
 import { compileMonster, spawnMonster, type MonsterTemplate } from '../content/monster';
 import { loadMonsterSources } from '../content/load-db';
+import { multiattackFor } from '../content/multiattack';
 import { loadFillers, type Filler, type Role } from '../content/fillers';
 
 /** A party template: the roles present, in a fixed order. */
@@ -99,13 +100,20 @@ export interface PartyScenario {
 
 interface PartyEncounterSpec {
   readonly id: string;
-  /** Enemy groups; count is multiplied by party size and capped by the map. */
-  readonly enemies: readonly { readonly slug: string; readonly perMember: number }[];
+  /**
+   * Enemy groups. `perMember` scales the count with party size; `count` is a fixed
+   * number (a single boss). Both are capped by the map's enemy cells.
+   */
+  readonly enemies: readonly {
+    readonly slug: string;
+    readonly perMember?: number;
+    readonly count?: number;
+  }[];
 }
 
-const PARTY_ENCOUNTERS: readonly PartyEncounterSpec[] = [
-  // Sized to be a hard fight for a level-5 party, so allies take real damage and
-  // a healer has work to do (the support axis needs that pressure to have signal).
+// Level-5 party encounters: hordes of weak foes so allies take real damage and a
+// healer has work to do (the support axis needs that pressure to have signal).
+const PARTY_ENCOUNTERS_L5: readonly PartyEncounterSpec[] = [
   { id: 'horde', enemies: [{ slug: 'goblin-warrior', perMember: 5 }] },
   {
     id: 'mixed',
@@ -116,19 +124,67 @@ const PARTY_ENCOUNTERS: readonly PartyEncounterSpec[] = [
   },
 ];
 
-/** Load party scenarios for a party of `partySize`. */
-export function loadPartyScenarios(db: DatabaseSync, partySize: number): PartyScenario[] {
+// Level-11 party encounters: a legendary dragon boss (which now acts between the
+// party's turns) and a pack of CR-5 brutes.
+const PARTY_ENCOUNTERS_L11: readonly PartyEncounterSpec[] = [
+  {
+    // A legendary boss plus a couple of fixed adds (fixed, so the boss fight does
+    // not balloon with party size); the pack scales with the party.
+    id: 'boss-young-dragon',
+    enemies: [
+      { slug: 'young-red-dragon', count: 1 }, // CR 10, legendary + Rend x3
+      { slug: 'winter-wolf', count: 2 }, // adds
+    ],
+  },
+  { id: 'troll-pack', enemies: [{ slug: 'troll', perMember: 1 }] }, // CR 5 each
+];
+
+// Level-17 party encounters: an adult dragon boss and a fire-giant pack.
+const PARTY_ENCOUNTERS_L17: readonly PartyEncounterSpec[] = [
+  {
+    id: 'boss-adult-dragon',
+    enemies: [
+      { slug: 'adult-red-dragon', count: 1 }, // CR 17, legendary + Rend x3
+      { slug: 'troll', count: 2 }, // adds
+    ],
+  },
+  {
+    id: 'giant-pack',
+    enemies: [
+      { slug: 'fire-giant', count: 1 },
+      { slug: 'troll', perMember: 1 },
+    ],
+  },
+];
+
+/** Party encounters for a party at the given level (nearest checkpoint at or below). */
+function partyEncountersForLevel(level: number): readonly PartyEncounterSpec[] {
+  if (level >= 17) return PARTY_ENCOUNTERS_L17;
+  if (level >= 11) return PARTY_ENCOUNTERS_L11;
+  return PARTY_ENCOUNTERS_L5;
+}
+
+/** Load party scenarios for a party of `partySize` at `level`. */
+export function loadPartyScenarios(
+  db: DatabaseSync,
+  partySize: number,
+  level = 5,
+): PartyScenario[] {
   const templates = new Map<string, MonsterTemplate>();
   for (const src of loadMonsterSources(db))
-    templates.set(src.monster.monsterSlug, compileMonster(src));
+    templates.set(
+      src.monster.monsterSlug,
+      compileMonster(src, multiattackFor(src.monster.monsterSlug)),
+    );
   const { grid, partyCells, enemyCells } = partyMap();
 
-  return PARTY_ENCOUNTERS.map((spec) => {
+  return partyEncountersForLevel(level).map((spec) => {
     const plan: MonsterTemplate[] = [];
     for (const group of spec.enemies) {
       const template = templates.get(group.slug);
       if (!template) throw new Error(`party scenario ${spec.id}: monster not found: ${group.slug}`);
-      for (let i = 0; i < group.perMember * partySize; i++) plan.push(template);
+      const n = (group.perMember ?? 0) * partySize + (group.count ?? 0);
+      for (let i = 0; i < n; i++) plan.push(template);
     }
     const capped = plan.slice(0, enemyCells.length);
     return {

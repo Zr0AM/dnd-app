@@ -59,7 +59,7 @@ export function loadPartyHarness(db: DatabaseSync, level: number): PartyHarness 
   const scenariosByPartySize = new Map<number, PartyScenario[]>();
   for (const t of PARTY_TEMPLATES) {
     if (!scenariosByPartySize.has(t.roles.length)) {
-      scenariosByPartySize.set(t.roles.length, loadPartyScenarios(db, t.roles.length));
+      scenariosByPartySize.set(t.roles.length, loadPartyScenarios(db, t.roles.length, level));
     }
   }
   return { fillers, scenariosByPartySize };

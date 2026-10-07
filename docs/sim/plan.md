@@ -211,7 +211,11 @@ one subclass per class, so the hero's subclass choice is that one or none.
    rate and encounters-cleared that separate nova from sustained (a slot-dumping Wizard collapses over a
    day a Barbarian sustains, and the short-rest Warlock out-lasts its one-shot standing). Phase 7 is
    essentially complete for levels 11/17; lair actions are the one documented deferral (location-gated,
-   and 2024 folds most into the stat block).
+   and 2024 folds most into the stat block). The reference-party harness is level-scaled too:
+   `loadPartyScenarios` takes the party's level and fields level-appropriate encounters — at 11/17 a
+   legendary dragon boss (with fixed adds so the boss fight does not balloon with party size) plus a
+   scaling pack — so party-context evaluation runs at high level and actually exercises the dragon's
+   legendary actions.
 8. **Item and loot allocation** — _not started._
 
 ## Validation

@@ -139,4 +139,27 @@ describe('party scenarios', () => {
       expect(e.isConscious).toBe(true);
     }
   });
+
+  it('scales opponents to the party level, with a legendary dragon boss at high level', () => {
+    const l5 = loadPartyScenarios(db, 4, 5);
+    const l11 = loadPartyScenarios(db, 4, 11);
+    const l17 = loadPartyScenarios(db, 4, 17);
+    expect(l5.some((s) => s.id === 'horde')).toBe(true); // the level-5 set
+    expect(l11.some((s) => s.id === 'boss-young-dragon')).toBe(true);
+    expect(l17.some((s) => s.id === 'boss-adult-dragon')).toBe(true);
+
+    // The high-level boss is a legendary dragon that will act between turns.
+    const boss = l17.find((s) => s.id === 'boss-adult-dragon')!.spawnEnemies();
+    const dragon = boss.find((m) => m.name === 'Adult Red Dragon')!;
+    expect(dragon.legendaryMax).toBe(3);
+    expect(dragon.extraAttacks).toBe(2); // Rend x3 via Multiattack
+
+    // Fixed boss adds do not balloon with party size; a scaling pack still does.
+    const boss3 = loadPartyScenarios(db, 3, 17).find((s) => s.id === 'boss-adult-dragon')!;
+    const boss6 = loadPartyScenarios(db, 6, 17).find((s) => s.id === 'boss-adult-dragon')!;
+    expect(boss3.spawnEnemies().length).toBe(boss6.spawnEnemies().length); // dragon + 2 fixed adds
+    const pack3 = loadPartyScenarios(db, 3, 11).find((s) => s.id === 'troll-pack')!;
+    const pack6 = loadPartyScenarios(db, 6, 11).find((s) => s.id === 'troll-pack')!;
+    expect(pack6.spawnEnemies().length).toBeGreaterThan(pack3.spawnEnemies().length);
+  });
 });
