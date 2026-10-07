@@ -18,6 +18,7 @@ import type { AttackProfile } from '../combat/attack';
 import type { Feature } from '../combat/feature';
 import type { Cell } from '../grid/grid';
 import {
+  AuraOfProtectionFeature,
   ColossusSlayerFeature,
   DivineSmiteFeature,
   HuntersMarkFeature,
@@ -219,6 +220,8 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   // Paladin's Lay on Hands: a healing pool of 5 HP per level (a Bonus Action to spend).
   if (spec.class.slug === 'paladin') {
     resources.push({ id: 'lay-on-hands', max: 5 * spec.level, rechargeLong: 'all' });
+    // Aura of Protection comes online at level 6.
+    if (spec.level >= 6) features.push(new AuraOfProtectionFeature());
   }
   // Monk: Martial Arts (free bonus unarmed strike) and, from level 2, Focus Points
   // fuelling Stunning Strike (available once the monk can make two attacks, at 5).

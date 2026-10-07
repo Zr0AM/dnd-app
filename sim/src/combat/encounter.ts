@@ -396,7 +396,10 @@ export class Encounter {
       const dc = self.spellSaveDc();
       for (const v of victims) {
         const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
-          saveBonus: v.saveBonus(kind.save) + this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`),
+          saveBonus:
+            v.saveBonus(kind.save) +
+            this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`) +
+            this.auraSaveBonus(v),
           dc,
         });
         if (!save.success) {
@@ -461,7 +464,10 @@ export class Encounter {
       const rolled = rollDiceTerm(dmgStream, damage);
       for (const v of victims) {
         const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
-          saveBonus: v.saveBonus(kind.save) + this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`),
+          saveBonus:
+            v.saveBonus(kind.save) +
+            this.rollBuffSaveBonus(v, `${spell.id}:${self.id}`) +
+            this.auraSaveBonus(v),
           dc,
         });
         let amount = rolled;
@@ -525,7 +531,10 @@ export class Encounter {
     if (dealt <= 0 || target.concentratingOn === null || !target.isConscious) return;
     const dc = Math.max(10, Math.floor(dealt / 2));
     const save = resolveSave(this.rng.stream(`${target.id}:conc:${this.concSeq++}`), {
-      saveBonus: target.saveBonus('con') + this.rollBuffSaveBonus(target, `conc:${this.concSeq}`),
+      saveBonus:
+        target.saveBonus('con') +
+        this.rollBuffSaveBonus(target, `conc:${this.concSeq}`) +
+        this.auraSaveBonus(target),
       dc,
     });
     if (!save.success) {
@@ -676,6 +685,15 @@ export class Encounter {
   }
 
   /**
+   * Paladin Aura of Protection: a saving creature within 10 ft of a conscious
+   * allied paladin that has the aura adds that paladin's Charisma modifier to the
+   * save. Auras do not stack, so the best nearby aura applies.
+   */
+  private auraSaveBonus(target: Combatant): number {
+    return auraSaveBonus(this.combatants, target, this.grid.cellFt);
+  }
+
+  /**
    * Resolve one weapon attack: range/reach check, condition-derived advantage,
    * the roll, auto-crit vs. inert targets, damage (dice doubled on a crit),
    * mitigation and application. Returns damage dealt, or null if out of range.
@@ -812,7 +830,10 @@ export class Encounter {
         });
         if (!effect) continue;
         const save = resolveSave(this.rng.stream(`${self.id}:${f.id}:${target.id}:save`), {
-          saveBonus: target.saveBonus(effect.save) + this.rollBuffSaveBonus(target, `${f.id}`),
+          saveBonus:
+            target.saveBonus(effect.save) +
+            this.rollBuffSaveBonus(target, `${f.id}`) +
+            this.auraSaveBonus(target),
           dc: effect.dc,
         });
         if (!save.success) {
@@ -826,6 +847,26 @@ export class Encounter {
     }
     return dealt;
   }
+}
+
+/**
+ * Paladin Aura of Protection: the bonus a saving creature gets from nearby allied
+ * paladins' auras — the best (non-stacking) Charisma modifier among conscious
+ * aura-bearing allies within 10 ft of `target`. Pure, so it is unit-testable.
+ */
+export function auraSaveBonus(
+  combatants: readonly Combatant[],
+  target: Combatant,
+  cellFt: number,
+): number {
+  let best = 0;
+  for (const p of combatants) {
+    if (p.side !== target.side || !p.isConscious) continue;
+    if (!p.features.some((f) => f.id === 'aura-of-protection')) continue;
+    if (distanceFt(p.position, target.position, cellFt) > 10) continue;
+    best = Math.max(best, p.abilityMod('cha'));
+  }
+  return best;
 }
 
 /** Combine two advantage sources under the no-stacking rule. */

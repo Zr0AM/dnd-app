@@ -216,6 +216,16 @@ export class HuntersMarkFeature implements Feature {
   }
 }
 
+/**
+ * Aura of Protection (Paladin, level 6+): a marker feature. While present, the
+ * encounter gives every ally (and the paladin) within 10 ft a bonus to saving
+ * throws equal to the paladin's Charisma modifier; the aura bonus itself is applied
+ * by the encounter at save time, so this class only marks the aura's presence.
+ */
+export class AuraOfProtectionFeature implements Feature {
+  readonly id = 'aura-of-protection';
+}
+
 /** Colossus Slayer (Hunter Ranger): once per turn, +1d8 to a hit on a wounded target. */
 export class ColossusSlayerFeature implements Feature {
   readonly id = 'colossus-slayer';
