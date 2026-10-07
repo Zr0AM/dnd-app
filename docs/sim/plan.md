@@ -156,17 +156,21 @@ one subclass per class, so the hero's subclass choice is that one or none.
    goblins, with martial features (Rage, Sneak Attack, Extra Attack), the shared tactical AI, and a
    minimal GA.
 4. **Casters and effects** — _in progress._ Done: the spellcasting core (slots, save DC, spell attack,
-   concentration marker), authored damage spells (cantrips, Burning Hands, Scorching Ray, Guiding Bolt,
-   Fireball), the AI casting them by expected value, and Wizard/Cleric builds in the optimizer — a
-   damage caster now competes on the Pareto front. Remaining: healing, buffs and control spells; the
-   control/support metric axes; the reference parties (R6/R4/R3 with role-slot substitution); and the
-   caster roles. Healing/buffs/support are party-dependent, so they come with the reference parties.
+   concentration); authored damage spells (cantrips, Burning Hands, Scorching Ray, Guiding Bolt,
+   Fireball); healing spells (Cure Wounds, Healing Word) with the healer attributing healing in the
+   party harness; **control spells (Hold Person, Hypnotic Pattern) with timed conditions, repeat
+   saves and concentration breaking, the fifth _control_ objective axis (enemy actions denied, scored
+   solo and attributed to a hero in the party), the AI valuing control by threat-weighted denial, and
+   the live Controller role**; the reference parties (R4/R3 with role-slot substitution); and Wizard/
+   Cleric builds in the optimizer — damage, healer and controller casters now compete on the Pareto
+   front. Remaining: buff spells (Bless/Haste) and the support axis wired into the main objective
+   vector, which unlock the Bard buffer filler, the R6 template and the live Healer/Buffer roles.
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done for what martials exercise._ The scenario library (maps + XP-validated level-3 encounters),
-   confidence intervals, the four live metric axes, reference-anchor normalization and the martial
-   role presets are built. The control/support axes and the reference _parties_ (R6/R4/R3 with
-   role-slot substitution) are deferred to Phase 4, since a solo martial has no control/support signal
-   and no party.
+   confidence intervals, the metric axes (reliability, offense, survival, efficiency, and now control),
+   reference-anchor normalization and the martial role presets are built. The support axis and the R6
+   reference party are deferred to Phase 4 (buffs), since they need buff spells and a sixth party slot;
+   the control axis and the R4/R3 parties landed with the control-spell slice.
 6. **D1 results store and reports**, then the NSGA-II optimizer with the legality validator — _optimizer
    done, store deferred._ NSGA-II (non-dominated sort + crowding), the legality validator (genome
    repair), and the serializable run reports with client-side reweighting are built. The D1 migration

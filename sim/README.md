@@ -128,7 +128,8 @@ optimization, all deterministic and tested end to end.
 
 - **evaluate** now also emits a multi-objective vector (all maximized): reliability
   (win rate), offense (damage dealt), survival (HP retained), efficiency (negative
-  effective rounds — a loss counts the round cap, so "die fast" is not rewarded).
+  effective rounds — a loss counts the round cap, so "die fast" is not rewarded),
+  and control (enemy actions denied via save-or-suffer conditions).
 - **nsga2** — fast non-dominated sort and crowding distance (pure, tested on
   synthetic points) wrapped into a multi-objective optimizer returning the Pareto
   front. Deterministic under a seed.
@@ -158,16 +159,40 @@ count the cap) removed them. That is the "GA exploits modelling gaps" guard work
 - **opt/roles.ts** — the roles as weight presets; a report re-ranks for a role
   (`rescore`) without re-simulating.
 
-What is caster-gated (Phase 4), and why it is not done here: the control and
-support metric axes have no signal from a martial, and the reference _parties_
-(R6/R4/R3 with role-slot substitution) need caster fillers and a party context.
-So those two axes and party-anchored normalization wait for the spell layer; the
-four live axes, anchor normalization and the martial roles are complete.
+### Casters, parties and control (Phase 4, in progress)
+
+- **spellcasting core** — slots, save DC, spell attack, and concentration, on the
+  `Combatant`; the engine casts through a `castSpell` turn action.
+- **damage and healing spells** — cantrips plus Burning Hands, Scorching Ray,
+  Guiding Bolt, Fireball; Cure Wounds and Healing Word. The AI casts by expected
+  value and triages healing to downed / low allies (preferring the bonus-action
+  Healing Word).
+- **control spells** — Hold Person (single-target paralysis) and Hypnotic Pattern
+  (area incapacitation), built on a timed-condition subsystem: a failed save applies
+  the condition for a duration, a repeat save each turn can shake it off, and
+  breaking the caster's concentration ends it. A controlled creature's turn is
+  denied, logged as `controlDenied` and attributed to the caster — the signal behind
+  the **control** objective axis (scored solo in `evaluate` and in the party harness).
+  The AI values control by threat-weighted expected denial, and the **Controller**
+  role preset is now live.
+- **reference parties** — the R4 and R3 templates with frozen filler builds (tank,
+  burst, healer, controller) and hero role-slot substitution, run against
+  party-scaled encounters under common random numbers (`opt/party-evaluate.ts`,
+  `scenario/party.ts`). Healing and control are attributed to the hero in the party,
+  giving the support/control signal a solo martial lacks.
+
+End to end: NSGA-II surfaces a damage caster on the Pareto front (an L5 Wizard
+glass cannon), the party harness distinguishes a Cleric healer (heals while the
+party fights) from a Wizard blaster (~370 AoE damage), and a controller hero reads
+real `controlDenied` denial against the highest-threat enemy.
+
+Remaining in Phase 4: buff spells (Bless/Haste) and the support axis wired into the
+main objective vector, which unlock the Bard buffer filler, the R6 template and the
+live Healer/Buffer roles.
 
 Deferred (needs push access to dnd-db-rest and the environment's network/credential
 setup): the D1 results migration + the export/upload step, and the display-only
 Angular UI that reads these reports (see docs/sim/ui-integration.md).
 
-Still to come: the spell effect layer and caster builds (Phase 4), which unlocks
-the control/support axes, the reference parties and the caster roles; then levels
-11/17; then item/loot allocation.
+Still to come after Phase 4: levels 11/17 (Phase 7); then item/loot allocation
+(Phase 8).

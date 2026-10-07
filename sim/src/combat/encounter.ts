@@ -52,6 +52,8 @@ export type CombatEvent =
   | { kind: 'down'; id: string }
   | { kind: 'death'; id: string }
   | { kind: 'deathSave'; id: string; d20: number; success: boolean }
+  | { kind: 'controlDenied'; victim: string; source: string }
+  | { kind: 'concentrationBroken'; id: string }
   | { kind: 'end'; round: number; winner: Side | null };
 
 /** Per-turn resource budget. */
@@ -111,6 +113,8 @@ export class Encounter {
   round = 0;
   private order: Combatant[] = [];
   private readonly log: CombatEvent[] = [];
+  /** Monotonic counter so each concentration save draws a distinct stream value. */
+  private concSeq = 0;
 
   constructor(opts: EncounterOptions) {
     this.grid = opts.grid;
@@ -187,7 +191,14 @@ export class Encounter {
         continue;
       }
 
-      if (!canAct(c)) continue;
+      if (!canAct(c)) {
+        // The creature's turn is denied; attribute it to whoever controls it.
+        for (const source of new Set(c.controlSources())) {
+          this.log.push({ kind: 'controlDenied', victim: c.id, source });
+        }
+        this.endOfTurn(c);
+        continue;
+      }
 
       // Start-of-turn feature hooks (reset per-turn state, auto-activate Rage, ...).
       for (const f of c.features) f.onTurnStart?.(c);
@@ -200,7 +211,13 @@ export class Encounter {
         attacksRemaining: 0,
       };
       this.policyFor(c)(this.makeApi(c, resources));
+      this.endOfTurn(c);
     }
+  }
+
+  /** End-of-turn upkeep: tick timed conditions (repeat saves, durations). */
+  private endOfTurn(c: Combatant): void {
+    c.tickTimedConditions(this.rng.stream(`tick:${c.id}:${this.round}`));
   }
 
   /** Run the fight to a conclusion (or the round cap). */
@@ -291,6 +308,38 @@ export class Encounter {
         }
       }
       if (totalDamage > 0) targetsHit = 1;
+    } else if (spell.kind.type === 'control') {
+      // save-or-condition: each target saves; on a failure the condition is applied
+      // for a duration, repeating the save each turn to shake it off.
+      const kind = spell.kind;
+      const victims =
+        kind.aoeRadiusFt != null
+          ? this.combatants.filter(
+              (c) =>
+                c.side !== self.side &&
+                c.isConscious &&
+                distanceFt(target.position, c.position, this.grid.cellFt) <= kind.aoeRadiusFt!,
+            )
+          : [target];
+      const dc = self.spellSaveDc();
+      for (const v of victims) {
+        const save = resolveSave(this.rng.stream(`${self.id}:${spell.id}:${v.id}:save`), {
+          saveBonus: v.saveBonus(kind.save),
+          dc,
+        });
+        if (!save.success) {
+          v.applyTimedCondition({
+            condition: kind.condition,
+            source: self.id,
+            rounds: kind.rounds,
+            repeatSave: kind.repeatSaveEndsEffect
+              ? { ability: kind.save, dc, endsOnSuccess: true }
+              : undefined,
+            concentrationOwner: spell.concentration ? self.id : undefined,
+          });
+          targetsHit++;
+        }
+      }
     } else {
       // save-damage: gather targets (area or single).
       const kind = spell.kind;
@@ -350,7 +399,27 @@ export class Encounter {
     const outcome = target.takeDamage(dealt);
     if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
     if (outcome.died) this.log.push({ kind: 'death', id: target.id });
+    this.checkConcentration(target, dealt);
     return dealt;
+  }
+
+  /**
+   * A creature that takes damage while concentrating makes a Constitution save
+   * (DC 10 or half the damage, whichever is higher). On a failure its
+   * concentration ends and every effect it was sustaining is removed.
+   */
+  private checkConcentration(target: Combatant, dealt: number): void {
+    if (dealt <= 0 || target.concentratingOn === null || !target.isConscious) return;
+    const dc = Math.max(10, Math.floor(dealt / 2));
+    const save = resolveSave(this.rng.stream(`${target.id}:conc:${this.concSeq++}`), {
+      saveBonus: target.saveBonus('con'),
+      dc,
+    });
+    if (!save.success) {
+      target.concentratingOn = null;
+      for (const c of this.combatants) c.endConcentrationConditions(target.id);
+      this.log.push({ kind: 'concentrationBroken', id: target.id });
+    }
   }
 
   /**
@@ -561,6 +630,7 @@ export class Encounter {
     }
     if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
     if (outcome.died) this.log.push({ kind: 'death', id: target.id });
+    this.checkConcentration(target, dealt);
     return dealt;
   }
 }

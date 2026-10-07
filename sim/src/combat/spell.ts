@@ -9,7 +9,7 @@
 // slot used.
 
 import { dice, type Dice } from '../dice/dice';
-import type { Ability, DamageType } from '../core/types';
+import type { Ability, Condition, DamageType } from '../core/types';
 
 /** Damage as a function of the slot level used and the caster's total level. */
 export type DamageScaling = (slotLevel: number, casterLevel: number) => Dice;
@@ -45,6 +45,19 @@ export type SpellKind =
       readonly dice: DamageScaling;
       /** Add the caster's spellcasting modifier to the healing (Cure Wounds, Healing Word). */
       readonly addSpellMod: boolean;
+    }
+  | {
+      readonly type: 'control';
+      readonly save: Ability;
+      readonly condition: Condition;
+      /** Duration in rounds (a minute = 10 rounds). */
+      readonly rounds: number;
+      /** The victim repeats the save at the end of its turns to end the effect. */
+      readonly repeatSaveEndsEffect: boolean;
+      /** Area control hitting every enemy within this radius of the aim point. */
+      readonly aoeRadiusFt?: number;
+      /** Restrict to a creature type (e.g. Hold Person → Humanoid). */
+      readonly onlyType?: string;
     };
 
 /** Which side a spell is cast at. */

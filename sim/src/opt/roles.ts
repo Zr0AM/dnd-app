@@ -21,16 +21,17 @@ export const ROLE_WEIGHTS: Readonly<Record<string, RoleWeights>> = {
   tank: { reliability: 2, offense: 1, survival: 3, efficiency: 1 },
   // A balanced all-rounder.
   generalist: { reliability: 1, offense: 1, survival: 1, efficiency: 1 },
+  // Lock down enemies: the control axis is now live.
+  controller: { reliability: 1, offense: 1, survival: 1, control: 3, efficiency: 1 },
 };
 
 /**
- * Roles that need the control/support axes (Phase 4). Listed so the role set is
- * complete and documented; they are inert until those metric axes exist, because
- * a martial-only run produces no control or support signal.
+ * Roles that still need the support axis (healing/buffs attributed in the party
+ * harness) wired into the main objective vector. Listed so the role set is
+ * complete; they become live when support is added to the objective axes.
  */
 export const CASTER_ROLES: Readonly<Record<string, RoleWeights>> = {
   healer: { reliability: 2, survival: 1, support: 3, efficiency: 1 },
-  controller: { reliability: 1, offense: 1, survival: 1, control: 3, efficiency: 1 },
   buffer: { reliability: 1, offense: 1, survival: 1, support: 3, efficiency: 1 },
 };
 

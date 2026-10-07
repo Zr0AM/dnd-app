@@ -24,6 +24,8 @@ import {
   fireball,
   guidingBolt,
   healingWord,
+  holdPerson,
+  hypnoticPattern,
   rayOfFrost,
   sacredFlame,
   scorchingRay,
@@ -63,7 +65,7 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
   wizard: {
     ability: 'int',
     cantrips: [fireBolt, rayOfFrost],
-    spells: [burningHands, scorchingRay, fireball],
+    spells: [burningHands, scorchingRay, fireball, holdPerson, hypnoticPattern],
     weaponName: 'Dagger',
     armorName: null, // no armor proficiency
     shield: false,

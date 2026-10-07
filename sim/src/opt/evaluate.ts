@@ -28,6 +28,8 @@ export interface EvalResult {
    * gap NSGA-II exploited when efficiency was raw rounds.
    */
   readonly avgRoundsEffective: number;
+  /** Mean enemy actions the hero denied via control conditions — control. */
+  readonly avgActionsDenied: number;
   /** Total runs across all scenarios. */
   readonly runs: number;
   /** Confidence intervals (95%) for the headline metrics. */
@@ -60,6 +62,7 @@ export function evaluate(
   const damageSamples: number[] = [];
   const roundSamples: number[] = [];
   const roundEffectiveSamples: number[] = [];
+  const deniedSamples: number[] = [];
 
   for (const scenario of scenarios) {
     for (let i = 0; i < runsPer; i++) {
@@ -82,6 +85,7 @@ export function evaluate(
       damageSamples.push(heroDamageDealt(res.log, 'hero'));
       roundSamples.push(res.rounds);
       roundEffectiveSamples.push(won ? res.rounds : roundCap);
+      deniedSamples.push(actionsDenied(res.log, 'hero'));
       if (won) hpOnWinSamples.push(retained);
     }
   }
@@ -96,6 +100,7 @@ export function evaluate(
   const avgDamageDealt = avg(damageSamples);
   const avgRounds = avg(roundSamples);
   const avgRoundsEffective = avg(roundEffectiveSamples);
+  const avgActionsDenied = avg(deniedSamples);
   // Win rate dominates; surviving HP breaks ties; faster is a small bonus.
   const fitness = winRate * 100 + avgHpFracOnWin * 10 - avgRounds * 0.1;
 
@@ -107,6 +112,7 @@ export function evaluate(
     avgDamageDealt,
     avgRounds,
     avgRoundsEffective,
+    avgActionsDenied,
     runs,
     ci: {
       winRate: wilsonInterval(wins, runs),
@@ -127,14 +133,33 @@ function heroDamageDealt(log: readonly CombatEvent[], id: string): number {
   return total;
 }
 
+/** Enemy actions the combatant denied via control conditions (controlDenied events). */
+function actionsDenied(log: readonly CombatEvent[], id: string): number {
+  let total = 0;
+  for (const ev of log) if (ev.kind === 'controlDenied' && ev.source === id) total += 1;
+  return total;
+}
+
 /**
  * The multi-objective vector for NSGA-II, all oriented so higher is better:
  * reliability (win rate), offense (damage), survival (HP retained), efficiency
  * (negative rounds — fewer is better). A pragmatic subset of the metrics spec's
  * six axes, enough for a meaningful Pareto front at the martial tier.
  */
-export const OBJECTIVE_NAMES = ['reliability', 'offense', 'survival', 'efficiency'] as const;
+export const OBJECTIVE_NAMES = [
+  'reliability',
+  'offense',
+  'survival',
+  'efficiency',
+  'control',
+] as const;
 
 export function objectivesOf(r: EvalResult): number[] {
-  return [r.winRate, r.avgDamageDealt, r.avgHpFracRetained, -r.avgRoundsEffective];
+  return [
+    r.winRate,
+    r.avgDamageDealt,
+    r.avgHpFracRetained,
+    -r.avgRoundsEffective,
+    r.avgActionsDenied,
+  ];
 }

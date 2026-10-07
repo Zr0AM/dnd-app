@@ -20,6 +20,8 @@ const ASSUMED_HIT = 0.6;
 const ASSUMED_SAVE_FAIL = 0.5;
 /** Expected-damage penalty per slot level, so cantrips/weapons win when close. */
 const SLOT_PENALTY = 1.5;
+/** Rounds a control effect is assumed to keep a target locked, for valuation. */
+const ROUNDS_DENIED = 2;
 
 /** Tunable weights for the tactical AI (defaults = generalist). */
 export interface TacticsWeights {
@@ -109,6 +111,7 @@ interface SpellChoice {
   readonly slotLevel: number;
   readonly ev: number;
   readonly rangeFt: number;
+  readonly target: Combatant;
 }
 
 /**
@@ -129,6 +132,15 @@ function spellExpectedDamage(
     const dmg = rays * meanDice(kind.damage(slotLevel, self.level)) * ASSUMED_HIT;
     return Math.min(dmg, target.hp);
   }
+  if (kind.type === 'control') {
+    // Value control as damage prevented: a locked enemy denies ~its own output
+    // for the rounds it stays locked, weighted by the chance it fails the save.
+    const perTarget = (t: Combatant) => threatOf(t) * ROUNDS_DENIED * ASSUMED_SAVE_FAIL;
+    if (kind.aoeRadiusFt == null) return perTarget(target);
+    const radius = kind.aoeRadiusFt;
+    const caught = enemies.filter((e) => distanceFt(target.position, e.position) <= radius);
+    return (caught.length ? caught : [target]).reduce((s, e) => s + perTarget(e), 0);
+  }
   if (kind.type !== 'save-damage') return 0; // heal and other non-damage kinds
   // save-damage: expected damage per target after the save, capped per target's HP.
   const perTarget =
@@ -141,17 +153,23 @@ function spellExpectedDamage(
   return (caught.length ? caught : [target]).reduce((sum, e) => sum + Math.min(perTarget, e.hp), 0);
 }
 
-/** The best spell to cast this turn, or null if the caster has none worth casting. */
+/**
+ * The best offensive spell to cast, or null. Damage spells are valued against
+ * `damageTarget` (the wounded/best kill target); control spells against
+ * `controlTarget` (the most dangerous enemy, which is who you want to lock down).
+ */
 function bestSpell(
   self: Combatant,
-  target: Combatant,
+  damageTarget: Combatant,
+  controlTarget: Combatant,
   enemies: readonly Combatant[],
 ): SpellChoice | null {
   let best: SpellChoice | null = null;
   const consider = (spell: Spell, slotLevel: number) => {
+    const target = spell.kind.type === 'control' ? controlTarget : damageTarget;
     const ev =
       spellExpectedDamage(self, spell, slotLevel, target, enemies) - slotLevel * SLOT_PENALTY;
-    if (!best || ev > best.ev) best = { spell, slotLevel, ev, rangeFt: spell.rangeFt };
+    if (!best || ev > best.ev) best = { spell, slotLevel, ev, rangeFt: spell.rangeFt, target };
   };
   for (const cantrip of self.cantrips) consider(cantrip, 0);
   for (const spell of self.spells) {
@@ -219,30 +237,31 @@ export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): T
     const enemies = api.enemies();
     if (enemies.length === 0) return;
 
-    // Pick the best target.
-    const target = enemies.reduce((best, e) =>
+    // The damage target (best to kill) and the control target (most dangerous).
+    const damageTarget = enemies.reduce((best, e) =>
       scoreTarget(api.self, e, weights) > scoreTarget(api.self, best, weights) ? e : best,
     );
+    const controlTarget = enemies.reduce((best, e) => (threatOf(e) > threatOf(best) ? e : best));
 
     const weapon = primaryWeapon(api.self);
     const weaponEv = weapon
       ? weaponAverageDamage(weapon) * (1 + api.self.extraAttacks) * weights.assumedHitChance
       : -1;
-    const spell = bestSpell(api.self, target, enemies);
+    const spell = bestSpell(api.self, damageTarget, controlTarget, enemies);
 
     // Cast if a spell beats the weapon; otherwise make weapon attacks.
     if (spell && spell.ev > weaponEv) {
-      approach(api, target, spell.rangeFt);
-      if (distanceFt(api.self.position, target.position) <= spell.rangeFt) {
-        api.castSpell(spell.spell, target, spell.slotLevel);
+      approach(api, spell.target, spell.rangeFt);
+      if (distanceFt(api.self.position, spell.target.position) <= spell.rangeFt) {
+        api.castSpell(spell.spell, spell.target, spell.slotLevel);
       }
     } else if (weapon) {
       const rangeFt = weaponRangeFt(weapon);
-      approach(api, target, rangeFt);
-      if (distanceFt(api.self.position, target.position) <= rangeFt) {
-        let dmg = api.attack(target, weapon);
-        while (dmg !== null && target.isConscious && api.resources.attacksRemaining > 0) {
-          dmg = api.attack(target, weapon);
+      approach(api, damageTarget, rangeFt);
+      if (distanceFt(api.self.position, damageTarget.position) <= rangeFt) {
+        let dmg = api.attack(damageTarget, weapon);
+        while (dmg !== null && damageTarget.isConscious && api.resources.attacksRemaining > 0) {
+          dmg = api.attack(damageTarget, weapon);
         }
       }
     }

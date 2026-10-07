@@ -18,12 +18,13 @@ import { compileBuild } from './character';
 import { compileCaster } from './caster';
 import { loadArmor, loadClass, loadProgression, loadSpellSlots, loadWeapon } from './load-db';
 import {
-  burningHands,
   cureWounds,
   fireBolt,
   fireball,
   guidingBolt,
   healingWord,
+  holdPerson,
+  hypnoticPattern,
   sacredFlame,
   scorchingRay,
 } from './spells';
@@ -133,7 +134,7 @@ export function loadFillers(db: DatabaseSync, level: number): Partial<Record<Rol
           shield: false,
           spellAbility: 'int',
           cantrips: [fireBolt],
-          spells: [fireball, scorchingRay, burningHands],
+          spells: [hypnoticPattern, holdPerson, fireball, scorchingRay],
           slots: wizardSlots,
           position,
         }),

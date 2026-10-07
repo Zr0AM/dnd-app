@@ -68,6 +68,22 @@ interface ResourcePool {
   readonly rechargeLong: number | 'all';
 }
 
+/** A condition applied for a duration, able to be shaken off by a repeat save. */
+export interface ActiveCondition {
+  readonly condition: Condition;
+  /** The combatant id that caused this (for control-metric attribution). */
+  readonly source: string;
+  roundsLeft: number;
+  /** A save the victim repeats to end the effect early. */
+  readonly repeatSave?: {
+    readonly ability: Ability;
+    readonly dc: number;
+    readonly endsOnSuccess: boolean;
+  };
+  /** The caster id whose concentration sustains this, if any. */
+  readonly concentrationOwner?: string;
+}
+
 /** What happened when a creature took damage, for events and metrics. */
 export interface DamageOutcome {
   /** HP actually removed from the HP pool (after temp HP absorption). */
@@ -121,6 +137,8 @@ export class Combatant {
   tempHp = 0;
   position: Cell;
   private readonly conditions = new Set<Condition>();
+  /** Conditions applied for a duration, with repeat-save and attribution info. */
+  private readonly timed: ActiveCondition[] = [];
 
   // Exhaustion is level-based (0-6); the "exhaustion" condition is present when > 0.
   exhaustionLevel = 0;
@@ -290,6 +308,63 @@ export class Combatant {
 
   removeCondition(c: Condition): void {
     this.conditions.delete(c);
+  }
+
+  /** Apply a condition for a duration, with optional repeat save and concentration link. */
+  applyTimedCondition(spec: Omit<ActiveCondition, 'roundsLeft'> & { rounds: number }): void {
+    this.conditions.add(spec.condition);
+    this.timed.push({
+      condition: spec.condition,
+      source: spec.source,
+      roundsLeft: spec.rounds,
+      repeatSave: spec.repeatSave,
+      concentrationOwner: spec.concentrationOwner,
+    });
+  }
+
+  /** The source ids of any active timed conditions that stop this creature acting. */
+  controlSources(): string[] {
+    const disabling: Condition[] = ['paralyzed', 'stunned', 'incapacitated', 'unconscious'];
+    return this.timed.filter((t) => disabling.includes(t.condition)).map((t) => t.source);
+  }
+
+  /** Remove the base flag for a condition if no remaining timed entry grants it. */
+  private syncConditionFlag(c: Condition): void {
+    if (!this.timed.some((t) => t.condition === c)) this.conditions.delete(c);
+  }
+
+  /**
+   * End-of-turn processing for timed conditions: roll any repeat saves and
+   * decrement durations, removing effects that end. Returns the conditions that
+   * ended this turn.
+   */
+  tickTimedConditions(rng: Rng): Condition[] {
+    const ended: Condition[] = [];
+    for (const t of [...this.timed]) {
+      let remove = false;
+      if (t.repeatSave) {
+        const total = rollD20(rng) + this.saveBonus(t.repeatSave.ability);
+        if (t.repeatSave.endsOnSuccess && total >= t.repeatSave.dc) remove = true;
+      }
+      t.roundsLeft -= 1;
+      if (t.roundsLeft <= 0) remove = true;
+      if (remove) {
+        this.timed.splice(this.timed.indexOf(t), 1);
+        this.syncConditionFlag(t.condition);
+        ended.push(t.condition);
+      }
+    }
+    return ended;
+  }
+
+  /** End all timed conditions sustained by `casterId`'s concentration. */
+  endConcentrationConditions(casterId: string): void {
+    for (const t of [...this.timed]) {
+      if (t.concentrationOwner === casterId) {
+        this.timed.splice(this.timed.indexOf(t), 1);
+        this.syncConditionFlag(t.condition);
+      }
+    }
   }
 
   /** Raise exhaustion by `n` levels; at level 6 the creature dies. */

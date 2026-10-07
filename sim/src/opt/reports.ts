@@ -96,8 +96,9 @@ export function weightedScore(
   OBJECTIVE_NAMES.forEach((name, i) => {
     const w = weights[name] ?? 0;
     if (w === 0) return;
-    const [min, max] = bounds[name];
-    sum += w * normalize(objectives[i], min, max);
+    const bound = bounds[name];
+    if (!bound) return; // objective has no bounds in this report; skip
+    sum += w * normalize(objectives[i], bound[0], bound[1]);
     total += w;
   });
   return total > 0 ? sum / total : 0;

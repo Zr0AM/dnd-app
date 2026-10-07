@@ -138,3 +138,44 @@ export const healingWord: Spell = {
 
 /** Healing spells available to support casters. */
 export const HEALING_SPELLS: readonly Spell[] = [cureWounds, healingWord];
+
+// --- Control (save-or-condition) ---
+
+export const holdPerson: Spell = {
+  id: 'hold-person',
+  name: 'Hold Person',
+  level: 2,
+  action: 'action',
+  rangeFt: 60,
+  concentration: true,
+  kind: {
+    type: 'control',
+    save: 'wis',
+    condition: 'paralyzed',
+    rounds: 10,
+    repeatSaveEndsEffect: true,
+    onlyType: 'humanoid',
+  },
+};
+
+export const hypnoticPattern: Spell = {
+  id: 'hypnotic-pattern',
+  name: 'Hypnotic Pattern',
+  level: 3,
+  action: 'action',
+  rangeFt: 120,
+  concentration: true,
+  kind: {
+    type: 'control',
+    save: 'wis',
+    // Approximated as Incapacitated (the charmed+incapacitated effect), an
+    // under-estimate: a hit does not end it here, only the repeat save does.
+    condition: 'incapacitated',
+    rounds: 10,
+    repeatSaveEndsEffect: true,
+    aoeRadiusFt: 15, // a 30-foot cube, modeled as a radius
+  },
+};
+
+/** Control spells available to controller casters. */
+export const CONTROL_SPELLS: readonly Spell[] = [holdPerson, hypnoticPattern];

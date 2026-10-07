@@ -24,6 +24,8 @@ export interface PartyEvalResult {
   readonly winRate: number;
   readonly avgHeroDamage: number;
   readonly avgHeroHealing: number;
+  /** Mean enemy actions the hero denied via control conditions — control. */
+  readonly avgHeroActionsDenied: number;
   readonly avgHeroHpFracRetained: number;
   readonly avgAlliesAliveFrac: number;
   readonly runs: number;
@@ -70,6 +72,13 @@ function heroHealing(log: readonly CombatEvent[], id: string): number {
   return total;
 }
 
+/** Enemy actions the hero denied via control conditions (controlDenied events). */
+function heroActionsDenied(log: readonly CombatEvent[], id: string): number {
+  let total = 0;
+  for (const ev of log) if (ev.kind === 'controlDenied' && ev.source === id) total += 1;
+  return total;
+}
+
 /** Evaluate a hero build across the party templates, attributing metrics to it. */
 export function evaluatePartyBuild(
   genome: MartialGenome,
@@ -84,6 +93,7 @@ export function evaluatePartyBuild(
   const winSamples: number[] = [];
   const damageSamples: number[] = [];
   const healingSamples: number[] = [];
+  const deniedSamples: number[] = [];
   const heroHpSamples: number[] = [];
   const alliesAliveSamples: number[] = [];
 
@@ -106,6 +116,7 @@ export function evaluatePartyBuild(
         winSamples.push(won ? 1 : 0);
         damageSamples.push(heroDamage(res.log, 'hero'));
         healingSamples.push(heroHealing(res.log, 'hero'));
+        deniedSamples.push(heroActionsDenied(res.log, 'hero'));
         heroHpSamples.push(hero.isConscious ? hero.hp / hero.maxHp : 0);
         const allies = party.filter((c) => c !== hero);
         alliesAliveSamples.push(
@@ -121,6 +132,7 @@ export function evaluatePartyBuild(
     winRate: runs ? wins / runs : 0,
     avgHeroDamage: mean(damageSamples),
     avgHeroHealing: mean(healingSamples),
+    avgHeroActionsDenied: mean(deniedSamples),
     avgHeroHpFracRetained: mean(heroHpSamples),
     avgAlliesAliveFrac: mean(alliesAliveSamples),
     runs,
