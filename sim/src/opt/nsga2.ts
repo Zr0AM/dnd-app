@@ -11,7 +11,14 @@
 // reweighting never needs a re-run — exactly the property the metrics spec wants.
 
 import { Random } from '../rng/rng';
-import { crossover, genomeKey, mutate, randomGenome, type MartialGenome } from './genome';
+import {
+  crossover,
+  genomeKey,
+  mutate,
+  randomGenome,
+  type BuildClass,
+  type MartialGenome,
+} from './genome';
 import { evaluate, objectivesOf, type EvalOptions, type EvalResult } from './evaluate';
 import type { MartialCatalog } from './catalog';
 
@@ -105,6 +112,8 @@ export interface Nsga2Options {
   readonly generations?: number;
   readonly mutationRate?: number;
   readonly eval?: EvalOptions;
+  /** Restrict the genome pool to these classes (default: all build classes). */
+  readonly classes?: readonly BuildClass[];
 }
 
 export interface Nsga2Result {
@@ -149,6 +158,7 @@ export function runNsga2(
   const populationSize = opts.populationSize ?? 24;
   const generations = opts.generations ?? 12;
   const mutationRate = opts.mutationRate ?? 0.3;
+  const classes = opts.classes;
 
   const cache = new Map<string, EvalResult>();
   const assess = (genome: MartialGenome): Individual => {
@@ -162,7 +172,7 @@ export function runNsga2(
   };
 
   let population: Individual[] = Array.from({ length: populationSize }, (_, i) =>
-    assess(randomGenome(catalog, random, `init:${i}`)),
+    assess(randomGenome(catalog, random, `init:${i}`, classes)),
   );
   assignRanksAndCrowding(population);
 
@@ -174,7 +184,8 @@ export function runNsga2(
       const a = tournament(population, genRng);
       const b = tournament(population, genRng);
       let child = crossover(a.genome, b.genome, catalog, random, `gen:${gen}:x:${c}`);
-      if (genRng() < mutationRate) child = mutate(child, catalog, random, `gen:${gen}:m:${c}`);
+      if (genRng() < mutationRate)
+        child = mutate(child, catalog, random, `gen:${gen}:m:${c}`, classes);
       offspring.push(assess(child));
     }
 

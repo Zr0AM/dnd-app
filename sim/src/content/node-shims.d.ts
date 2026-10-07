@@ -20,6 +20,11 @@ declare module 'node:fs' {
   export function writeFileSync(path: string, data: string): void;
   export function mkdirSync(path: string, options?: { readonly recursive?: boolean }): void;
   export function existsSync(path: string): boolean;
+  export function mkdtempSync(prefix: string): string;
+}
+
+declare module 'node:os' {
+  export function tmpdir(): string;
 }
 
 declare module 'node:readline/promises' {

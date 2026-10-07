@@ -102,9 +102,10 @@ export function randomGenome(
   catalog: MartialCatalog,
   random: Random,
   label: string,
+  classes: readonly BuildClass[] = BUILD_CLASSES,
 ): MartialGenome {
   const rng = random.stream(label);
-  const classSlug = pick(BUILD_CLASSES, rng);
+  const classSlug = pick(classes.length ? classes : BUILD_CLASSES, rng);
   const assignment = shuffle([0, 1, 2, 3, 4, 5], rng);
   const weapon = pick(catalog.weapons, rng);
   const g: MartialGenome = {
@@ -161,13 +162,15 @@ export function mutate(
   catalog: MartialCatalog,
   random: Random,
   label: string,
+  classes: readonly BuildClass[] = BUILD_CLASSES,
 ): MartialGenome {
   const rng = random.stream(label);
+  const pool = classes.length ? classes : BUILD_CLASSES;
   const choice = Math.floor(rng() * 6);
   let next: MartialGenome = g;
   switch (choice) {
     case 0:
-      next = { ...g, classSlug: pick(BUILD_CLASSES, rng) };
+      next = { ...g, classSlug: pick(pool, rng) };
       break;
     case 1: {
       // Swap two ability assignments.
