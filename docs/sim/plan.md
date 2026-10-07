@@ -170,10 +170,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
    class roster is expanding past the filler set. Beyond those six, **Paladin** (a gish: heavy-armor
    striker with Extra Attack, half-caster slots and Divine Smite, a slot-fueled radiant rider) and
    **Monk** (unarmored Dex striker: Martial Arts unarmed strikes with an extra bonus attack, Extra
-   Attack, and Stunning Strike — a Focus-fuelled save-or-Stun that feeds the control axis) are
-   buildable. Still to add for full SRD class coverage: Sorcerer, Warlock, Druid. (Signature pieces left
-   for later slices: the Ranger's Hunter's Mark, the Paladin's Lay on Hands / Aura, the Monk's Flurry of
-   Blows.)
+   Attack, and Stunning Strike — a Focus-fuelled save-or-Stun that feeds the control axis), and
+   **Sorcerer** (Draconic blaster/controller: CHA full caster, Draconic Resilience for +HP and
+   unarmored AC, and Quickened Spell metamagic — spend Sorcery Points to cast a second spell as a bonus
+   action) are buildable. Still to add for full SRD class coverage: Warlock, Druid. (Signature pieces
+   left for later slices: the Ranger's Hunter's Mark, the Paladin's Lay on Hands / Aura, the Monk's
+   Flurry of Blows.)
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

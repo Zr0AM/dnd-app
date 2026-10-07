@@ -7,7 +7,7 @@
 
 import { abilityModifier, proficiencyBonus, type Ability } from '../core/types';
 import { dice } from '../dice/dice';
-import { Combatant, type Side } from '../combat/actor';
+import { Combatant, type ResourceSpec, type Side } from '../combat/actor';
 import type { AttackProfile } from '../combat/attack';
 import type { Spell } from '../combat/spell';
 import type { ClassInfo, WeaponInfo, ArmorInfo } from './character';
@@ -32,6 +32,15 @@ export interface CasterBuildSpec {
   readonly spells: readonly Spell[];
   readonly slots: readonly { readonly level: number; readonly count: number }[];
   readonly position?: Cell;
+  /** Resource pools (e.g. a Sorcerer's Sorcery Points). */
+  readonly resources?: readonly ResourceSpec[];
+  /** Extra HP added to the computed maximum (Draconic Resilience: +1 per level). */
+  readonly extraHp?: number;
+  /**
+   * When unarmored, compute AC as 10 + Dex + this ability's modifier (Draconic
+   * Resilience's 10 + Dex + Cha). Ignored if the caster wears armor.
+   */
+  readonly unarmoredAcAbility?: Ability;
 }
 
 /** AC from armor (with its Dex cap) or unarmored, plus a shield. */
@@ -45,6 +54,8 @@ function casterAc(spec: CasterBuildSpec): number {
         : dexMod
       : 0;
     ac = spec.armor.baseAc + dexPart;
+  } else if (spec.unarmoredAcAbility) {
+    ac = 10 + dexMod + mod(spec.abilities[spec.unarmoredAcAbility]);
   } else {
     ac = 10 + dexMod;
   }
@@ -82,9 +93,10 @@ export function compileCaster(spec: CasterBuildSpec): Combatant {
     level: spec.level,
     abilities: spec.abilities,
     ac: casterAc(spec),
-    maxHp: maxHitPoints(spec.class.hitDieSides, spec.level, conMod),
+    maxHp: maxHitPoints(spec.class.hitDieSides, spec.level, conMod) + (spec.extraHp ?? 0),
     saveProficiencies: spec.class.saveProficiencies,
     attacks: [backupAttack(spec)],
+    resources: spec.resources,
     spellcasting: {
       ability: spec.spellAbility,
       slots: spec.slots,

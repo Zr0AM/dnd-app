@@ -309,6 +309,26 @@ function tryBuff(api: TurnApi): boolean {
   return r !== null && chosenSpell!.action === 'action';
 }
 
+/** Sorcery Points a Quickened Spell costs (mirrors the engine's QUICKEN_COST). */
+const QUICKEN_COST = 2;
+
+/**
+ * Metamagic (Sorcerer): after the main action, spend Sorcery Points to cast a
+ * damage cantrip as a Bonus Action — a second spell in the turn. Fires when the
+ * caster has a 'sorcery' pool, a free bonus action, a damage cantrip, and an enemy
+ * in range of it. Returns true if a quickened cantrip was cast.
+ */
+function tryQuickenedCantrip(api: TurnApi, damageTarget: Combatant): boolean {
+  const self = api.self;
+  if (!api.resources.bonus || self.resourceCount('sorcery') < QUICKEN_COST) return false;
+  const cantrip = self.cantrips.find(
+    (c) => c.kind.type === 'attack-damage' || c.kind.type === 'save-damage',
+  );
+  if (!cantrip) return false;
+  if (distanceFt(self.position, damageTarget.position) > cantrip.rangeFt) return false;
+  return api.castSpell(cantrip, damageTarget, 0, true) !== null;
+}
+
 /** Build the shared tactical policy with the given weights. */
 export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): TurnPolicy {
   return (api: TurnApi) => {
@@ -354,6 +374,9 @@ export function makeTacticalPolicy(weights: TacticsWeights = DEFAULT_WEIGHTS): T
         }
       }
     }
+
+    // Sorcerer Metamagic: a quickened cantrip as a bonus action, after the action.
+    tryQuickenedCantrip(api, damageTarget);
   };
 }
 

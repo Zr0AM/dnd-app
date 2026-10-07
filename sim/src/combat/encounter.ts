@@ -88,11 +88,19 @@ export interface TurnApi {
    * cell). Spends the action and a slot (cantrips are free). Returns the total
    * damage dealt, or null if illegal (no slot, out of range, wrong action).
    */
-  castSpell(spell: Spell, target: Combatant, slotLevel?: number): number | null;
+  castSpell(
+    spell: Spell,
+    target: Combatant,
+    slotLevel?: number,
+    quickened?: boolean,
+  ): number | null;
 }
 
 /** A policy decides what one creature does on its turn by calling the TurnApi. */
 export type TurnPolicy = (api: TurnApi) => void;
+
+/** Sorcery Points a Quickened Spell costs (Metamagic). */
+const QUICKEN_COST = 2;
 
 /** A policy that ends the turn immediately (the default). */
 export const idlePolicy: TurnPolicy = () => {};
@@ -252,8 +260,8 @@ export class Encounter {
         this.combatants.filter((c) => c.side === self.side && c.isAlive && c !== self),
       moveTo: (dest) => this.moveTo(self, dest, resources),
       attack: (target, profile) => this.attack(self, target, profile, resources),
-      castSpell: (spell, target, slotLevel) =>
-        this.castSpell(self, spell, target, slotLevel, resources),
+      castSpell: (spell, target, slotLevel, quickened) =>
+        this.castSpell(self, spell, target, slotLevel, resources, quickened),
     };
   }
 
@@ -270,9 +278,14 @@ export class Encounter {
     target: Combatant,
     slotLevelArg: number | undefined,
     resources: TurnResources,
+    quickened = false,
   ): number | null {
-    // Action economy: a spell uses the action (bonus-action spells use the bonus).
-    if (spell.action === 'bonus') {
+    // Action economy: a spell normally uses the action (bonus-action spells use the
+    // bonus). Quickened Spell (Sorcerer Metamagic) casts it as a Bonus Action for 2
+    // Sorcery Points instead, enabling a second spell in the turn.
+    if (quickened) {
+      if (!resources.bonus || self.resourceCount('sorcery') < QUICKEN_COST) return null;
+    } else if (spell.action === 'bonus') {
       if (!resources.bonus) return null;
     } else if (!resources.action) {
       return null;
@@ -414,8 +427,14 @@ export class Encounter {
     }
 
     // Spend resources.
-    if (spell.action === 'bonus') resources.bonus = false;
-    else resources.action = false;
+    if (quickened) {
+      resources.bonus = false;
+      self.spendResource('sorcery', QUICKEN_COST);
+    } else if (spell.action === 'bonus') {
+      resources.bonus = false;
+    } else {
+      resources.action = false;
+    }
     if (spell.level > 0) self.spendSlot(slotLevel);
     if (spell.concentration) self.concentratingOn = spell.id;
 

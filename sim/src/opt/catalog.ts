@@ -4,7 +4,7 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { ArmorInfo, BuildProgression, ClassInfo, WeaponInfo } from '../content/character';
-import type { SpellcastingSpec } from '../combat/actor';
+import type { ResourceSpec, SpellcastingSpec } from '../combat/actor';
 import type { MonsterTemplate } from '../content/monster';
 import { compileMonster } from '../content/monster';
 import { loadScenarios, type Scenario } from '../scenario/library';
@@ -46,6 +46,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   wizard: 'evoker',
   cleric: 'life-domain',
   bard: 'college-of-lore',
+  sorcerer: 'draconic-sorcery',
 };
 
 /** A caster's fixed spell/gear package (spell selection is not evolved in v1). */
@@ -57,6 +58,12 @@ export interface CasterPackage {
   readonly armor: ArmorInfo | null;
   readonly shield: boolean;
   readonly slots: readonly { readonly level: number; readonly count: number }[];
+  /** Extra resource pools (a Sorcerer's Sorcery Points). */
+  readonly resources?: readonly ResourceSpec[];
+  /** Extra HP (Draconic Resilience: +1 per level). */
+  readonly extraHp?: number;
+  /** Unarmored AC ability (Draconic Resilience: 10 + Dex + Cha). */
+  readonly unarmoredAcAbility?: Ability;
 }
 
 interface CasterSpec {
@@ -66,6 +73,12 @@ interface CasterSpec {
   readonly weaponName: string;
   readonly armorName: string | null;
   readonly shield: boolean;
+  /** A points pool whose max equals the character level (Sorcery Points). */
+  readonly levelPointsResource?: string;
+  /** Extra HP per level (Draconic Resilience). */
+  readonly extraHpPerLevel?: number;
+  /** Unarmored AC ability (Draconic Resilience). */
+  readonly unarmoredAcAbility?: Ability;
 }
 
 const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
@@ -92,6 +105,17 @@ const CASTER_SPECS: Readonly<Record<CasterClass, CasterSpec>> = {
     weaponName: 'Rapier',
     armorName: 'Leather Armor', // light armor, no shield
     shield: false,
+  },
+  sorcerer: {
+    ability: 'cha',
+    cantrips: [fireBolt],
+    spells: [burningHands, scorchingRay, fireball, holdPerson], // a Draconic blaster/controller
+    weaponName: 'Dagger',
+    armorName: null, // Draconic Resilience grants unarmored AC instead
+    shield: false,
+    levelPointsResource: 'sorcery', // Sorcery Points = level, fuelling Quickened Spell
+    extraHpPerLevel: 1, // Draconic Resilience
+    unarmoredAcAbility: 'cha', // 10 + Dex + Cha when unarmored
   },
 };
 
@@ -158,9 +182,12 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
 
   // Caster classes, slots and resolved spell/gear packages.
   const casterPackages = new Map<CasterClass, CasterPackage>();
-  for (const slug of ['wizard', 'cleric', 'bard'] as const) {
+  for (const slug of ['wizard', 'cleric', 'bard', 'sorcerer'] as const) {
     classes.set(slug, loadClass(db, slug));
     const spec = CASTER_SPECS[slug];
+    const resources: ResourceSpec[] = spec.levelPointsResource
+      ? [{ id: spec.levelPointsResource, max: level, rechargeLong: 'all' }]
+      : [];
     casterPackages.set(slug, {
       spellAbility: spec.ability,
       cantrips: spec.cantrips,
@@ -169,6 +196,9 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
       armor: spec.armorName ? loadArmor(db, spec.armorName) : null,
       shield: spec.shield,
       slots: loadSpellSlots(db, slug, level),
+      resources: resources.length ? resources : undefined,
+      extraHp: spec.extraHpPerLevel ? spec.extraHpPerLevel * level : undefined,
+      unarmoredAcAbility: spec.unarmoredAcAbility,
     });
   }
   const goblinSrc = loadMonsterSources(db).find((s) => s.monster.monsterSlug === 'goblin-warrior');
