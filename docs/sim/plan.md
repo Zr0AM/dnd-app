@@ -202,9 +202,13 @@ one subclass per class, so the hero's subclass choice is that one or none.
    a spawned monster makes its full set of attacks (wired through the combatant's extra attacks). The
    AI now upcasts: it weighs every affordable slot for a damage spell and casts into the highest one
    whose extra dice (capped at the target's HP) beat the slot's cost, so a level-17 caster spends its
-   6th+ slots instead of casting Fireball at 3rd. Remaining: legendary and lair actions (so solo bosses
-   — dragons — act between turns), and campaign-path scoring (a multi-encounter adventuring day with
-   short rests, distinguishing nova from sustained builds).
+   6th+ slots instead of casting Fireball at 3rd. Legendary actions are modeled: a boss (the dragons
+   carry three) refreshes its budget at the start of its turn and spends points to attack between other
+   creatures' turns, the extra action economy that makes a solo boss dangerous to a whole party — its
+   primary use is party boss fights. Remaining: campaign-path scoring (a multi-encounter adventuring day
+   with short rests, distinguishing nova from sustained builds). Lair actions are deferred — they are
+   location-gated and 2024 folds most into the stat block, so they add little over legendary actions in
+   the current scenarios.
 8. **Item and loot allocation** — _not started._
 
 ## Validation

@@ -44,6 +44,8 @@ export interface CombatantSpec {
   /** Starting resource pools (id -> max + recharge), e.g. Rage uses. */
   readonly resources?: readonly ResourceSpec[];
   readonly spellcasting?: SpellcastingSpec;
+  /** Legendary actions per round (a boss acting between other creatures' turns). */
+  readonly legendaryActions?: number;
 }
 
 export interface SpellcastingSpec {
@@ -159,6 +161,9 @@ export class Combatant {
   markedTarget: string | null = null;
   /** The active Wild Shape form (overriding AC and attack), or null when not shaped. */
   activeForm: { readonly ac: number; readonly attack: AttackProfile } | null = null;
+  /** Legendary actions per round (0 for ordinary creatures) and how many remain. */
+  readonly legendaryMax: number;
+  legendaryRemaining = 0;
 
   hp: number;
   tempHp = 0;
@@ -197,6 +202,8 @@ export class Combatant {
     this.attacks = spec.attacks ? [...spec.attacks] : [];
     this.features = spec.features ? [...spec.features] : [];
     this.extraAttacks = spec.extraAttacks ?? 0;
+    this.legendaryMax = spec.legendaryActions ?? 0;
+    this.legendaryRemaining = this.legendaryMax;
     this.shortRestSlots = spec.spellcasting?.shortRestSlots ?? false;
     if (spec.spellcasting) {
       this.spellAbility = spec.spellcasting.ability;
@@ -272,6 +279,18 @@ export class Combatant {
       const amount = pool[which];
       pool.current = amount === 'all' ? pool.max : Math.min(pool.max, pool.current + amount);
     }
+  }
+
+  /** Refresh legendary actions (at the start of the boss's turn). */
+  refreshLegendary(): void {
+    this.legendaryRemaining = this.legendaryMax;
+  }
+
+  /** Spend one legendary action if available. */
+  spendLegendary(): boolean {
+    if (this.legendaryRemaining <= 0) return false;
+    this.legendaryRemaining -= 1;
+    return true;
   }
 
   /** Restore short-rest resources (and Pact Magic slots, for a Warlock). */

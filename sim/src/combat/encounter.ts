@@ -8,7 +8,7 @@
 // testable without the full AI (which arrives in a later phase). The policy acts
 // through a restricted TurnApi that enforces the action economy.
 
-import { rollD20, roll as rollDiceTerm, type Advantage } from '../dice/dice';
+import { rollD20, roll as rollDiceTerm, meanDice, type Advantage } from '../dice/dice';
 import { Random } from '../rng/rng';
 import { Grid, distanceFt, stepDistance, type Cell } from '../grid/grid';
 import { applyResponse } from './damage';
@@ -58,6 +58,8 @@ export type CombatEvent =
   | { kind: 'heal'; source: string; target: string; amount: number }
   /** The Ranger placed Hunter's Mark on a target. */
   | { kind: 'marked'; source: string; target: string }
+  /** A legendary action: a boss attacked between other creatures' turns. */
+  | { kind: 'legendary'; source: string; target: string; damage: number }
   /** A buff was placed on an ally. `source` is the caster, `target` the recipient. */
   | { kind: 'buffApplied'; source: string; buff: string; target: string }
   /** A buff materially helped the recipient (boosted roll / extra attack). */
@@ -203,6 +205,9 @@ export class Encounter {
       if (this.isOver()) break;
       if (c.dead) continue;
 
+      // A boss refreshes its legendary actions at the start of its own turn.
+      if (c.legendaryMax > 0) c.refreshLegendary();
+
       // Start of turn: a dying creature rolls a death save and does nothing else.
       if (c.isDying) {
         if (!c.stable) {
@@ -210,6 +215,7 @@ export class Encounter {
           this.log.push({ kind: 'deathSave', id: c.id, d20: out.d20, success: out.success });
           if (out.died) this.log.push({ kind: 'death', id: c.id });
         }
+        this.takeLegendaryActions(c);
         continue;
       }
 
@@ -219,6 +225,7 @@ export class Encounter {
           this.log.push({ kind: 'controlDenied', victim: c.id, source });
         }
         this.endOfTurn(c);
+        this.takeLegendaryActions(c);
         continue;
       }
 
@@ -237,6 +244,7 @@ export class Encounter {
       };
       this.policyFor(c)(this.makeApi(c, resources));
       this.endOfTurn(c);
+      this.takeLegendaryActions(c);
     }
   }
 
@@ -244,6 +252,37 @@ export class Encounter {
   private endOfTurn(c: Combatant): void {
     c.tickTimedConditions(this.rng.stream(`tick:${c.id}:${this.round}`));
     c.tickBuffs();
+  }
+
+  /**
+   * At the end of `justActed`'s turn, each other conscious boss may spend one
+   * legendary action to attack its nearest reachable opponent (a single attack with
+   * its strongest weapon). Spread across the round, this is the extra action economy
+   * a legendary boss brings. Legendary options beyond a simple attack (wing buffets,
+   * moves, saves) are a documented simplification left out.
+   */
+  private takeLegendaryActions(justActed: Combatant): void {
+    for (const boss of this.combatants) {
+      if (boss === justActed || !boss.isConscious || boss.legendaryRemaining <= 0) continue;
+      const weapon = bestAttack(boss);
+      if (!weapon) continue;
+      const reach =
+        weapon.kind === 'melee'
+          ? (weapon.reachFt ?? 5)
+          : (weapon.rangeLongFt ?? weapon.rangeFt ?? 5);
+      const target = this.combatants
+        .filter((t) => t.side !== boss.side && t.isConscious)
+        .sort(
+          (a, b) =>
+            distanceFt(boss.position, a.position, this.grid.cellFt) -
+            distanceFt(boss.position, b.position, this.grid.cellFt),
+        )[0];
+      if (!target) continue;
+      if (distanceFt(boss.position, target.position, this.grid.cellFt) > reach) continue;
+      if (!boss.spendLegendary()) continue;
+      const dmg = this.resolveWeaponAttack(boss, target, weapon, 'opportunity') ?? 0;
+      this.log.push({ kind: 'legendary', source: boss.id, target: target.id, damage: dmg });
+    }
   }
 
   /** Run the fight to a conclusion (or the round cap). */
@@ -867,6 +906,13 @@ export function auraSaveBonus(
     best = Math.max(best, p.abilityMod('cha'));
   }
   return best;
+}
+
+/** A combatant's strongest attack by average damage (for legendary actions), or null. */
+function bestAttack(c: Combatant): AttackProfile | null {
+  const attacks = c.activeAttacks();
+  if (attacks.length === 0) return null;
+  return attacks.reduce((best, w) => (meanDice(w.damage) > meanDice(best.damage) ? w : best));
 }
 
 /** Combine two advantage sources under the no-stacking rule. */

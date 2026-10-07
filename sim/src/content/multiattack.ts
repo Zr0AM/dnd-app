@@ -34,8 +34,23 @@ export const MONSTER_MULTIATTACK: Readonly<
   'winter-wolf': [{ action: 'Bite', count: 1 }],
 };
 
-/** The Multiattack override for a monster slug (empty when it attacks once). */
+/**
+ * Legendary actions per round by monster slug (a boss acting between other
+ * creatures' turns). Dragons have three; modeled as extra single attacks spread
+ * across the round — the action-economy threat a legendary boss poses.
+ */
+export const MONSTER_LEGENDARY: Readonly<Record<string, number>> = {
+  'young-red-dragon': 3,
+  'adult-red-dragon': 3,
+  'storm-giant': 0, // giants are not legendary; listed for clarity
+};
+
+/** The compile-time overrides (Multiattack + legendary actions) for a monster slug. */
 export function multiattackFor(slug: string): MonsterOverrides {
   const multiattack = MONSTER_MULTIATTACK[slug];
-  return multiattack ? { multiattack } : {};
+  const legendaryActions = MONSTER_LEGENDARY[slug];
+  return {
+    ...(multiattack ? { multiattack } : {}),
+    ...(legendaryActions ? { legendaryActions } : {}),
+  };
 }

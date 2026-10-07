@@ -85,6 +85,8 @@ export interface MonsterSource {
 export interface MonsterOverrides {
   /** Multiattack as the attack names to repeat and how many times each. */
   readonly multiattack?: readonly { readonly action: string; readonly count: number }[];
+  /** Legendary actions per round (a boss acting between other creatures' turns). */
+  readonly legendaryActions?: number;
 }
 
 /** An engine-ready monster, independent of placement. */
@@ -100,6 +102,8 @@ export interface MonsterTemplate {
   readonly damageResponses: DamageResponses;
   readonly attacks: readonly AttackProfile[];
   readonly multiattack: readonly { readonly action: string; readonly count: number }[];
+  /** Legendary actions per round (0 for ordinary monsters). */
+  readonly legendaryActions: number;
 }
 
 const DEFENSE_TO_RESPONSE: Readonly<Record<string, DamageResponse>> = {
@@ -194,6 +198,7 @@ export function compileMonster(
     damageResponses,
     attacks,
     multiattack: overrides.multiattack ?? [],
+    legendaryActions: overrides.legendaryActions ?? 0,
   };
 }
 
@@ -221,6 +226,7 @@ export function spawnMonster(
     damageResponses: template.damageResponses,
     attacks: template.attacks,
     extraAttacks,
+    legendaryActions: template.legendaryActions,
     position: placement.position,
   });
 }
