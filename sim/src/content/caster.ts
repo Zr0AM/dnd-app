@@ -9,6 +9,7 @@ import { abilityModifier, proficiencyBonus, type Ability } from '../core/types';
 import { dice } from '../dice/dice';
 import { Combatant, type ResourceSpec, type Side } from '../combat/actor';
 import type { AttackProfile } from '../combat/attack';
+import type { Feature } from '../combat/feature';
 import type { Spell } from '../combat/spell';
 import type { ClassInfo, WeaponInfo, ArmorInfo } from './character';
 import type { Cell } from '../grid/grid';
@@ -34,6 +35,8 @@ export interface CasterBuildSpec {
   readonly position?: Cell;
   /** Resource pools (e.g. a Sorcerer's Sorcery Points). */
   readonly resources?: readonly ResourceSpec[];
+  /** Class features (e.g. a Warlock's Dark One's Blessing). */
+  readonly features?: readonly Feature[];
   /** Extra HP added to the computed maximum (Draconic Resilience: +1 per level). */
   readonly extraHp?: number;
   /**
@@ -97,6 +100,7 @@ export function compileCaster(spec: CasterBuildSpec): Combatant {
     saveProficiencies: spec.class.saveProficiencies,
     attacks: [backupAttack(spec)],
     resources: spec.resources,
+    features: spec.features,
     spellcasting: {
       ability: spec.spellAbility,
       slots: spec.slots,

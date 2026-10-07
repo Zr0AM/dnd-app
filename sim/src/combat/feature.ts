@@ -65,6 +65,8 @@ export interface Feature {
   onHitEffect?(ctx: OnHitContext): HitEffect | null;
   /** Extra single-attack actions the feature grants for this turn (Monk Martial Arts). */
   bonusAttackActions?(self: Combatant): number;
+  /** The owner reduced `victim` to 0 HP this attack/spell (Warlock Dark One's Blessing). */
+  onKill?(self: Combatant, victim: Combatant): void;
   /** Whether attacks against the owner currently have advantage (e.g. Reckless Attack). */
   grantsAttackersAdvantage?(self: Combatant): boolean;
   /** Whether the owner currently resists this damage type (e.g. Rage). */

@@ -5,6 +5,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { ArmorInfo, BuildProgression, ClassInfo, WeaponInfo } from '../content/character';
 import type { ResourceSpec, SpellcastingSpec } from '../combat/actor';
+import type { Feature } from '../combat/feature';
+import { DarkOnesBlessingFeature } from '../content/martial-features';
 import type { MonsterTemplate } from '../content/monster';
 import { compileMonster } from '../content/monster';
 import { loadScenarios, type Scenario } from '../scenario/library';
@@ -69,6 +71,8 @@ export interface CasterPackage {
   readonly extraHp?: number;
   /** Unarmored AC ability (Draconic Resilience: 10 + Dex + Cha). */
   readonly unarmoredAcAbility?: Ability;
+  /** Class features (a Warlock's Dark One's Blessing). */
+  readonly features?: readonly Feature[];
 }
 
 interface CasterSpec {
@@ -209,6 +213,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
     const resources: ResourceSpec[] = spec.levelPointsResource
       ? [{ id: spec.levelPointsResource, max: level, rechargeLong: 'all' }]
       : [];
+    const features: Feature[] = slug === 'warlock' ? [new DarkOnesBlessingFeature()] : [];
     casterPackages.set(slug, {
       spellAbility: spec.ability,
       cantrips: spec.cantrips,
@@ -220,6 +225,7 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
       resources: resources.length ? resources : undefined,
       extraHp: spec.extraHpPerLevel ? spec.extraHpPerLevel * level : undefined,
       unarmoredAcAbility: spec.unarmoredAcAbility,
+      features: features.length ? features : undefined,
     });
   }
   const goblinSrc = loadMonsterSources(db).find((s) => s.monster.monsterSlug === 'goblin-warrior');

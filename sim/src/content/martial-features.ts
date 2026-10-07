@@ -171,6 +171,17 @@ export class StunningStrikeFeature implements Feature {
   }
 }
 
+/**
+ * Dark One's Blessing (Fiend Warlock): when the warlock reduces an enemy to 0 HP,
+ * it gains temporary Hit Points equal to its Charisma modifier + its level.
+ */
+export class DarkOnesBlessingFeature implements Feature {
+  readonly id = 'dark-ones-blessing';
+  onKill(self: Combatant): void {
+    self.grantTempHp(Math.max(1, self.abilityMod('cha') + self.level));
+  }
+}
+
 /** Colossus Slayer (Hunter Ranger): once per turn, +1d8 to a hit on a wounded target. */
 export class ColossusSlayerFeature implements Feature {
   readonly id = 'colossus-slayer';

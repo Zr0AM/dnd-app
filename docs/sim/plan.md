@@ -177,10 +177,11 @@ one subclass per class, so the hero's subclass choice is that one or none.
    action), **Warlock** (Fiend Pact caster: Eldritch Blast with Agonizing Blast — level-scaled force
    beams plus Cha to each — on Pact Magic slots cast at their always-highest level), and **Druid**
    (Circle of the Land: Wis full caster with Produce Flame, Cure Wounds and Moonbeam). The Paladin also
-   has Lay on Hands (a 5-HP-per-level pool spent as a bonus-action heal) and the Monk flurries. Signature
-   pieces still left (each a documented simplification): the Ranger's Hunter's Mark, the Warlock's Dark
-   One's Blessing and short-rest slot recovery, the Druid's Wild Shape, and the Paladin's Aura of
-   Protection (a level-6 feature, outside the 3/5 checkpoints).
+   has Lay on Hands (a 5-HP-per-level pool spent as a bonus-action heal), the Monk flurries, and the
+   Fiend Warlock gains Dark One's Blessing temp HP on a kill. Signature pieces still left: the Ranger's
+   Hunter's Mark, the Druid's Wild Shape, the Warlock's short-rest slot recovery (inert in the
+   single-encounter model), and the Paladin's Aura of Protection (a level-6 feature, outside the 3/5
+   checkpoints).
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

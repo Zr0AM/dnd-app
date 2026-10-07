@@ -6,6 +6,7 @@ import { Combatant, type CombatantSpec } from './actor';
 import { Encounter, idlePolicy, type CombatEvent, type TurnPolicy } from './encounter';
 import { cantripDice, raysAt, upcastDice, type Spell } from './spell';
 import { eldritchBlast, fireBolt, fireball, sacredFlame, scorchingRay } from '../content/spells';
+import { DarkOnesBlessingFeature } from '../content/martial-features';
 
 describe('spell scaling', () => {
   it('cantrips gain a die at 5, 11, 17', () => {
@@ -153,6 +154,26 @@ describe('casting in the engine', () => {
     // Two beams, each 1d10 + 4 (Cha): total in [2*(1+4), 2*(10+4)] = [10, 28].
     expect(ev!.damage).toBeGreaterThanOrEqual(10);
     expect(ev!.damage).toBeLessThanOrEqual(28);
+  });
+
+  it('Dark One’s Blessing grants temp HP when the warlock drops an enemy', () => {
+    const warlock = new Combatant({
+      id: 'lock',
+      name: 'Warlock',
+      side: 'party',
+      level: 5,
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 }, // Cha +4
+      ac: 12,
+      maxHp: 30,
+      features: [new DarkOnesBlessingFeature()],
+      spellcasting: { ability: 'cha', slots: [], cantrips: [eldritchBlast], spells: [] },
+      position: cell(0, 0),
+    });
+    const weakling = dummy('weak', cell(2, 0), { ac: 1, maxHp: 4 }); // a beam will drop it
+    expect(warlock.tempHp).toBe(0);
+    castOnce(warlock, eldritchBlast, weakling, [weakling]);
+    expect(weakling.isConscious).toBe(false);
+    expect(warlock.tempHp).toBe(4 + 5); // Cha mod + level
   });
 
   it('refuses to cast with no slot of the required level', () => {

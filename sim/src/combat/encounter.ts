@@ -355,7 +355,7 @@ export class Encounter {
           if (result.crit) raw += rollDiceTerm(dmgStream, { ...damage, bonus: 0 });
           raw += perBeamBonus;
           const dealt = applyResponse(raw, target.damageResponseFor(kind.damageType));
-          totalDamage += this.applySpellDamage(target, dealt);
+          totalDamage += this.applySpellDamage(self, target, dealt);
         }
       }
       if (totalDamage > 0) targetsHit = 1;
@@ -447,7 +447,7 @@ export class Encounter {
         if (save.success) amount = kind.onSuccess === 'half' ? Math.floor(rolled / 2) : 0;
         const dealt = applyResponse(amount, v.damageResponseFor(kind.damageType));
         if (dealt > 0) {
-          totalDamage += this.applySpellDamage(v, dealt);
+          totalDamage += this.applySpellDamage(self, v, dealt);
           targetsHit++;
         }
       }
@@ -478,13 +478,21 @@ export class Encounter {
   }
 
   /** Apply spell damage to a target and log any down/death. */
-  private applySpellDamage(target: Combatant, dealt: number): number {
+  private applySpellDamage(source: Combatant, target: Combatant, dealt: number): number {
     const before = target.isConscious;
     const outcome = target.takeDamage(dealt);
-    if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
+    if (before && outcome.dropped) {
+      this.log.push({ kind: 'down', id: target.id });
+      this.fireOnKill(source, target);
+    }
     if (outcome.died) this.log.push({ kind: 'death', id: target.id });
     this.checkConcentration(target, dealt);
     return dealt;
+  }
+
+  /** Notify the killer's features that it dropped `victim` (Warlock Dark One's Blessing). */
+  private fireOnKill(killer: Combatant, victim: Combatant): void {
+    for (const f of killer.features) f.onKill?.(killer, victim);
   }
 
   /**
@@ -760,7 +768,10 @@ export class Encounter {
         damage: dealt,
       });
     }
-    if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
+    if (before && outcome.dropped) {
+      this.log.push({ kind: 'down', id: target.id });
+      this.fireOnKill(self, target);
+    }
     if (outcome.died) this.log.push({ kind: 'death', id: target.id });
     this.checkConcentration(target, dealt);
 

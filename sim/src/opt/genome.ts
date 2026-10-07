@@ -241,6 +241,7 @@ export function buildFromGenome(g: MartialGenome, catalog: MartialCatalog, id = 
       resources: pkg.resources,
       extraHp: pkg.extraHp,
       unarmoredAcAbility: pkg.unarmoredAcAbility,
+      features: pkg.features,
     });
   }
 
