@@ -195,8 +195,15 @@ one subclass per class, so the hero's subclass choice is that one or none.
    done, store deferred._ NSGA-II (non-dominated sort + crowding), the legality validator (genome
    repair), and the serializable run reports with client-side reweighting are built. The D1 migration
    and upload need push access to `dnd-db-rest` (see [ui-integration](./ui-integration.md)).
-7. **Levels 11 and 17** — _not started._ legendary actions, lair actions (check how the SRD handles
-   them), high-level spells, and campaign-path scoring.
+7. **Levels 11 and 17** — _in progress._ Done: the scenario library now scales by checkpoint —
+   `loadScenarios` selects level-3, level-11 or level-17 opponent sets, each a varied spread of
+   CR-appropriate single foes and packs calibrated to a tough-but-winnable solo fight, and a monster
+   Multiattack table (centralized in `content/multiattack.ts`) is applied wherever monsters compile, so
+   a spawned monster makes its full set of attacks (wired through the combatant's extra attacks).
+   Remaining: high-level spell upcasting (so a level-17 caster uses its 6th+ slots rather than casting
+   Fireball at 3rd), legendary and lair actions (so solo bosses — dragons — act between turns), and
+   campaign-path scoring (a multi-encounter adventuring day with short rests, distinguishing nova
+   from sustained builds).
 8. **Item and loot allocation** — _not started._
 
 ## Validation

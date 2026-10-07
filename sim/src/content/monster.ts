@@ -202,6 +202,12 @@ export function spawnMonster(
   template: MonsterTemplate,
   placement: { readonly id: string; readonly side: Side; readonly position: Cell },
 ): Combatant {
+  // Multiattack is modeled as extra attacks: a monster that makes N attacks a turn
+  // gets N-1 extra attacks, which the shared AI resolves with its best attack. (A
+  // mixed Multiattack, e.g. a bite and a tail, is approximated as that many swings
+  // of the strongest attack — a documented fidelity-tier simplification.)
+  const totalAttacks = template.multiattack.reduce((n, m) => n + m.count, 0);
+  const extraAttacks = Math.max(0, totalAttacks - 1);
   return new Combatant({
     id: placement.id,
     name: template.name,
@@ -214,6 +220,7 @@ export function spawnMonster(
     saveBonuses: template.saveBonuses,
     damageResponses: template.damageResponses,
     attacks: template.attacks,
+    extraAttacks,
     position: placement.position,
   });
 }

@@ -13,6 +13,7 @@ import { Grid, type Cell } from '../grid/grid';
 import { Combatant } from '../combat/actor';
 import { compileMonster, spawnMonster, type MonsterTemplate } from '../content/monster';
 import { loadMonsterSources } from '../content/load-db';
+import { multiattackFor } from '../content/multiattack';
 import { MAPS } from './maps';
 
 export type Difficulty = 'low' | 'moderate' | 'high';
@@ -67,6 +68,86 @@ const LEVEL3_SPECS: readonly ScenarioSpec[] = [
   },
 ];
 
+// Level-11 solo encounters: CR-appropriate single foes and small packs tuned for a
+// tough-but-winnable fight for ONE level-11 hero (the solo evaluation pits a lone
+// hero against them — party-scale hordes are the reference-party harness's job).
+// Breath weapons and legendary actions arrive in a later Phase 7 slice.
+const LEVEL11_SPECS: readonly ScenarioSpec[] = [
+  {
+    id: 'l11-single-troll',
+    difficulty: 'moderate',
+    shape: 'single',
+    mapId: 'open-field',
+    enemies: [{ slug: 'troll', count: 1 }], // CR 5, Rend x3
+  },
+  {
+    id: 'l11-pack-owlbears',
+    difficulty: 'high',
+    shape: 'pack',
+    mapId: 'open-field',
+    enemies: [{ slug: 'owlbear', count: 2 }], // CR 3 each, Rend x2
+  },
+  {
+    id: 'l11-swarm-wolves',
+    difficulty: 'moderate',
+    shape: 'swarm',
+    mapId: 'corridor-chokepoint',
+    enemies: [{ slug: 'winter-wolf', count: 3 }], // CR 3 each, action economy
+  },
+  {
+    id: 'l11-mixed-troll-wolf',
+    difficulty: 'high',
+    shape: 'mixed',
+    mapId: 'corridor-chokepoint',
+    enemies: [
+      { slug: 'troll', count: 1 }, // CR 5
+      { slug: 'winter-wolf', count: 1 }, // CR 3
+    ],
+  },
+];
+
+// Level-17 solo encounters: CR 7-10 single foes and packs for ONE level-17 hero.
+const LEVEL17_SPECS: readonly ScenarioSpec[] = [
+  {
+    id: 'l17-single-hezrou',
+    difficulty: 'moderate',
+    shape: 'single',
+    mapId: 'open-field',
+    enemies: [{ slug: 'hezrou', count: 1 }], // CR 8
+  },
+  {
+    id: 'l17-elite-trex',
+    difficulty: 'high',
+    shape: 'single',
+    mapId: 'open-field',
+    enemies: [{ slug: 'tyrannosaurus-rex', count: 1 }], // CR 8, Bite + Tail
+  },
+  {
+    id: 'l17-pack-trolls',
+    difficulty: 'high',
+    shape: 'pack',
+    mapId: 'open-field',
+    enemies: [{ slug: 'troll', count: 2 }], // CR 5 each, Rend x3
+  },
+  {
+    id: 'l17-mixed-troll-owlbear',
+    difficulty: 'high',
+    shape: 'mixed',
+    mapId: 'corridor-chokepoint',
+    enemies: [
+      { slug: 'troll', count: 1 }, // CR 5
+      { slug: 'owlbear', count: 1 }, // CR 3
+    ],
+  },
+];
+
+/** The scenario specs for a hero of the given level (nearest checkpoint at or below). */
+function specsForLevel(level: number): readonly ScenarioSpec[] {
+  if (level >= 17) return LEVEL17_SPECS;
+  if (level >= 11) return LEVEL11_SPECS;
+  return LEVEL3_SPECS;
+}
+
 /** A runnable scenario: a fixed map and a way to spawn fresh enemies each run. */
 export interface Scenario {
   readonly id: string;
@@ -94,11 +175,14 @@ function xpByCr(db: DatabaseSync): Map<number, number> {
 export function loadScenarios(db: DatabaseSync, level = 3): Scenario[] {
   const templates = new Map<string, MonsterTemplate>();
   for (const src of loadMonsterSources(db)) {
-    templates.set(src.monster.monsterSlug, compileMonster(src));
+    templates.set(
+      src.monster.monsterSlug,
+      compileMonster(src, multiattackFor(src.monster.monsterSlug)),
+    );
   }
   const xp = xpByCr(db);
 
-  return LEVEL3_SPECS.map((spec) => {
+  return specsForLevel(level).map((spec) => {
     const layout = MAPS[spec.mapId]();
     let totalXp = 0;
     const enemyPlan: { template: MonsterTemplate; index: number }[] = [];

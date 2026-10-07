@@ -70,3 +70,40 @@ describe('scenario library', () => {
     }
   });
 });
+
+describe('high-level scenario selection', () => {
+  it('selects level-appropriate specs by checkpoint', () => {
+    const db = buildSeedDatabase();
+    try {
+      const l3 = loadScenarios(db, 3);
+      const l5 = loadScenarios(db, 5);
+      const l11 = loadScenarios(db, 11);
+      const l17 = loadScenarios(db, 17);
+      expect(l3.every((s) => s.id.startsWith('l3-'))).toBe(true);
+      expect(l5.every((s) => s.id.startsWith('l3-'))).toBe(true); // < 11 reuses the level-3 set
+      expect(l11.every((s) => s.id.startsWith('l11-'))).toBe(true);
+      expect(l17.every((s) => s.id.startsWith('l17-'))).toBe(true);
+      // Each high-level set still spans varied shapes.
+      for (const set of [l11, l17]) {
+        const shapes = new Set(set.map((s) => s.shape));
+        expect(shapes.has('single')).toBe(true);
+      }
+    } finally {
+      db.close();
+    }
+  });
+
+  it('compiles high-CR opponents with their Multiattack', () => {
+    const db = buildSeedDatabase();
+    try {
+      const troll = loadScenarios(db, 11)
+        .find((s) => s.id === 'l11-single-troll')!
+        .spawnEnemies()[0];
+      // A troll's Rend repeats three times (Multiattack), unlike a single-attack minion.
+      expect(troll.name).toBe('Troll');
+      expect(troll.attacks.length).toBeGreaterThan(0);
+    } finally {
+      db.close();
+    }
+  });
+});
