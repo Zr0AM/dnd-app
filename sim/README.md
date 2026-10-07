@@ -206,9 +206,13 @@ the six filler classes (Fighter, Ranger, Rogue, Cleric, Wizard, Bard) plus Palad
 (a gish — Extra Attack, half-caster slots, slot-fuelled Divine Smite), Monk
 (unarmored Martial Arts striker with Stunning Strike), Sorcerer (Draconic, with
 Quickened Spell metamagic), Warlock (Eldritch Blast + Agonizing Blast on Pact
-Magic), and Druid (Wis caster: Produce Flame, Cure Wounds, Moonbeam). A handful of
-signature pieces are documented simplifications left for later (Hunter's Mark, Lay
-on Hands/Aura, Flurry of Blows, Dark One's Blessing, Wild Shape).
+Magic), and Druid (Wis caster: Produce Flame, Cure Wounds, Moonbeam). Each class's
+signature piece is modeled: Divine Smite and Lay on Hands (Paladin), Martial Arts /
+Flurry / Stunning Strike (Monk), Quickened Spell (Sorcerer), Agonizing Blast and
+Dark One's Blessing (Warlock), Colossus Slayer and Hunter's Mark (Ranger), and a
+simplified Wild Shape (Druid). A few refinements are documented simplifications
+(the full Wild Shape stat-block swap, the Warlock's short-rest slot recovery, the
+Paladin's level-6 Aura).
 
 End to end: the party harness distinguishes a Cleric healer (heals while the party
 fights), a Wizard blaster (high AoE damage), a controller (real `controlDenied`

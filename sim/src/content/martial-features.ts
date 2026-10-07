@@ -172,6 +172,25 @@ export class StunningStrikeFeature implements Feature {
 }
 
 /**
+ * Wild Shape (Druid) — a simplified combat model. As a Bonus Action (here, at the
+ * start of a turn while it has a use), the druid slips into a resilient animal form,
+ * gaining a pool of temporary Hit Points that stands in for the beast's durability;
+ * it re-forms when that buffer is gone and a use remains. The full beast stat-block
+ * swap (the form's own attacks, AC, speed and senses) is a documented simplification
+ * left out — only the defensive buffer is modeled, which is Wild Shape's main
+ * low-level combat effect.
+ */
+export class WildShapeFeature implements Feature {
+  readonly id = 'wild-shape';
+  constructor(private readonly formHp: number) {}
+
+  onTurnStart(self: Combatant): void {
+    if (self.tempHp > 0) return; // still in a form with HP to spare
+    if (self.spendResource('wild-shape', 1)) self.grantTempHp(this.formHp);
+  }
+}
+
+/**
  * Dark One's Blessing (Fiend Warlock): when the warlock reduces an enemy to 0 HP,
  * it gains temporary Hit Points equal to its Charisma modifier + its level.
  */

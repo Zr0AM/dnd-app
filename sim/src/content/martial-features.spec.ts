@@ -15,6 +15,7 @@ import {
   RecklessAttackFeature,
   SneakAttackFeature,
   StunningStrikeFeature,
+  WildShapeFeature,
 } from './martial-features';
 import type { OnHitContext } from '../combat/feature';
 
@@ -522,6 +523,30 @@ describe('features in the engine', () => {
     expect(extra[0].type).toBe('force');
     expect(extra[0].damage.sides).toBe(6);
     expect(f.onHit(onHitCtx(ranger, other, bow))).toHaveLength(0); // not the marked one
+  });
+
+  it('Wild Shape grants a temp-HP buffer, re-forming when it is spent', () => {
+    const w = new WildShapeFeature(10);
+    const druid = combatant('druid', {
+      maxHp: 40,
+      resources: [{ id: 'wild-shape', max: 2, rechargeShort: 'all' as const }],
+    });
+    w.onTurnStart(druid); // forms
+    expect(druid.tempHp).toBe(10);
+    expect(druid.resourceCount('wild-shape')).toBe(1);
+    // Still buffered: no re-form, no use spent.
+    w.onTurnStart(druid);
+    expect(druid.resourceCount('wild-shape')).toBe(1);
+    // Buffer chewed through: re-forms using the second charge.
+    druid.takeDamage(10);
+    expect(druid.tempHp).toBe(0);
+    w.onTurnStart(druid);
+    expect(druid.tempHp).toBe(10);
+    expect(druid.resourceCount('wild-shape')).toBe(0);
+    // Out of charges: no more forms.
+    druid.takeDamage(10);
+    w.onTurnStart(druid);
+    expect(druid.tempHp).toBe(0);
   });
 
   it('sanity: adjacency helper matches grid distance', () => {

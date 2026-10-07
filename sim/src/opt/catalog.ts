@@ -6,7 +6,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ArmorInfo, BuildProgression, ClassInfo, WeaponInfo } from '../content/character';
 import type { ResourceSpec, SpellcastingSpec } from '../combat/actor';
 import type { Feature } from '../combat/feature';
-import { DarkOnesBlessingFeature } from '../content/martial-features';
+import { DarkOnesBlessingFeature, WildShapeFeature } from '../content/martial-features';
 import type { MonsterTemplate } from '../content/monster';
 import { compileMonster } from '../content/monster';
 import { loadScenarios, type Scenario } from '../scenario/library';
@@ -213,7 +213,12 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
     const resources: ResourceSpec[] = spec.levelPointsResource
       ? [{ id: spec.levelPointsResource, max: level, rechargeLong: 'all' }]
       : [];
-    const features: Feature[] = slug === 'warlock' ? [new DarkOnesBlessingFeature()] : [];
+    const features: Feature[] = [];
+    if (slug === 'warlock') features.push(new DarkOnesBlessingFeature());
+    if (slug === 'druid') {
+      features.push(new WildShapeFeature(2 * level)); // representative beast-form buffer
+      resources.push({ id: 'wild-shape', max: 2, rechargeShort: 'all', rechargeLong: 'all' });
+    }
     casterPackages.set(slug, {
       spellAbility: spec.ability,
       cantrips: spec.cantrips,
