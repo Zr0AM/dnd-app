@@ -166,10 +166,12 @@ one subclass per class, so the hero's subclass choice is that one or none.
    result to the same six-axis vector). The AI heals, buffs by value, and casts control/damage by
    expected value. The reference parties (R6/R4/R3 with role-slot substitution) and the **full six-role
    filler set** are built — Tank (Fighter), Sustained-DPS (Hunter Ranger archer: Archery, Extra Attack,
-   Colossus Slayer), Burst (Rogue), Healer (Cleric), Controller (Wizard), Buffer (Bard) — and
-   Fighter/Barbarian/Rogue/Ranger/Wizard/Cleric/Bard builds compete in the optimizer. (The Ranger's
-   Hunter's Mark, its other sustained-damage source, needs marked-target + concentration bookkeeping and
-   is left for a later slice.)
+   Colossus Slayer), Burst (Rogue), Healer (Cleric), Controller (Wizard), Buffer (Bard) — and the hero
+   class roster is expanding past the filler set. Beyond those six, **Paladin** (a gish: heavy-armor
+   striker with Extra Attack, half-caster slots and Divine Smite, a slot-fueled radiant rider) is
+   buildable. Still to add for full SRD class coverage: Monk, Sorcerer, Warlock, Druid. (The Ranger's
+   Hunter's Mark and the Paladin's Lay on Hands / Aura, their other signature pieces, are left for later
+   slices.)
 5. **Full AI, metrics and scenario library**, with confidence intervals and common random numbers —
    _done._ The scenario library (maps + XP-validated encounters), confidence intervals, all six metric
    axes (reliability, offense, survival, efficiency, control, support), reference-anchor normalization,

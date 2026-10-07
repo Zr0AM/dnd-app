@@ -14,7 +14,7 @@ import { compileCaster } from '../content/caster';
 import type { Combatant } from '../combat/actor';
 import type { MartialCatalog } from './catalog';
 
-export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue', 'ranger'] as const;
+export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue', 'ranger', 'paladin'] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
 
 export const CASTER_CLASSES = ['wizard', 'cleric', 'bard'] as const;
@@ -232,6 +232,8 @@ export function buildFromGenome(g: MartialGenome, catalog: MartialCatalog, id = 
     fightingStyle: g.fightingStyle,
     unarmoredDefense: g.classSlug === 'barbarian' ? 'barbarian' : null,
     progression,
+    // A gish (Paladin) also carries spell slots and a short spell list.
+    spellcasting: catalog.gishSpellcastingFor(g.classSlug) ?? undefined,
   });
 }
 

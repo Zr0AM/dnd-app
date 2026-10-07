@@ -13,12 +13,13 @@
 
 import { dice, type Dice } from '../dice/dice';
 import { abilityModifier, proficiencyBonus, type Ability, type DamageType } from '../core/types';
-import { Combatant, type ResourceSpec, type Side } from '../combat/actor';
+import { Combatant, type ResourceSpec, type Side, type SpellcastingSpec } from '../combat/actor';
 import type { AttackProfile } from '../combat/attack';
 import type { Feature } from '../combat/feature';
 import type { Cell } from '../grid/grid';
 import {
   ColossusSlayerFeature,
+  DivineSmiteFeature,
   RageFeature,
   RecklessAttackFeature,
   SneakAttackFeature,
@@ -88,6 +89,8 @@ export interface BuildSpec {
   readonly position?: Cell;
   /** Level-dependent feature values, resolved from the class progression tables. */
   readonly progression?: BuildProgression;
+  /** Optional spellcasting for a gish (Paladin, Ranger): slots and a spell list. */
+  readonly spellcasting?: SpellcastingSpec;
 }
 
 /** Numeric feature values pulled from ClassLevelValue / the class tables. */
@@ -199,6 +202,10 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   if (spec.class.slug === 'ranger' && spec.subclass === 'hunter' && spec.level >= 3) {
     features.push(new ColossusSlayerFeature());
   }
+  // Paladin's Divine Smite (a slot-fueled radiant rider on a melee hit) once it has slots.
+  if (spec.class.slug === 'paladin' && (spec.spellcasting?.slots.length ?? 0) > 0) {
+    features.push(new DivineSmiteFeature());
+  }
   return { features, resources };
 }
 
@@ -219,6 +226,7 @@ export function compileBuild(spec: BuildSpec): Combatant {
     features,
     resources,
     extraAttacks: spec.progression?.extraAttacks ?? 0,
+    spellcasting: spec.spellcasting,
     position: spec.position,
   });
 }

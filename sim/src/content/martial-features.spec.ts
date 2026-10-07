@@ -7,6 +7,7 @@ import { Encounter, idlePolicy, type TurnPolicy } from '../combat/encounter';
 import type { AttackProfile } from '../combat/attack';
 import {
   ColossusSlayerFeature,
+  DivineSmiteFeature,
   RageFeature,
   RecklessAttackFeature,
   SneakAttackFeature,
@@ -189,6 +190,54 @@ describe('ColossusSlayerFeature', () => {
     const c = new ColossusSlayerFeature();
     const full = combatant('t', { maxHp: 30 }); // undamaged
     expect(c.onHit(onHitCtx(combatant('ranger'), full, longbow))).toHaveLength(0);
+  });
+});
+
+describe('DivineSmiteFeature', () => {
+  const sword: AttackProfile = {
+    name: 'Longsword',
+    kind: 'melee',
+    reachFt: 5,
+    attackBonus: 6,
+    damage: dice(1, 8, 3),
+    damageType: 'slashing',
+  };
+  const paladin = () =>
+    combatant('pal', {
+      spellcasting: {
+        ability: 'cha' as const,
+        slots: [{ level: 1, count: 2 }],
+        cantrips: [],
+        spells: [],
+      },
+    });
+
+  it('spends a slot once per turn on a melee hit for 2d8 radiant', () => {
+    const d = new DivineSmiteFeature();
+    const self = paladin();
+    const extra = d.onHit(onHitCtx(self, combatant('t'), sword));
+    expect(extra).toHaveLength(1);
+    expect(extra[0].type).toBe('radiant');
+    expect(extra[0].damage.count).toBe(2); // 2d8 from a 1st-level slot
+    expect(extra[0].damage.sides).toBe(8);
+    expect(self.slotCount(1)).toBe(1); // a slot was spent
+    // Only once per turn.
+    expect(d.onHit(onHitCtx(self, combatant('t'), sword))).toHaveLength(0);
+    expect(self.slotCount(1)).toBe(1);
+    // Available again next turn.
+    d.onTurnStart();
+    expect(d.onHit(onHitCtx(self, combatant('t'), sword))).toHaveLength(1);
+    expect(self.slotCount(1)).toBe(0);
+  });
+
+  it('does nothing with no slots or on a ranged attack', () => {
+    const d = new DivineSmiteFeature();
+    const self = paladin();
+    const bow: AttackProfile = { ...sword, name: 'bow', kind: 'ranged', rangeFt: 100 };
+    expect(d.onHit(onHitCtx(self, combatant('t'), bow))).toHaveLength(0); // melee only
+    self.spendSlot(1);
+    self.spendSlot(1); // out of slots
+    expect(d.onHit(onHitCtx(self, combatant('t'), sword))).toHaveLength(0);
   });
 });
 

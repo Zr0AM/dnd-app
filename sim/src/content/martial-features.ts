@@ -100,6 +100,32 @@ export class SneakAttackFeature implements Feature {
   }
 }
 
+/**
+ * Divine Smite (Paladin): once per turn, on a melee hit, spend the lowest available
+ * spell slot to deal radiant damage — 2d8, plus 1d8 per slot level above 1st. A
+ * documented simplification: it fires on the first melee hit of the turn with a
+ * slot to spend (it does not hold the smite for a later crit), and the +1d8 vs.
+ * Fiends/Undead is omitted (combatants carry no creature type yet). Because the
+ * heal/buff steps run before attacks, those spells get first call on the slots.
+ */
+export class DivineSmiteFeature implements Feature {
+  readonly id = 'divine-smite';
+  private usedThisTurn = false;
+
+  onTurnStart(): void {
+    this.usedThisTurn = false;
+  }
+
+  onHit(ctx: OnHitContext): ExtraDamage[] {
+    if (this.usedThisTurn || ctx.weapon.kind !== 'melee') return [];
+    const level = ctx.self.availableSlotLevels()[0];
+    if (level === undefined || !ctx.self.spendSlot(level)) return [];
+    this.usedThisTurn = true;
+    const diceCount = 2 + Math.max(0, level - 1);
+    return [{ damage: dice(diceCount, 8), type: 'radiant' }];
+  }
+}
+
 /** Colossus Slayer (Hunter Ranger): once per turn, +1d8 to a hit on a wounded target. */
 export class ColossusSlayerFeature implements Feature {
   readonly id = 'colossus-slayer';

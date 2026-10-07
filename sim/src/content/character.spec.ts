@@ -294,4 +294,29 @@ describe('compileBuild', () => {
     expect(rogue.saveBonus('dex')).toBe(3 + 2); // proficient
     expect(rogue.saveBonus('int')).toBe(2 + 2); // proficient
   });
+
+  it('a Paladin gish carries spell slots and Divine Smite', () => {
+    const paladinClass: ClassInfo = {
+      slug: 'paladin',
+      hitDieSides: 10,
+      saveProficiencies: ['wis', 'cha'],
+    };
+    const pal = compileBuild({
+      name: 'Paladin',
+      class: paladinClass,
+      subclass: 'oath-of-devotion',
+      level: 5,
+      abilities: { str: 16, dex: 10, con: 14, int: 8, wis: 10, cha: 14 },
+      weapon: longsword,
+      armor: chainMail,
+      shield: true,
+      fightingStyle: 'defense',
+      progression: { extraAttacks: 1 },
+      spellcasting: { ability: 'cha', slots: [{ level: 1, count: 4 }], cantrips: [], spells: [] },
+    });
+    expect(pal.extraAttacks).toBe(1); // Extra Attack at level 5
+    expect(pal.slotCount(1)).toBe(4);
+    expect(pal.spellSaveDc()).toBe(8 + 3 + 2); // PB 3 + Cha +2
+    expect(pal.features.some((f) => f.id === 'divine-smite')).toBe(true);
+  });
 });

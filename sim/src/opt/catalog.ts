@@ -4,6 +4,7 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { ArmorInfo, BuildProgression, ClassInfo, WeaponInfo } from '../content/character';
+import type { SpellcastingSpec } from '../combat/actor';
 import type { MonsterTemplate } from '../content/monster';
 import { compileMonster } from '../content/monster';
 import { loadScenarios, type Scenario } from '../scenario/library';
@@ -40,6 +41,7 @@ const SUBCLASS: Readonly<Record<BuildClass, string>> = {
   barbarian: 'path-of-the-berserker',
   rogue: 'thief',
   ranger: 'hunter',
+  paladin: 'oath-of-devotion',
   wizard: 'evoker',
   cleric: 'life-domain',
   bard: 'college-of-lore',
@@ -98,6 +100,7 @@ const DEFAULT_ARMOR: Readonly<Record<MartialClass, string>> = {
   barbarian: 'Chain Mail', // unused (barbarian is unarmored), kept for completeness
   rogue: 'Studded Leather Armor',
   ranger: 'Studded Leather Armor',
+  paladin: 'Chain Mail',
 };
 
 export interface MartialCatalog {
@@ -111,6 +114,8 @@ export interface MartialCatalog {
   defaultArmorFor(slug: MartialClass): string;
   progressionFor(slug: MartialClass): BuildProgression;
   casterPackageFor(slug: CasterClass): CasterPackage;
+  /** Spell slots + list for a gish (a martial that also casts, e.g. Paladin), else null. */
+  gishSpellcastingFor(slug: BuildClass): SpellcastingSpec | null;
   /** The opposition for the simple legacy evaluation scenario. */
   readonly goblin: MonsterTemplate;
   /** The scenario library a build is evaluated against. */
@@ -135,10 +140,19 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
   const armors = ARMOR_NAMES.map((n) => loadArmor(db, n));
   const classes = new Map<BuildClass, ClassInfo>();
   const progression = new Map<MartialClass, BuildProgression>();
-  for (const slug of ['fighter', 'barbarian', 'rogue', 'ranger'] as const) {
+  for (const slug of ['fighter', 'barbarian', 'rogue', 'ranger', 'paladin'] as const) {
     classes.set(slug, loadClass(db, slug));
     progression.set(slug, loadProgression(db, slug, level));
   }
+
+  // Gish spell packages (a martial class that also carries slots + a few spells).
+  const gishPackages = new Map<string, SpellcastingSpec>();
+  gishPackages.set('paladin', {
+    ability: 'cha',
+    slots: loadSpellSlots(db, 'paladin', level),
+    cantrips: [],
+    spells: [bless, cureWounds], // buff + heal; Divine Smite is a feature, not a spell here
+  });
 
   // Caster classes, slots and resolved spell/gear packages.
   const casterPackages = new Map<CasterClass, CasterPackage>();
@@ -196,5 +210,6 @@ export function loadMartialCatalog(db: DatabaseSync, level = 3): MartialCatalog 
       if (!p) throw new Error(`caster package not in catalog: ${slug}`);
       return p;
     },
+    gishSpellcastingFor: (slug) => gishPackages.get(slug) ?? null,
   };
 }
