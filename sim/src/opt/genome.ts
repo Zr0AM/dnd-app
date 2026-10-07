@@ -9,12 +9,38 @@
 
 import type { Ability } from '../core/types';
 import type { Random } from '../rng/rng';
-import { compileBuild, type BuildProgression, type FightingStyle } from '../content/character';
+import {
+  compileBuild,
+  type BuildProgression,
+  type FightingStyle,
+  type WeaponInfo,
+} from '../content/character';
 import { compileCaster } from '../content/caster';
 import type { Combatant } from '../combat/actor';
 import type { MartialCatalog } from './catalog';
 
-export const MARTIAL_CLASSES = ['fighter', 'barbarian', 'rogue', 'ranger', 'paladin'] as const;
+/** The Monk's unarmed strike: the Martial Arts die scales with level, Dex-based (finesse). */
+function monkUnarmedStrike(level: number): WeaponInfo {
+  const sides = level >= 17 ? 10 : level >= 11 ? 8 : level >= 5 ? 6 : 4;
+  return {
+    name: 'Unarmed Strike',
+    category: 'simple',
+    range: 'melee',
+    diceCount: 1,
+    diceSides: sides,
+    damageType: 'bludgeoning',
+    properties: ['finesse'], // so the Dex-based monk uses Dex to hit and for damage
+  };
+}
+
+export const MARTIAL_CLASSES = [
+  'fighter',
+  'barbarian',
+  'rogue',
+  'ranger',
+  'paladin',
+  'monk',
+] as const;
 export type MartialClass = (typeof MARTIAL_CLASSES)[number];
 
 export const CASTER_CLASSES = ['wizard', 'cleric', 'bard'] as const;
@@ -215,9 +241,28 @@ export function buildFromGenome(g: MartialGenome, catalog: MartialCatalog, id = 
     });
   }
 
-  const weapon = catalog.weaponByName(g.weaponName);
   const cls = catalog.classByName(g.classSlug);
   const progression: BuildProgression = catalog.progressionFor(g.classSlug as MartialClass);
+
+  // The Monk is special: it fights unarmored (Unarmored Defense) with its unarmed
+  // strike, so the evolved weapon/armor/style are ignored in favor of the monk kit.
+  if (g.classSlug === 'monk') {
+    return compileBuild({
+      id,
+      name: 'monk hero',
+      class: cls,
+      subclass: catalog.subclassFor(g.classSlug),
+      level: catalog.level,
+      abilities,
+      weapon: monkUnarmedStrike(catalog.level),
+      armor: null,
+      shield: false,
+      unarmoredDefense: 'monk',
+      progression,
+    });
+  }
+
+  const weapon = catalog.weaponByName(g.weaponName);
   return compileBuild({
     id,
     name: `${g.classSlug} hero`,

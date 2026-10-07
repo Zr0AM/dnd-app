@@ -210,12 +210,14 @@ export class Encounter {
       for (const f of c.features) f.onTurnStart?.(c);
 
       this.log.push({ kind: 'turn', id: c.id, round: this.round });
+      let extraAttackActions = c.hasExtraAttackAction() ? 1 : 0;
+      for (const f of c.features) extraAttackActions += f.bonusAttackActions?.(c) ?? 0;
       const resources: TurnResources = {
         action: true,
         bonus: true,
         movementFt: effectiveSpeedFt(c),
         attacksRemaining: 0,
-        extraAttackActions: c.hasExtraAttackAction() ? 1 : 0,
+        extraAttackActions,
       };
       this.policyFor(c)(this.makeApi(c, resources));
       this.endOfTurn(c);
@@ -715,6 +717,34 @@ export class Encounter {
     if (before && outcome.dropped) this.log.push({ kind: 'down', id: target.id });
     if (outcome.died) this.log.push({ kind: 'death', id: target.id });
     this.checkConcentration(target, dealt);
+
+    // Save-or-condition riders on a hit (Monk Stunning Strike): each feature that
+    // triggers makes the target save; on a failure the condition is applied and
+    // attributed to the attacker (feeding the control metric via controlDenied).
+    if (target.isConscious) {
+      for (const f of self.features) {
+        const effect = f.onHitEffect?.({
+          self,
+          target,
+          weapon: profile,
+          crit,
+          rollAdvantage: adv,
+          allyAdjacentToTarget: this.hasAllyAdjacentTo(self, target),
+        });
+        if (!effect) continue;
+        const save = resolveSave(this.rng.stream(`${self.id}:${f.id}:${target.id}:save`), {
+          saveBonus: target.saveBonus(effect.save) + this.rollBuffSaveBonus(target, `${f.id}`),
+          dc: effect.dc,
+        });
+        if (!save.success) {
+          target.applyTimedCondition({
+            condition: effect.condition,
+            source: self.id,
+            rounds: effect.rounds,
+          });
+        }
+      }
+    }
     return dealt;
   }
 }

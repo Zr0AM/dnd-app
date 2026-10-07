@@ -24,7 +24,7 @@ import { dice } from '../dice/dice';
 import type { DamageType } from '../core/types';
 import type { AttackProfile, ExtraDamage } from '../combat/attack';
 import type { Combatant } from '../combat/actor';
-import type { Feature, OnHitContext, OutgoingAttackMods } from '../combat/feature';
+import type { Feature, HitEffect, OnHitContext, OutgoingAttackMods } from '../combat/feature';
 
 const RAGE_RESISTED: readonly DamageType[] = ['bludgeoning', 'piercing', 'slashing'];
 
@@ -123,6 +123,43 @@ export class DivineSmiteFeature implements Feature {
     this.usedThisTurn = true;
     const diceCount = 2 + Math.max(0, level - 1);
     return [{ damage: dice(diceCount, 8), type: 'radiant' }];
+  }
+}
+
+/**
+ * Martial Arts (Monk): grants one extra bonus-action unarmed strike each turn,
+ * made with the monk's primary (unarmed) weapon via the engine's extra-attack
+ * channel. Flurry of Blows (spending Focus for a second bonus strike) is a
+ * documented deferral — the free Martial Arts strike already models the monk's
+ * bonus attack.
+ */
+export class MartialArtsFeature implements Feature {
+  readonly id = 'martial-arts';
+  bonusAttackActions(): number {
+    return 1;
+  }
+}
+
+/**
+ * Stunning Strike (Monk): once per turn, on a melee hit, spend 1 Focus to force a
+ * Constitution save (DC 8 + proficiency + Wisdom) or the target is Stunned until
+ * the start of the monk's next turn (~1 round). Denying that turn feeds the control
+ * metric, attributed to the monk.
+ */
+export class StunningStrikeFeature implements Feature {
+  readonly id = 'stunning-strike';
+  private usedThisTurn = false;
+
+  onTurnStart(): void {
+    this.usedThisTurn = false;
+  }
+
+  onHitEffect(ctx: OnHitContext): HitEffect | null {
+    if (this.usedThisTurn || ctx.weapon.kind !== 'melee') return null;
+    if (!ctx.self.spendResource('focus', 1)) return null;
+    this.usedThisTurn = true;
+    const dc = 8 + ctx.self.proficiencyBonus + ctx.self.abilityMod('wis');
+    return { save: 'con', dc, condition: 'stunned', rounds: 1 };
   }
 }
 

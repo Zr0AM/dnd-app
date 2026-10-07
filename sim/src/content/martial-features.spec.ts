@@ -8,9 +8,11 @@ import type { AttackProfile } from '../combat/attack';
 import {
   ColossusSlayerFeature,
   DivineSmiteFeature,
+  MartialArtsFeature,
   RageFeature,
   RecklessAttackFeature,
   SneakAttackFeature,
+  StunningStrikeFeature,
 } from './martial-features';
 import type { OnHitContext } from '../combat/feature';
 
@@ -241,6 +243,58 @@ describe('DivineSmiteFeature', () => {
   });
 });
 
+describe('Monk features', () => {
+  const fist: AttackProfile = {
+    name: 'Unarmed Strike',
+    kind: 'melee',
+    reachFt: 5,
+    attackBonus: 5,
+    damage: dice(1, 6, 3),
+    damageType: 'bludgeoning',
+  };
+  const monk = () =>
+    combatant('monk', {
+      abilities: { str: 10, dex: 16, con: 14, int: 10, wis: 14, cha: 10 },
+      level: 5,
+      resources: [{ id: 'focus', max: 5, rechargeShort: 'all' as const }],
+    });
+
+  it('Martial Arts grants one bonus attack action', () => {
+    expect(new MartialArtsFeature().bonusAttackActions()).toBe(1);
+  });
+
+  it('Stunning Strike spends Focus for a Con save vs Stunned, once per turn', () => {
+    const s = new StunningStrikeFeature();
+    const self = monk();
+    const effect = s.onHitEffect(onHitCtx(self, combatant('t'), fist));
+    expect(effect).not.toBeNull();
+    expect(effect!.save).toBe('con');
+    expect(effect!.condition).toBe('stunned');
+    expect(effect!.dc).toBe(8 + 3 + 2); // PB 3 (L5) + Wis +2
+    expect(self.resourceCount('focus')).toBe(4); // a focus point was spent
+    // Only once per turn.
+    expect(s.onHitEffect(onHitCtx(self, combatant('t'), fist))).toBeNull();
+    s.onTurnStart();
+    expect(s.onHitEffect(onHitCtx(self, combatant('t'), fist))).not.toBeNull();
+  });
+
+  it('Stunning Strike needs Focus and a melee hit', () => {
+    const s = new StunningStrikeFeature();
+    const self = monk();
+    const bow: AttackProfile = { ...fist, name: 'bow', kind: 'ranged', rangeFt: 100 };
+    expect(s.onHitEffect(onHitCtx(self, combatant('t'), bow))).toBeNull(); // melee only
+    // Drain all focus, then it cannot trigger.
+    const fresh = new StunningStrikeFeature();
+    for (let i = 0; i < 5; i++) {
+      fresh.onTurnStart();
+      fresh.onHitEffect(onHitCtx(self, combatant('t'), fist));
+    }
+    fresh.onTurnStart();
+    expect(self.resourceCount('focus')).toBe(0);
+    expect(fresh.onHitEffect(onHitCtx(self, combatant('t'), fist))).toBeNull();
+  });
+});
+
 describe('features in the engine', () => {
   const alwaysAttack =
     (weapon: AttackProfile): TurnPolicy =>
@@ -303,6 +357,60 @@ describe('features in the engine', () => {
     e.runRound();
     const attacks = e.events.filter((x) => x.kind === 'attack' && x.attacker === 'fighter');
     expect(attacks.length).toBe(2); // one Attack action = two attacks at level 5
+  });
+
+  it('a Monk makes an extra bonus unarmed strike (Martial Arts) and Stuns on a hit', () => {
+    const fist: AttackProfile = {
+      name: 'Unarmed Strike',
+      kind: 'melee',
+      reachFt: 5,
+      attackBonus: 20, // always hits for a deterministic test
+      damage: dice(1, 6, 3),
+      damageType: 'bludgeoning',
+    };
+    const monk = combatant('monk', {
+      side: 'party',
+      level: 5,
+      extraAttacks: 1, // Extra Attack
+      abilities: { str: 10, dex: 16, con: 14, int: 10, wis: 16, cha: 10 },
+      attacks: [fist],
+      resources: [{ id: 'focus', max: 5, rechargeShort: 'all' as const }],
+      features: [new MartialArtsFeature(), new StunningStrikeFeature()],
+      position: cell(0, 0),
+    });
+    // A foe sure to fail the Con save, so Stunning Strike reliably lands.
+    const foe = combatant('foe', {
+      side: 'enemy',
+      ac: 1,
+      maxHp: 200,
+      saveBonuses: { con: -50 },
+      position: cell(1, 0),
+    });
+    // Drain the action attacks and the Martial Arts bonus attack.
+    const drain: TurnPolicy = (api) => {
+      if (api.self.id !== 'monk') return;
+      const t = api.enemies()[0];
+      while (t && api.attack(t, fist) !== null) {
+        /* keep swinging */
+      }
+    };
+    const e = new Encounter({
+      grid: new Grid(10, 10),
+      combatants: [monk, foe],
+      rng: new Random(3),
+      policyFor: (c) => (c.id === 'monk' ? drain : idlePolicy),
+    });
+    e.rollInitiative();
+    e.runRound();
+    e.runRound();
+    const monkAttacks = e.events.filter(
+      (x) => x.kind === 'attack' && x.attacker === 'monk' && x.hit,
+    );
+    // 2 Attack-action strikes + 1 Martial Arts bonus strike per turn.
+    expect(monkAttacks.length).toBeGreaterThanOrEqual(3);
+    // Stunning Strike landed, so the foe's turn is denied and attributed to the monk.
+    const denied = e.events.filter((x) => x.kind === 'controlDenied' && x.source === 'monk');
+    expect(denied.length).toBeGreaterThan(0);
   });
 
   it('sanity: adjacency helper matches grid distance', () => {

@@ -10,7 +10,7 @@
 // damage (dynamic resistance).
 
 import type { Advantage } from '../dice/dice';
-import type { DamageType } from '../core/types';
+import type { Ability, Condition, DamageType } from '../core/types';
 import type { AttackProfile, ExtraDamage } from './attack';
 import type { Combatant } from './actor';
 
@@ -33,6 +33,18 @@ export interface OnHitContext {
   readonly allyAdjacentToTarget: boolean;
 }
 
+/**
+ * A save-or-suffer effect a feature imposes on a target it hits (Stunning Strike).
+ * The encounter resolves the save against `dc` and, on a failure, applies the
+ * condition for `rounds`, attributing it to the attacker for the control metric.
+ */
+export interface HitEffect {
+  readonly save: Ability;
+  readonly dc: number;
+  readonly condition: Condition;
+  readonly rounds: number;
+}
+
 export interface Feature {
   readonly id: string;
   /** Start of the owner's turn: reset per-turn state, auto-activate, etc. */
@@ -45,6 +57,14 @@ export interface Feature {
   ): OutgoingAttackMods | null;
   /** Extra damage components applied when the owner hits. May consume once-per-turn state. */
   onHit?(ctx: OnHitContext): ExtraDamage[];
+  /**
+   * A save-or-condition effect imposed when the owner hits (Stunning Strike). The
+   * feature decides whether it triggers (spending resources / once-per-turn state)
+   * and returns the effect, or null. The encounter rolls the save and applies it.
+   */
+  onHitEffect?(ctx: OnHitContext): HitEffect | null;
+  /** Extra single-attack actions the feature grants for this turn (Monk Martial Arts). */
+  bonusAttackActions?(self: Combatant): number;
   /** Whether attacks against the owner currently have advantage (e.g. Reckless Attack). */
   grantsAttackersAdvantage?(self: Combatant): boolean;
   /** Whether the owner currently resists this damage type (e.g. Rage). */

@@ -20,9 +20,11 @@ import type { Cell } from '../grid/grid';
 import {
   ColossusSlayerFeature,
   DivineSmiteFeature,
+  MartialArtsFeature,
   RageFeature,
   RecklessAttackFeature,
   SneakAttackFeature,
+  StunningStrikeFeature,
 } from './martial-features';
 
 export type FightingStyle = 'archery' | 'defense' | 'great-weapon' | 'two-weapon';
@@ -205,6 +207,15 @@ export function buildFeatures(spec: BuildSpec): { features: Feature[]; resources
   // Paladin's Divine Smite (a slot-fueled radiant rider on a melee hit) once it has slots.
   if (spec.class.slug === 'paladin' && (spec.spellcasting?.slots.length ?? 0) > 0) {
     features.push(new DivineSmiteFeature());
+  }
+  // Monk: Martial Arts (free bonus unarmed strike) and, from level 2, Focus Points
+  // fuelling Stunning Strike (available once the monk can make two attacks, at 5).
+  if (spec.class.slug === 'monk') {
+    features.push(new MartialArtsFeature());
+    if (spec.level >= 2) {
+      resources.push({ id: 'focus', max: spec.level, rechargeShort: 'all', rechargeLong: 'all' });
+    }
+    if (spec.level >= 5) features.push(new StunningStrikeFeature());
   }
   return { features, resources };
 }
