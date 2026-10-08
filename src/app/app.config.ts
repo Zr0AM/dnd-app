@@ -12,6 +12,7 @@ import {
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
+import { mockGameDataInterceptor } from './core/game-data/mock-game-data.interceptor';
 import { mockItemsInterceptor } from './core/items/mock-items.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -24,6 +25,9 @@ export const appConfig: ApplicationConfig = {
       withViewTransitions({ skipInitialTransition: true }),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
     ),
-    provideHttpClient(withFetch(), withInterceptors([mockItemsInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([mockItemsInterceptor, mockGameDataInterceptor]),
+    ),
   ],
 };
