@@ -1,0 +1,279 @@
+// Authored spells for levels 3-5, verified against the SRD 5.2.1 text. The numbers
+// are hand-entered per the effect-format spec (never parsed): cantrips scale by
+// caster level, leveled spells by the slot used. Covers the damage, healing,
+// control and buff families the caster roles exercise.
+
+import { cantripDice, upcastDice, type Spell } from '../combat/spell';
+import { dice } from '../dice/dice';
+
+// --- Cantrips ---
+
+export const fireBolt: Spell = {
+  id: 'fire-bolt',
+  name: 'Fire Bolt',
+  level: 0,
+  action: 'action',
+  rangeFt: 120,
+  concentration: false,
+  kind: { type: 'attack-damage', damage: cantripDice(1, 10), damageType: 'fire' },
+};
+
+export const rayOfFrost: Spell = {
+  id: 'ray-of-frost',
+  name: 'Ray of Frost',
+  level: 0,
+  action: 'action',
+  rangeFt: 60,
+  concentration: false,
+  kind: { type: 'attack-damage', damage: cantripDice(1, 8), damageType: 'cold' },
+};
+
+/**
+ * Eldritch Blast with the Agonizing Blast invocation: a ranged spell attack firing
+ * 1d10 force per beam, with the warlock's spellcasting modifier added to each beam.
+ * The beam count rises with character level (1 / 2 / 3 / 4 at levels 1 / 5 / 11 / 17),
+ * not slot level, so it is modeled with `beams` rather than the upcast-ray path.
+ */
+export const eldritchBlast: Spell = {
+  id: 'eldritch-blast',
+  name: 'Eldritch Blast',
+  level: 0,
+  action: 'action',
+  rangeFt: 120,
+  concentration: false,
+  kind: {
+    type: 'attack-damage',
+    damage: () => dice(1, 10),
+    damageType: 'force',
+    beams: (level) => (level >= 17 ? 4 : level >= 11 ? 3 : level >= 5 ? 2 : 1),
+    addSpellMod: true, // Agonizing Blast
+  },
+};
+
+export const sacredFlame: Spell = {
+  id: 'sacred-flame',
+  name: 'Sacred Flame',
+  level: 0,
+  action: 'action',
+  rangeFt: 60,
+  concentration: false,
+  kind: {
+    type: 'save-damage',
+    save: 'dex',
+    damage: cantripDice(1, 8),
+    damageType: 'radiant',
+    onSuccess: 'none',
+  },
+};
+
+/** Produce Flame (Druid cantrip): a ranged spell attack for 1d8 fire, scaling by level. */
+export const produceFlame: Spell = {
+  id: 'produce-flame',
+  name: 'Produce Flame',
+  level: 0,
+  action: 'action',
+  rangeFt: 60,
+  concentration: false,
+  kind: { type: 'attack-damage', damage: cantripDice(1, 8), damageType: 'fire' },
+};
+
+// --- Level 1 ---
+
+export const guidingBolt: Spell = {
+  id: 'guiding-bolt',
+  name: 'Guiding Bolt',
+  level: 1,
+  action: 'action',
+  rangeFt: 120,
+  concentration: false,
+  kind: { type: 'attack-damage', damage: upcastDice(1, 4, 6), damageType: 'radiant' },
+};
+
+export const burningHands: Spell = {
+  id: 'burning-hands',
+  name: 'Burning Hands',
+  level: 1,
+  action: 'action',
+  rangeFt: 15,
+  concentration: false,
+  kind: {
+    type: 'save-damage',
+    save: 'dex',
+    damage: upcastDice(1, 3, 6),
+    damageType: 'fire',
+    onSuccess: 'half',
+    aoeRadiusFt: 15,
+    selfOrigin: true,
+  },
+};
+
+// --- Level 2 ---
+
+export const scorchingRay: Spell = {
+  id: 'scorching-ray',
+  name: 'Scorching Ray',
+  level: 2,
+  action: 'action',
+  rangeFt: 120,
+  concentration: false,
+  kind: {
+    type: 'attack-damage',
+    damage: () => ({ count: 2, sides: 6, bonus: 0 }),
+    damageType: 'fire',
+    rays: 3,
+    raysPerUpcast: 1,
+  },
+};
+
+/**
+ * Moonbeam (Druid): a concentration beam dealing 2d10 radiant (+1d10 per slot above
+ * 2nd) on a failed Con save, half on success. The 2024 spell is a persistent zone
+ * that re-damages each round; modeled here as a single Con-save area hit, a
+ * documented simplification (no re-trigger on later turns).
+ */
+export const moonbeam: Spell = {
+  id: 'moonbeam',
+  name: 'Moonbeam',
+  level: 2,
+  action: 'action',
+  rangeFt: 120,
+  concentration: true,
+  kind: {
+    type: 'save-damage',
+    save: 'con',
+    damage: upcastDice(2, 2, 10),
+    damageType: 'radiant',
+    onSuccess: 'half',
+    aoeRadiusFt: 5,
+  },
+};
+
+// --- Level 3 ---
+
+export const fireball: Spell = {
+  id: 'fireball',
+  name: 'Fireball',
+  level: 3,
+  action: 'action',
+  rangeFt: 150,
+  concentration: false,
+  kind: {
+    type: 'save-damage',
+    save: 'dex',
+    damage: upcastDice(3, 8, 6),
+    damageType: 'fire',
+    onSuccess: 'half',
+    aoeRadiusFt: 20,
+  },
+};
+
+/** The damage spells available to author-driven caster builds. */
+export const DAMAGE_CANTRIPS: readonly Spell[] = [fireBolt, rayOfFrost, sacredFlame];
+export const DAMAGE_SPELLS: readonly Spell[] = [guidingBolt, burningHands, scorchingRay, fireball];
+
+// --- Healing (level 1) ---
+
+export const cureWounds: Spell = {
+  id: 'cure-wounds',
+  name: 'Cure Wounds',
+  level: 1,
+  action: 'action',
+  rangeFt: 5, // Touch
+  concentration: false,
+  kind: { type: 'heal', dice: upcastDice(1, 2, 8, 2), addSpellMod: true },
+};
+
+export const healingWord: Spell = {
+  id: 'healing-word',
+  name: 'Healing Word',
+  level: 1,
+  action: 'bonus',
+  rangeFt: 60,
+  concentration: false,
+  kind: { type: 'heal', dice: () => ({ count: 2, sides: 4, bonus: 0 }), addSpellMod: true },
+};
+
+/** Healing spells available to support casters. */
+export const HEALING_SPELLS: readonly Spell[] = [cureWounds, healingWord];
+
+// --- Control (save-or-condition) ---
+
+export const holdPerson: Spell = {
+  id: 'hold-person',
+  name: 'Hold Person',
+  level: 2,
+  action: 'action',
+  rangeFt: 60,
+  concentration: true,
+  kind: {
+    type: 'control',
+    save: 'wis',
+    condition: 'paralyzed',
+    rounds: 10,
+    repeatSaveEndsEffect: true,
+    onlyType: 'humanoid',
+  },
+};
+
+export const hypnoticPattern: Spell = {
+  id: 'hypnotic-pattern',
+  name: 'Hypnotic Pattern',
+  level: 3,
+  action: 'action',
+  rangeFt: 120,
+  concentration: true,
+  kind: {
+    type: 'control',
+    save: 'wis',
+    // Approximated as Incapacitated (the charmed+incapacitated effect), an
+    // under-estimate: a hit does not end it here, only the repeat save does.
+    condition: 'incapacitated',
+    rounds: 10,
+    repeatSaveEndsEffect: true,
+    aoeRadiusFt: 15, // a 30-foot cube, modeled as a radius
+  },
+};
+
+/** Control spells available to controller casters. */
+export const CONTROL_SPELLS: readonly Spell[] = [holdPerson, hypnoticPattern];
+
+// --- Buffs ---
+
+export const bless: Spell = {
+  id: 'bless',
+  name: 'Bless',
+  level: 1,
+  action: 'action',
+  rangeFt: 30,
+  concentration: true,
+  kind: {
+    type: 'buff',
+    buffId: 'bless',
+    maxTargets: 3,
+    rounds: 10, // 1 minute
+    attackBonusDice: dice(1, 4),
+    saveBonusDice: dice(1, 4),
+  },
+};
+
+export const haste: Spell = {
+  id: 'haste',
+  name: 'Haste',
+  level: 3,
+  action: 'action',
+  rangeFt: 30,
+  concentration: true,
+  kind: {
+    type: 'buff',
+    buffId: 'haste',
+    maxTargets: 1,
+    rounds: 10, // 1 minute
+    acBonus: 2,
+    extraAttackAction: true,
+    // (Doubled speed and advantage on Dex saves are omitted: they have little
+    // effect in the current scenarios, where the hasted ally is already in reach.)
+  },
+};
+
+/** Buff spells available to buffer casters. */
+export const BUFF_SPELLS: readonly Spell[] = [bless, haste];

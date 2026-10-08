@@ -1,0 +1,133 @@
+// Spellcasting: the spell model the engine runs, and the damage families from the
+// effect-format survey that levels 3-5 need. Spells are declarative data (like
+// the monster/character compilers' output); the encounter executes them, mirroring
+// how it resolves weapon attacks. Healing, buffs and control spells extend the
+// SpellKind union in later slices.
+//
+// Spell numbers are authored (verified against the SRD text), never parsed, per
+// the effect-format spec: cantrips scale by caster level, leveled spells by the
+// slot used.
+
+import { dice, type Dice } from '../dice/dice';
+import type { Ability, Condition, DamageType } from '../core/types';
+
+/** Damage as a function of the slot level used and the caster's total level. */
+export type DamageScaling = (slotLevel: number, casterLevel: number) => Dice;
+
+/** Who/what a spell targets. */
+export type SpellTargeting = 'enemy' | 'self' | 'ally' | 'point';
+
+/** The mechanical kinds of spell the engine can resolve (damage families first). */
+export type SpellKind =
+  | {
+      readonly type: 'attack-damage';
+      readonly damage: DamageScaling;
+      readonly damageType: DamageType;
+      /** Number of separate spell attacks (Scorching Ray fires several). */
+      readonly rays?: number;
+      /** Extra rays per slot level above the spell's base level. */
+      readonly raysPerUpcast?: number;
+      /** Beam count as a function of caster level, overriding `rays` (Eldritch Blast). */
+      readonly beams?: (casterLevel: number) => number;
+      /** Add the caster's spellcasting modifier to each attack's damage (Agonizing Blast). */
+      readonly addSpellMod?: boolean;
+    }
+  | {
+      readonly type: 'save-damage';
+      readonly save: Ability;
+      readonly damage: DamageScaling;
+      readonly damageType: DamageType;
+      readonly onSuccess: 'half' | 'none';
+      /** If set, an area effect hitting every enemy within this radius of the point. */
+      readonly aoeRadiusFt?: number;
+      /** The area is centered on the caster rather than a chosen point (e.g. Burning Hands). */
+      readonly selfOrigin?: boolean;
+    }
+  | {
+      readonly type: 'heal';
+      /** Healing dice (scaling by slot level). */
+      readonly dice: DamageScaling;
+      /** Add the caster's spellcasting modifier to the healing (Cure Wounds, Healing Word). */
+      readonly addSpellMod: boolean;
+    }
+  | {
+      readonly type: 'control';
+      readonly save: Ability;
+      readonly condition: Condition;
+      /** Duration in rounds (a minute = 10 rounds). */
+      readonly rounds: number;
+      /** The victim repeats the save at the end of its turns to end the effect. */
+      readonly repeatSaveEndsEffect: boolean;
+      /** Area control hitting every enemy within this radius of the aim point. */
+      readonly aoeRadiusFt?: number;
+      /** Restrict to a creature type (e.g. Hold Person → Humanoid). */
+      readonly onlyType?: string;
+    }
+  | {
+      /**
+       * A beneficial effect placed on allies for a duration (Bless, Haste). The
+       * engine applies the modifiers while the buff is active; concentration ends
+       * it early if broken. Each modifier is optional so one kind covers both the
+       * roll-rider buffs (Bless: +dice to attacks and saves) and the action/defence
+       * buffs (Haste: +AC and an extra attack action).
+       */
+      readonly type: 'buff';
+      /** A stable id so stacking the same buff twice is idempotent (refresh, not add). */
+      readonly buffId: string;
+      /** How many allies the cast can cover (Bless 3, Haste 1), nearest first. */
+      readonly maxTargets: number;
+      /** Duration in rounds (a minute = 10 rounds). */
+      readonly rounds: number;
+      /** Dice added to the recipient's attack rolls (Bless: 1d4), rolled per attack. */
+      readonly attackBonusDice?: Dice;
+      /** Dice added to the recipient's saving throws (Bless: 1d4), rolled per save. */
+      readonly saveBonusDice?: Dice;
+      /** Flat bonus to the recipient's Armor Class (Haste: +2). */
+      readonly acBonus?: number;
+      /** Grants one extra action usable only for a single weapon attack (Haste). */
+      readonly extraAttackAction?: boolean;
+    };
+
+/** Which side a spell is cast at. */
+export function spellTargetsAllies(spell: Spell): boolean {
+  return spell.kind.type === 'heal' || spell.kind.type === 'buff';
+}
+
+export interface Spell {
+  readonly id: string;
+  readonly name: string;
+  /** 0 = cantrip. */
+  readonly level: number;
+  readonly action: 'action' | 'bonus';
+  readonly rangeFt: number;
+  readonly concentration: boolean;
+  readonly kind: SpellKind;
+}
+
+/** Cantrip dice that gain a die at levels 5, 11 and 17 (Fire Bolt, Sacred Flame, ...). */
+export function cantripDice(baseCount: number, sides: number): DamageScaling {
+  return (_slot, level) => {
+    const extra = (level >= 5 ? 1 : 0) + (level >= 11 ? 1 : 0) + (level >= 17 ? 1 : 0);
+    return dice(baseCount + extra, sides);
+  };
+}
+
+/** Leveled dice that gain `perUpcast` dice per slot level above `baseLevel`. */
+export function upcastDice(
+  baseLevel: number,
+  baseCount: number,
+  sides: number,
+  perUpcast = 1,
+): DamageScaling {
+  return (slot) => dice(baseCount + Math.max(0, slot - baseLevel) * perUpcast, sides);
+}
+
+/** Rays fired for an attack-damage spell at a given slot level. */
+export function raysAt(
+  kind: Extract<SpellKind, { type: 'attack-damage' }>,
+  slotLevel: number,
+  baseLevel: number,
+): number {
+  const base = kind.rays ?? 1;
+  return base + (kind.raysPerUpcast ? Math.max(0, slotLevel - baseLevel) * kind.raysPerUpcast : 0);
+}
