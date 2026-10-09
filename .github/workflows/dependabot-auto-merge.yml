@@ -25,6 +25,8 @@ jobs:
       # Majors need a human. Auto-merge still waits for every required check and review.
       # A merge made with GITHUB_TOKEN doesn't trigger push workflows, so the Build and SonarQube
       # runs on main are skipped unless the DEPENDABOT_AUTOMERGE_TOKEN Dependabot secret is set.
+      # --required keeps this job's own "Enable auto-merge" check out of the watch set;
+      # watching all checks would deadlock on itself until the job timeout
       - name: Wait for checks to pass
         if: >-
           steps.meta.outputs.update-type == 'version-update:semver-patch' ||
@@ -33,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN || github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr checks "$PR_NUMBER" --watch --interval 10
+          gh pr checks "$PR_NUMBER" -R "$GITHUB_REPOSITORY" --required --watch --interval 10
 
       - name: Approve PR
         if: >-
