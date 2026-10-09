@@ -53,7 +53,7 @@
         class="field"
         #raritySelect
         [value]="rarity()"
-        (change)="setRarity(raritySelect.value)"
+        (change)="setFilter('rarity', raritySelect.value)"
       >
         <option value="">All</option>
         @for (option of rarityOptions(); track option) {
@@ -64,7 +64,12 @@
 
     <label class="market-filters__field">
       <span>Type</span>
-      <select class="field" #typeSelect [value]="type()" (change)="setType(typeSelect.value)">
+      <select
+        class="field"
+        #typeSelect
+        [value]="type()"
+        (change)="setFilter('type', typeSelect.value)"
+      >
         <option value="">All</option>
         @for (option of typeOptions(); track option) {
           <option [value]="option">{{ option }}</option>
@@ -78,7 +83,7 @@
         class="field"
         #attuneSelect
         [value]="attunement()"
-        (change)="setAttunement(attuneSelect.value)"
+        (change)="setFilter('attunement', attuneSelect.value)"
       >
         <option value="">All</option>
         @for (option of attunementOptions(); track option) {
@@ -249,7 +254,7 @@
     <nav class="market-pagination" aria-label="Pagination">
       <label class="market-pagination__size">
         <span>Per page</span>
-        <select class="field" #pageSizeSelect (change)="setPageSize(pageSizeSelect.value)">
+        <select class="field" #pageSizeSelect (change)="setPageSize(+pageSizeSelect.value)">
           @for (s of pageSizes; track s) {
             <option [value]="s" [selected]="s === size()">{{ s }}</option>
           }

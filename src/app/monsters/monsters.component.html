@@ -11,45 +11,25 @@
 </header>
 
 @if (catalog.isLoading() && items().length === 0) {
-  <div class="panel browse-skeleton" aria-hidden="true">
-    <app-skeleton width="40%" height="2.25rem" />
-    <div class="browse-skeleton__rows">
-      @for (row of [1, 2, 3, 4, 5, 6]; track row) {
-        <app-skeleton height="3rem" radius="var(--radius-md)" />
-      }
-    </div>
-  </div>
+  <app-browse-skeleton />
 } @else if (catalog.error()) {
-  <div class="panel">
-    <app-empty-state
-      icon="alert"
-      tone="danger"
-      heading="The bestiary is unreachable"
-      message="We couldn’t summon the monsters. Check your connection and try again."
-    >
-      <button type="button" class="btn btn--primary" (click)="reload()">
-        <app-icon name="arrow-right" [size]="18" /> Try again
-      </button>
-    </app-empty-state>
-  </div>
+  <app-load-error
+    heading="The bestiary is unreachable"
+    message="We couldn’t summon the monsters. Check your connection and try again."
+    (retry)="reload()"
+  />
 } @else {
   <section class="panel browse-filters" aria-label="Filters">
-    <div class="browse-filters__search">
-      <app-icon name="search" [size]="18" />
-      <input
-        #searchInput
-        type="search"
-        class="browse-filters__input"
-        placeholder="Search by name…"
-        aria-label="Search monsters by name"
-        [value]="searchDraft()"
-        (input)="searchDraft.set(searchInput.value)"
-      />
-    </div>
+    <app-search-box label="Search monsters by name" [(value)]="searchDraft" />
 
     <label class="browse-filters__field">
       <span>Type</span>
-      <select class="field" #typeSelect [value]="type()" (change)="setType(typeSelect.value)">
+      <select
+        class="field"
+        #typeSelect
+        [value]="type()"
+        (change)="setFilter('type', typeSelect.value)"
+      >
         <option value="">All</option>
         @for (option of typeOptions(); track option) {
           <option [value]="option">{{ option }}</option>
@@ -63,7 +43,7 @@
         class="field"
         #sizeSelect
         [value]="creatureSize()"
-        (change)="setCreatureSize(sizeSelect.value)"
+        (change)="setFilter('creatureSize', sizeSelect.value)"
       >
         <option value="">All</option>
         @for (option of sizeOptions(); track option) {
@@ -74,7 +54,7 @@
 
     <label class="browse-filters__field">
       <span>Challenge</span>
-      <select class="field" #crSelect [value]="cr()" (change)="setCr(crSelect.value)">
+      <select class="field" #crSelect [value]="cr()" (change)="setFilter('cr', crSelect.value)">
         <option value="">All</option>
         @for (option of crOptions(); track option.value) {
           <option [value]="option.value">CR {{ option.label }}</option>
@@ -94,15 +74,11 @@
   </p>
 
   @if (sorted().length === 0) {
-    <div class="panel">
-      <app-empty-state
-        icon="search"
-        heading="No monsters match"
-        message="Try loosening your filters — the bestiary holds more than this."
-      >
-        <button type="button" class="btn" (click)="clearFilters()">Clear filters</button>
-      </app-empty-state>
-    </div>
+    <app-no-results
+      heading="No monsters match"
+      message="Try loosening your filters — the bestiary holds more than this."
+      (clearRequest)="clearFilters()"
+    />
   } @else {
     <!-- Desktop / wide: sortable table -->
     <div class="panel browse-table-wrap">
@@ -118,15 +94,9 @@
                 [class.browse-table__num]="col === 'monsterAc' || col === 'monsterHpAvg'"
                 [attr.aria-sort]="ariaSort(col)"
               >
-                <button type="button" class="browse-table__sortbtn" (click)="sortBy(col)">
-                  <span>{{ columnLabels[col] }}</span>
-                  @if (isSorted(col)) {
-                    <app-icon
-                      [name]="dir() === 'asc' ? 'chevron-up' : 'chevron-down'"
-                      [size]="14"
-                    />
-                  }
-                </button>
+                <app-sort-button [state]="ariaSort(col)" (sortChange)="sortBy(col)">{{
+                  columnLabels[col]
+                }}</app-sort-button>
               </th>
             }
             <th scope="col">Size</th>
@@ -136,21 +106,12 @@
           @for (monster of pagedItems(); track monster.monsterID) {
             <tr class="browse-table__row" [class.is-open]="expandedId() === monster.monsterID">
               <td class="browse-table__expand-col">
-                <button
-                  type="button"
-                  class="btn btn--ghost btn--icon browse-table__expand"
-                  [class.is-open]="expandedId() === monster.monsterID"
-                  [attr.aria-expanded]="expandedId() === monster.monsterID"
-                  [attr.aria-controls]="
-                    expandedId() === monster.monsterID
-                      ? 'monster-details-' + monster.monsterID
-                      : null
-                  "
-                  [attr.aria-label]="'Toggle details for ' + monster.monsterName"
-                  (click)="toggleExpand(monster.monsterID)"
-                >
-                  <app-icon name="chevron-right" [size]="16" />
-                </button>
+                <app-expand-toggle
+                  [open]="expandedId() === monster.monsterID"
+                  [controls]="'monster-details-' + monster.monsterID"
+                  [label]="monster.monsterName"
+                  (toggled)="toggleExpand(monster.monsterID)"
+                />
               </td>
               <td class="browse-table__name">{{ monster.monsterName }}</td>
               <td>{{ monster.creatureTypeName }}</td>

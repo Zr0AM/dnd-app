@@ -7,6 +7,13 @@ import {
 import { abilityModifier } from '../core/game-data/game-format';
 import { Skeleton } from '../shared/skeleton/skeleton';
 
+function formatHpBonus(bonus: number | null | undefined): string {
+  if (!bonus) {
+    return '';
+  }
+  return bonus > 0 ? ` + ${bonus}` : ` − ${Math.abs(bonus)}`;
+}
+
 @Component({
   selector: 'app-monster-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,12 +98,7 @@ export class MonsterDetails {
     if (!d?.monsterHpDiceCount) {
       return '';
     }
-    const bonus = d.monsterHpBonus
-      ? d.monsterHpBonus > 0
-        ? ` + ${d.monsterHpBonus}`
-        : ` − ${Math.abs(d.monsterHpBonus)}`
-      : '';
-    return ` (${d.monsterHpDiceCount}d${d.monsterHpDiceSides}${bonus})`;
+    return ` (${d.monsterHpDiceCount}d${d.monsterHpDiceSides}${formatHpBonus(d.monsterHpBonus)})`;
   }
 
   protected abilities(d: MonsterDetail) {

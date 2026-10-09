@@ -11,45 +11,25 @@
 </header>
 
 @if (catalog.isLoading() && items().length === 0) {
-  <div class="panel browse-skeleton" aria-hidden="true">
-    <app-skeleton width="40%" height="2.25rem" />
-    <div class="browse-skeleton__rows">
-      @for (row of [1, 2, 3, 4, 5, 6]; track row) {
-        <app-skeleton height="3rem" radius="var(--radius-md)" />
-      }
-    </div>
-  </div>
+  <app-browse-skeleton />
 } @else if (catalog.error()) {
-  <div class="panel">
-    <app-empty-state
-      icon="alert"
-      tone="danger"
-      heading="The armory is unreachable"
-      message="We couldn’t fetch the equipment. Check your connection and try again."
-    >
-      <button type="button" class="btn btn--primary" (click)="reload()">
-        <app-icon name="arrow-right" [size]="18" /> Try again
-      </button>
-    </app-empty-state>
-  </div>
+  <app-load-error
+    heading="The armory is unreachable"
+    message="We couldn’t fetch the equipment. Check your connection and try again."
+    (retry)="reload()"
+  />
 } @else {
   <section class="panel browse-filters" aria-label="Filters">
-    <div class="browse-filters__search">
-      <app-icon name="search" [size]="18" />
-      <input
-        #searchInput
-        type="search"
-        class="browse-filters__input"
-        placeholder="Search by name…"
-        aria-label="Search equipment by name"
-        [value]="searchDraft()"
-        (input)="searchDraft.set(searchInput.value)"
-      />
-    </div>
+    <app-search-box label="Search equipment by name" [(value)]="searchDraft" />
 
     <label class="browse-filters__field">
       <span>Kind</span>
-      <select class="field" #kindSelect [value]="kind()" (change)="setKind(kindSelect.value)">
+      <select
+        class="field"
+        #kindSelect
+        [value]="kind()"
+        (change)="setFilter('kind', kindSelect.value)"
+      >
         <option value="">All</option>
         @for (option of kindOptions(); track option) {
           <option [value]="option">{{ titleCase(option) }}</option>
@@ -69,15 +49,11 @@
   </p>
 
   @if (sorted().length === 0) {
-    <div class="panel">
-      <app-empty-state
-        icon="search"
-        heading="No equipment matches"
-        message="Try loosening your filters — the armory holds more than this."
-      >
-        <button type="button" class="btn" (click)="clearFilters()">Clear filters</button>
-      </app-empty-state>
-    </div>
+    <app-no-results
+      heading="No equipment matches"
+      message="Try loosening your filters — the armory holds more than this."
+      (clearRequest)="clearFilters()"
+    />
   } @else {
     <!-- Desktop / wide: sortable table -->
     <div class="panel browse-table-wrap">
@@ -93,15 +69,9 @@
                 [class.browse-table__num]="col === 'costCp' || col === 'weightLb'"
                 [attr.aria-sort]="ariaSort(col)"
               >
-                <button type="button" class="browse-table__sortbtn" (click)="sortBy(col)">
-                  <span>{{ columnLabels[col] }}</span>
-                  @if (isSorted(col)) {
-                    <app-icon
-                      [name]="dir() === 'asc' ? 'chevron-up' : 'chevron-down'"
-                      [size]="14"
-                    />
-                  }
-                </button>
+                <app-sort-button [state]="ariaSort(col)" (sortChange)="sortBy(col)">{{
+                  columnLabels[col]
+                }}</app-sort-button>
               </th>
             }
           </tr>
@@ -110,21 +80,12 @@
           @for (item of pagedItems(); track item.equipmentID) {
             <tr class="browse-table__row" [class.is-open]="expandedId() === item.equipmentID">
               <td class="browse-table__expand-col">
-                <button
-                  type="button"
-                  class="btn btn--ghost btn--icon browse-table__expand"
-                  [class.is-open]="expandedId() === item.equipmentID"
-                  [attr.aria-expanded]="expandedId() === item.equipmentID"
-                  [attr.aria-controls]="
-                    expandedId() === item.equipmentID
-                      ? 'equipment-details-' + item.equipmentID
-                      : null
-                  "
-                  [attr.aria-label]="'Toggle details for ' + item.equipmentName"
-                  (click)="toggleExpand(item.equipmentID)"
-                >
-                  <app-icon name="chevron-right" [size]="16" />
-                </button>
+                <app-expand-toggle
+                  [open]="expandedId() === item.equipmentID"
+                  [controls]="'equipment-details-' + item.equipmentID"
+                  [label]="item.equipmentName"
+                  (toggled)="toggleExpand(item.equipmentID)"
+                />
               </td>
               <td class="browse-table__name">{{ item.equipmentName }}</td>
               <td>{{ titleCase(item.equipmentKind) }}</td>

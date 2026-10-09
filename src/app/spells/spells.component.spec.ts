@@ -149,6 +149,6 @@ describe('SpellsComponent', () => {
     catalog.value.set([]);
     catalog.isLoading.set(true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.browse-skeleton')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-browse-skeleton')).toBeTruthy();
   });
 });
