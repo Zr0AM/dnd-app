@@ -58,7 +58,7 @@
     "@angular/build": "^22.2.2",
     "@angular/cli": "^22.2.2",
     "@angular/compiler-cli": "^22.2.2",
-    "@cloudflare/workers-types": "^5.20260925.1",
+    "@cloudflare/workers-types": "^5.20261012.1",
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^5.0.3",
     "angular-eslint": "22.6.0",
