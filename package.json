@@ -39,7 +39,7 @@
   "private": true,
   "packageManager": "npm@11.6.2",
   "dependencies": {
-    "@angular/cdk": "^22.2.3",
+    "@angular/cdk": "^22.2.4",
     "@angular/common": "^22.2.3",
     "@angular/compiler": "^22.2.3",
     "@angular/core": "^22.2.3",
@@ -54,9 +54,9 @@
     "wrangler": "^4.151.1"
   },
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "^2.8.1",
-    "@angular/build": "^22.2.3",
-    "@angular/cli": "^22.2.3",
+    "@analogjs/vite-plugin-angular": "^2.9.2",
+    "@angular/build": "^22.2.4",
+    "@angular/cli": "^22.2.4",
     "@angular/compiler-cli": "^22.2.3",
     "@cloudflare/workers-types": "^5.20261019.1",
     "@eslint/js": "^10.0.1",
